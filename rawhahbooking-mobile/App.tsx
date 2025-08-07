@@ -1,27 +1,81 @@
 import 'react-native-url-polyfill/auto';
 import './global.css';
-import { StatusBar } from 'expo-status-bar';
-import { View, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
-import { HomeScreen } from './screens/HomeScreen';
+import { BottomTabNavigator } from './components/BottomTabNavigator';
+import { CustomSplashScreen } from './components/CustomSplashScreen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 function AppContent() {
   const { user, loading } = useAuth();
+  const [testMode, setTestMode] = React.useState(false);
+  const [appIsReady, setAppIsReady] = useState(false);
+  const [showCustomSplash, setShowCustomSplash] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    async function prepare() {
+      try {
+        // Hide the native splash screen
+        await SplashScreen.hideAsync();
+        
+        // Show our custom splash screen for 2 seconds
+        setTimeout(() => {
+          setShowCustomSplash(false);
+          setAppIsReady(true);
+        }, 2000);
+      } catch (e) {
+        console.warn(e);
+        setShowCustomSplash(false);
+        setAppIsReady(true);
+      }
+    }
+
+    prepare();
+  }, []);
+
+  // Show custom splash screen
+  if (showCustomSplash) {
+    return <CustomSplashScreen />;
+  }
+
+  // Show loading state after splash screen
+  if (loading || !appIsReady) {
     return (
-      <View className="flex-1 justify-center items-center bg-white">
-        <Text className="text-lg text-gray-600">Loading...</Text>
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
 
-  if (!user) {
-    return <LoginScreen />;
+  // Test mode bypass for development
+  if (testMode || user) {
+    return (
+      <NavigationContainer>
+        <BottomTabNavigator />
+      </NavigationContainer>
+    );
   }
 
-  return <HomeScreen />;
+  return (
+    <View style={styles.container}>
+      <LoginScreen />
+      {/* Temporary test button */}
+      <View style={styles.testButtonContainer}>
+        <TouchableOpacity 
+          style={styles.testButton}
+          onPress={() => setTestMode(true)}
+        >
+          <Text style={styles.testButtonText}>Skip Login (Test Mode)</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 }
 
 export default function App() {
@@ -31,3 +85,38 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#D6D5C9',
+  },
+  loadingText: {
+    fontSize: 18,
+    color: '#333333',
+    fontWeight: '500',
+  },
+  testButtonContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+  },
+  testButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

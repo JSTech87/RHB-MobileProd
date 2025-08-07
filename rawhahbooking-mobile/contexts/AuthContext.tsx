@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { Session, User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { ClerkProvider, useAuth as useClerkAuth, useUser, useSignIn, useSignUp } from '@clerk/clerk-expo';
 
 interface AuthContextType {
-  session: Session | null;
-  user: User | null;
+  user: any;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
@@ -21,53 +19,69 @@ export const useAuth = () => {
   return context;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+const AuthProviderInner: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isLoaded, signOut: clerkSignOut } = useClerkAuth();
+  const { user } = useUser();
+  const { signIn: clerkSignIn, isLoaded: signInLoaded } = useSignIn();
+  const { signUp: clerkSignUp, isLoaded: signUpLoaded } = useSignUp();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    if (isLoaded && signInLoaded && signUpLoaded) {
       setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+    }
+  }, [isLoaded, signInLoaded, signUpLoaded]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      if (!clerkSignIn || !signInLoaded) {
+        return { error: { message: 'Sign in not ready' } };
+      }
+
+      const result = await clerkSignIn.create({
+        identifier: email,
+        password,
+      });
+
+      if (result.status === 'complete') {
+        return { error: null };
+      } else {
+        return { error: { message: 'Sign in incomplete' } };
+      }
+    } catch (error: any) {
+      return { error };
+    }
   };
 
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-    return { error };
+    try {
+      if (!clerkSignUp || !signUpLoaded) {
+        return { error: { message: 'Sign up not ready' } };
+      }
+
+      const result = await clerkSignUp.create({
+        emailAddress: email,
+        password,
+      });
+
+      if (result.status === 'complete') {
+        return { error: null };
+      } else if (result.status === 'missing_requirements') {
+        // Handle email verification if required
+        return { error: { message: 'Please check your email to verify your account' } };
+      } else {
+        return { error: { message: 'Sign up incomplete' } };
+      }
+    } catch (error: any) {
+      return { error };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await clerkSignOut();
   };
 
   const value = {
-    session,
     user,
     loading,
     signIn,
@@ -79,5 +93,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
+  );
+};
+
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!;
+
+  if (!publishableKey) {
+    throw new Error('Missing Clerk Publishable Key. Please add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to your .env file');
+  }
+
+  return (
+    <ClerkProvider publishableKey={publishableKey}>
+      <AuthProviderInner>{children}</AuthProviderInner>
+    </ClerkProvider>
   );
 }; 

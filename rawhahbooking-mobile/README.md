@@ -4,19 +4,20 @@ A React Native mobile application built with Expo and TypeScript for the RawhahB
 
 ## Features
 
-- 🔐 **Authentication**: Supabase-powered authentication with session persistence
-- 🎨 **Styling**: NativeWind for Tailwind CSS support
+- 🔐 **Authentication**: Clerk-powered authentication with session management
+- 🎨 **Styling**: React Native StyleSheet for consistent design
 - 📱 **Cross-platform**: iOS and Android support via Expo
 - 🔄 **TypeScript**: Full type safety and better developer experience
-- 💾 **Session Persistence**: Automatic session management with AsyncStorage
+- 🧭 **Navigation**: Bottom tab navigation with React Navigation
+- ✈️ **Flight Search**: Beautiful flight search interface matching design mockups
 
 ## Tech Stack
 
 - **Framework**: React Native with Expo
 - **Language**: TypeScript
-- **Styling**: NativeWind (Tailwind CSS for React Native)
-- **Backend**: Supabase
-- **Authentication**: Supabase Auth with AsyncStorage persistence
+- **Styling**: React Native StyleSheet
+- **Navigation**: React Navigation v6 with bottom tabs
+- **Authentication**: Clerk Auth
 - **State Management**: React Context API
 
 ## Prerequisites
@@ -26,6 +27,7 @@ A React Native mobile application built with Expo and TypeScript for the RawhahB
 - Expo CLI
 - iOS Simulator (for iOS development)
 - Android Studio (for Android development)
+- Clerk account and app setup
 
 ## Setup Instructions
 
@@ -42,13 +44,20 @@ npm install
    cp .env.example .env
    ```
 
-2. Update `.env` with your Supabase credentials:
+2. Update `.env` with your Clerk credentials:
    ```
-   EXPO_PUBLIC_SUPABASE_URL=your_supabase_project_url
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+   EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
    ```
 
-### 3. Start the Development Server
+### 3. Get Your Clerk Credentials
+
+1. Go to [clerk.com](https://clerk.com) and create an account
+2. Create a new application
+3. Go to **API Keys** in your Clerk dashboard
+4. Copy the **Publishable Key**
+5. Paste it in your `.env` file
+
+### 4. Start the Development Server
 
 ```bash
 # Start Expo development server
@@ -68,47 +77,74 @@ npm run web
 
 ```
 rawhahbooking-mobile/
-├── src/
-│   ├── contexts/
-│   │   └── AuthContext.tsx      # Authentication context
-│   ├── screens/
-│   │   └── LoginScreen.tsx      # Login/signup screen
-│   └── lib/
-│       └── supabase.ts          # Supabase client configuration
-├── App.tsx                      # Main app component
-├── global.css                   # NativeWind global styles
-├── tailwind.config.js           # Tailwind configuration
+├── components/
+│   └── BottomTabNavigator.tsx   # Bottom tab navigation setup
+├── contexts/
+│   └── AuthContext.tsx          # Clerk authentication context
+├── screens/
+│   ├── LoginScreen.tsx          # Login/signup screen
+│   ├── HomeScreen.tsx           # Home screen for authenticated users
+│   └── SearchScreen.tsx         # Flight/hotel search interface
+├── App.tsx                      # Main app component with navigation
+├── global.css                   # Global styles
+├── tailwind.config.js           # Tailwind configuration (unused currently)
 ├── babel.config.js              # Babel configuration
 ├── metro.config.js              # Metro bundler configuration
-├── nativewind-env.d.ts          # NativeWind TypeScript declarations
+├── nativewind-env.d.ts          # NativeWind TypeScript declarations (unused currently)
 └── .env                         # Environment variables
 ```
 
+## Screens
+
+### 🏠 **Home Screen**
+- Welcome message with user info
+- Sign out functionality
+- Navigation to other sections
+
+### 🔍 **Search Screen**
+- Flight and hotel search tabs
+- Trip type selection (One Way, Round Trip, Multi City)
+- Location input with swap functionality
+- Date picker for departure
+- Class and passenger selection
+- Beautiful glassmorphism design matching mockups
+
+### 🔐 **Login Screen**
+- Email/password authentication via Clerk
+- Sign up functionality
+- Error handling and loading states
+
+### 📱 **Bottom Navigation**
+- Home, Search, Bookings, News, Profile tabs
+- Active state indicators
+- Consistent with design mockups
+
 ## Authentication Flow
 
-The app uses Supabase authentication with the following features:
+The app uses Clerk authentication with the following features:
 
-- **Session Persistence**: Sessions are automatically persisted using AsyncStorage
+- **Session Management**: Sessions are automatically managed by Clerk
 - **Auto-refresh**: Tokens are automatically refreshed
 - **Context Provider**: Authentication state is managed globally via React Context
 - **Loading States**: Proper loading states during authentication operations
 
 ## Styling
 
-The app uses NativeWind for styling, which provides:
+The app uses React Native StyleSheet for styling, which provides:
 
-- Tailwind CSS classes for React Native components
-- Responsive design support
-- Custom theme configuration
+- Native performance and consistency
+- Platform-specific styling capabilities
 - Type-safe styling
+- Glassmorphism effects matching design mockups
 
 ## Development
 
 ### Adding New Screens
 
-1. Create a new screen component in `src/screens/`
-2. Use NativeWind classes for styling
+1. Create a new screen component in `screens/`
+2. Use React Native StyleSheet for styling
 3. Import and use the `useAuth` hook for authentication state
+4. Add to navigation in `BottomTabNavigator.tsx`
 
 ### Adding New Features
 
@@ -116,15 +152,19 @@ The app uses NativeWind for styling, which provides:
 2. Use TypeScript for type safety
 3. Implement proper error handling
 4. Add loading states where appropriate
+5. Match the glassmorphism design language
 
 ## Building for Production
 
 ```bash
 # Build for iOS
-expo build:ios
+eas build --platform ios
 
 # Build for Android
-expo build:android
+eas build --platform android
+
+# Build for both platforms
+eas build --platform all
 ```
 
 ## Troubleshooting
@@ -132,12 +172,19 @@ expo build:android
 ### Common Issues
 
 1. **Metro bundler issues**: Clear cache with `expo start -c`
-2. **NativeWind not working**: Ensure babel.config.js includes the NativeWind plugin
-3. **TypeScript errors**: Check that nativewind-env.d.ts is included in tsconfig.json
+2. **Clerk authentication issues**: Verify your publishable key is correct
+3. **TypeScript errors**: Ensure all types are properly imported
+4. **Navigation issues**: Ensure React Navigation dependencies are properly installed
 
 ### Environment Variables
 
-Make sure your `.env` file contains the correct Supabase credentials and that the variables are prefixed with `EXPO_PUBLIC_` for client-side access.
+Make sure your `.env` file contains the correct Clerk publishable key and that the variable is prefixed with `EXPO_PUBLIC_` for client-side access.
+
+### Clerk Setup Issues
+
+1. **"Missing Clerk Publishable Key"**: Ensure your `.env` file has the correct key
+2. **Authentication not working**: Check your Clerk dashboard settings
+3. **Sign up issues**: Verify your Clerk app allows sign-ups
 
 ## Contributing
 
@@ -145,6 +192,7 @@ Make sure your `.env` file contains the correct Supabase credentials and that th
 2. Use TypeScript for all new code
 3. Add proper error handling and loading states
 4. Test on both iOS and Android platforms
+5. Match the design mockups and glassmorphism style
 
 ## License
 

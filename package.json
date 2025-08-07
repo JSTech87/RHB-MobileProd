@@ -1,5 +1,11 @@
 {
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.1.2"
+    "@clerk/clerk-expo": "^2.14.15",
+    "@react-native-async-storage/async-storage": "^2.1.2",
+    "expo-auth-session": "^6.2.1"
+  },
+  "devDependencies": {
+    "react-dom": "^19.0.0",
+    "react-native-web": "^0.19.12"
   }
 }
