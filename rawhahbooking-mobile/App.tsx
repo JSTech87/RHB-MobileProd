@@ -2,15 +2,19 @@ import 'react-native-url-polyfill/auto';
 import './global.css';
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { BottomTabNavigator } from './components/BottomTabNavigator';
+import { FlightResultsScreen } from './screens/FlightResultsScreen';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
+
+const Stack = createStackNavigator();
 
 function AppContent() {
   const { user, loading } = useAuth();
@@ -57,7 +61,17 @@ function AppContent() {
   if (testMode || user) {
     return (
       <NavigationContainer>
-        <BottomTabNavigator />
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="MainTabs" component={BottomTabNavigator} />
+          <Stack.Screen 
+            name="FlightResults" 
+            component={FlightResultsScreen}
+            options={{
+              presentation: 'card',
+              cardStyle: { backgroundColor: '#D6D5C9' }
+            }}
+          />
+        </Stack.Navigator>
       </NavigationContainer>
     );
   }

@@ -3,7 +3,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SearchScreen } from '../screens/SearchScreen';
-import { FlightResultsScreen } from '../screens/FlightResultsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -28,7 +27,7 @@ const ProfileIcon = ({ focused }: { focused: boolean }) => (
   <View style={[styles.icon, { backgroundColor: focused ? '#A83442' : '#6c757d' }]} />
 );
 
-// Placeholder screens
+// Placeholder screens with beige backgrounds
 const NewsScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderTitle}>News</Text>
@@ -40,6 +39,13 @@ const ProfileScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderTitle}>Profile</Text>
     <Text style={styles.placeholderText}>Manage your profile and settings</Text>
+  </View>
+);
+
+const BookingsScreen = () => (
+  <View style={styles.placeholderContainer}>
+    <Text style={styles.placeholderTitle}>Bookings</Text>
+    <Text style={styles.placeholderText}>Your booking history will appear here</Text>
   </View>
 );
 
@@ -85,8 +91,8 @@ export const BottomTabNavigator: React.FC = () => {
         }}
       />
       <Tab.Screen
-        name="Results"
-        component={FlightResultsScreen}
+        name="Bookings"
+        component={BookingsScreen}
         options={{
           tabBarIcon: ({ focused }) => <BookingsIcon focused={focused} />,
         }}
@@ -119,7 +125,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#D6D5C9',
     paddingHorizontal: 24,
   },
   placeholderTitle: {

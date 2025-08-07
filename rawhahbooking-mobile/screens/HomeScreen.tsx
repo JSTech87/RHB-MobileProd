@@ -61,18 +61,17 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#D6D5C9',
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
+    padding: 24,
   },
   innerContainer: {
-    width: '100%',
-    maxWidth: 400,
-    gap: 24,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#D6D5C9',
   },
   title: {
     fontSize: 32,

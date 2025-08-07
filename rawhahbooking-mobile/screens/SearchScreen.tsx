@@ -36,7 +36,7 @@ const HotelIcon = ({ style }: { style?: any }) => (
   <View style={[styles.icon, style]} />
 );
 
-export const SearchScreen: React.FC = () => {
+export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'hotel' | 'flight'>('flight');
   const [tripType, setTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('oneWay');
@@ -53,8 +53,8 @@ export const SearchScreen: React.FC = () => {
   };
 
   const handleSearch = () => {
-    // TODO: Implement search functionality
-    console.log('Search initiated');
+    // Navigate to FlightResults screen at the root level
+    navigation?.navigate('FlightResults');
   };
 
   return (
