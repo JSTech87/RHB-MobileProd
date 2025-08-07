@@ -18,8 +18,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
   const [fromLocation, setFromLocation] = useState('Surabaya, East Java');
   const [toLocation, setToLocation] = useState('Denpasar, Bali');
   const [departureDate, setDepartureDate] = useState('Dec 21, 2023');
+  const [returnDate, setReturnDate] = useState('Dec 26, 2023');
   const [passengers, setPassengers] = useState('2 Seats');
-  const [seatClass, setSeatClass] = useState('Economy');
+  const [seatClass, setSeatClass] = useState('Business');
 
   const handleSearch = () => {
     // Navigate to FlightResults screen at the root level
@@ -32,14 +33,11 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     setToLocation(temp);
   };
 
-  const ServiceTab = ({ type, icon, label }: { type: 'hotel' | 'flight', icon: string, label: string }) => (
+  const ServiceTab = ({ type, label }: { type: 'hotel' | 'flight', label: string }) => (
     <TouchableOpacity
       style={[styles.serviceTab, selectedService === type && styles.serviceTabActive]}
       onPress={() => setSelectedService(type)}
     >
-      <Text style={[styles.serviceTabIcon, selectedService === type && styles.serviceTabIconActive]}>
-        {icon}
-      </Text>
       <Text style={[styles.serviceTabText, selectedService === type && styles.serviceTabTextActive]}>
         {label}
       </Text>
@@ -51,12 +49,303 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       style={styles.tripType}
       onPress={() => setSelectedTripType(type)}
     >
-      <View style={styles.radioButton}>
+      <View style={[styles.radioButton, selectedTripType === type && styles.radioButtonSelected]}>
         <View style={[styles.radioInner, selectedTripType === type && styles.radioInnerSelected]} />
       </View>
       <Text style={styles.tripTypeText}>{label}</Text>
     </TouchableOpacity>
   );
+
+  const renderSearchForm = () => {
+    if (selectedTripType === 'oneWay') {
+      return (
+        <>
+          {/* From Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>From</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={fromLocation}
+                  onChangeText={setFromLocation}
+                  editable={false}
+                />
+                <Text style={styles.airportCode}>(SBY)</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* To Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>To</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={toLocation}
+                  onChangeText={setToLocation}
+                  editable={false}
+                />
+                <Text style={styles.airportCode}>(DPS)</Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity style={styles.swapButton} onPress={swapLocations}>
+              <Text style={styles.swapButtonIcon}>⇅</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.locationDivider} />
+
+          {/* Date Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Departure Date</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={departureDate}
+                  onChangeText={setDepartureDate}
+                  editable={false}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Bottom Row */}
+          <View style={styles.bottomRow}>
+            <View style={styles.bottomField}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputContent}>
+                  <Text style={styles.inputLabel}>Passengers</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={passengers}
+                    onChangeText={setPassengers}
+                    editable={false}
+                  />
+                </View>
+              </View>
+            </View>
+            <View style={styles.bottomField}>
+              <View style={styles.fieldWrapper}>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputContent}>
+                    <Text style={styles.inputLabel}>Class</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={seatClass}
+                      onChangeText={setSeatClass}
+                      editable={false}
+                    />
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </>
+      );
+    } else if (selectedTripType === 'roundTrip') {
+      return (
+        <>
+          {/* From Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>From</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={fromLocation}
+                  onChangeText={setFromLocation}
+                  editable={false}
+                />
+                <Text style={styles.airportCode}>(SBY)</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* To Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>To</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={toLocation}
+                  onChangeText={setToLocation}
+                  editable={false}
+                />
+                <Text style={styles.airportCode}>(DPS)</Text>
+              </View>
+            </View>
+            
+            <TouchableOpacity style={styles.swapButton} onPress={swapLocations}>
+              <Text style={styles.swapButtonIcon}>⇅</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.locationDivider} />
+
+          {/* Date Row for Round Trip */}
+          <View style={styles.dateRow}>
+            <View style={styles.dateField}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputContent}>
+                  <Text style={styles.inputLabel}>Departure Date</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={departureDate}
+                    onChangeText={setDepartureDate}
+                    editable={false}
+                  />
+                </View>
+              </View>
+            </View>
+            <View style={styles.dateField}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputContent}>
+                  <Text style={styles.inputLabel}>Return Date</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={returnDate}
+                    onChangeText={setReturnDate}
+                    editable={false}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Bottom Row */}
+          <View style={styles.bottomRow}>
+            <View style={styles.bottomField}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputContent}>
+                  <Text style={styles.inputLabel}>Passengers</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={passengers}
+                    onChangeText={setPassengers}
+                    editable={false}
+                  />
+                </View>
+              </View>
+            </View>
+            <View style={styles.bottomField}>
+              <View style={styles.fieldWrapper}>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputContent}>
+                    <Text style={styles.inputLabel}>Seat Class</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={seatClass}
+                      onChangeText={setSeatClass}
+                      editable={false}
+                    />
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </>
+      );
+    } else {
+      // Multi City
+      return (
+        <>
+          {/* From Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>From</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={fromLocation}
+                  onChangeText={setFromLocation}
+                  editable={false}
+                />
+                <Text style={styles.airportCode}>(SBY)</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* To Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>To</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={toLocation}
+                  onChangeText={setToLocation}
+                  editable={false}
+                />
+                <Text style={styles.airportCode}>(DPS)</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.locationDivider} />
+
+          {/* Date Section */}
+          <View style={styles.formSection}>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Departure Date</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={departureDate}
+                  onChangeText={setDepartureDate}
+                  editable={false}
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Add Flight Button */}
+          <TouchableOpacity style={styles.addFlightButton}>
+            <Text style={styles.addFlightText}>+ Add Another Flight</Text>
+          </TouchableOpacity>
+
+          {/* Bottom Row */}
+          <View style={styles.bottomRow}>
+            <View style={styles.bottomField}>
+              <View style={styles.inputContainer}>
+                <View style={styles.inputContent}>
+                  <Text style={styles.inputLabel}>Passengers</Text>
+                  <TextInput
+                    style={styles.formInput}
+                    value={passengers}
+                    onChangeText={setPassengers}
+                    editable={false}
+                  />
+                </View>
+              </View>
+            </View>
+            <View style={styles.bottomField}>
+              <View style={styles.fieldWrapper}>
+                <View style={styles.inputContainer}>
+                  <View style={styles.inputContent}>
+                    <Text style={styles.inputLabel}>Class</Text>
+                    <TextInput
+                      style={styles.formInput}
+                      value={seatClass}
+                      onChangeText={setSeatClass}
+                      editable={false}
+                    />
+                    <Text style={styles.dropdownArrow}>▼</Text>
+                  </View>
+                </View>
+              </View>
+            </View>
+          </View>
+        </>
+      );
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -79,21 +368,21 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                 <Text style={styles.username}>Irvan Moses</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.menuIcon}>
-              <Text style={styles.menuIconText}>☰</Text>
+            <TouchableOpacity style={styles.bellIcon}>
+              <Text style={styles.bellIconText}>🔔</Text>
             </TouchableOpacity>
           </View>
 
           {/* Service Tabs */}
           <View style={styles.serviceTabs}>
-            <ServiceTab type="hotel" icon="🏨" label="Hotel" />
-            <ServiceTab type="flight" icon="✈️" label="Flight" />
+            <ServiceTab type="hotel" label="Hotel" />
+            <ServiceTab type="flight" label="Flight" />
           </View>
 
           {/* Trip Type Options */}
           <View style={styles.tripTypes}>
-            <TripTypeOption type="oneWay" label="One Way" />
-            <TripTypeOption type="roundTrip" label="Round trip" />
+            <TripTypeOption type="oneWay" label="One way" />
+            <TripTypeOption type="roundTrip" label="Round Trip" />
             <TripTypeOption type="multiCity" label="Multi City" />
           </View>
         </View>
@@ -106,97 +395,14 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <View style={[styles.cutout, styles.leftCutout]} />
             <View style={[styles.cutout, styles.rightCutout]} />
 
-            {/* From Section */}
-            <View style={styles.formSection}>
-              <Text style={styles.formLabel}>From</Text>
-              <TextInput
-                style={styles.formInput}
-                value={fromLocation}
-                onChangeText={setFromLocation}
-                editable={false}
-              />
-              <Text style={styles.airportCode}>(SBY)</Text>
-            </View>
-
-            <View style={styles.locationDivider}>
-              <View style={styles.flightPath} />
-            </View>
-
-            {/* To Section */}
-            <View style={styles.formSection}>
-              <Text style={styles.formLabel}>To</Text>
-              <TextInput
-                style={styles.formInput}
-                value={toLocation}
-                onChangeText={setToLocation}
-                editable={false}
-              />
-              <Text style={styles.airportCode}>(DPS)</Text>
-              
-              <TouchableOpacity style={styles.swapButton} onPress={swapLocations}>
-                <Text style={styles.swapButtonIcon}>⇅</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Date Section */}
-            <View style={styles.formSection}>
-              <Text style={styles.formLabel}>Departure Date</Text>
-              <TextInput
-                style={styles.formInput}
-                value={departureDate}
-                onChangeText={setDepartureDate}
-                editable={false}
-              />
-            </View>
-
-            {/* Bottom Row */}
-            <View style={styles.bottomRow}>
-              <View style={styles.bottomField}>
-                <Text style={styles.formLabel}>Passengers</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={passengers}
-                  onChangeText={setPassengers}
-                  editable={false}
-                />
-              </View>
-              <View style={styles.bottomField}>
-                <Text style={styles.formLabel}>Class</Text>
-                <View style={styles.fieldWrapper}>
-                  <TextInput
-                    style={styles.formInput}
-                    value={seatClass}
-                    onChangeText={setSeatClass}
-                    editable={false}
-                  />
-                  <Text style={styles.dropdownArrow}>▼</Text>
-                </View>
-              </View>
-            </View>
+            {renderSearchForm()}
 
             {/* Search Button */}
             <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-              <Text style={styles.searchButtonText}>Search</Text>
+              <Text style={styles.searchButtonText}>
+                {selectedTripType === 'multiCity' ? 'Search Ticket' : 'Search'}
+              </Text>
             </TouchableOpacity>
-          </View>
-
-          {/* Today's Flights */}
-          <View style={styles.todaysFlights}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Today's Flight</Text>
-              <TouchableOpacity>
-                <Text style={styles.seeAll}>See all</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.flightCard}>
-              <View style={styles.airlineLogo}>
-                <Text style={styles.airlineLogoText}>CL</Text>
-              </View>
-              <View style={styles.flightInfo}>
-                <Text style={styles.airlineName}>Citilink</Text>
-                <Text style={styles.flightDate}>20 December 2023</Text>
-              </View>
-            </View>
           </View>
         </View>
       </ScrollView>
@@ -271,20 +477,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000000',
   },
-  menuIcon: {
+  bellIcon: {
     width: 44,
     height: 44,
-    backgroundColor: '#A83442',
+    backgroundColor: '#000000',
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#A83442',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 8,
     elevation: 6,
   },
-  menuIconText: {
+  bellIconText: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
@@ -314,12 +520,6 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  serviceTabIcon: {
-    fontSize: 18,
-  },
-  serviceTabIconActive: {
-    fontSize: 18,
-  },
   serviceTabText: {
     fontSize: 16,
     fontWeight: '700',
@@ -346,6 +546,9 @@ const styles = StyleSheet.create({
     borderColor: '#dee2e6',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  radioButtonSelected: {
+    borderColor: '#A83442',
   },
   radioInner: {
     width: 8,
@@ -397,61 +600,65 @@ const styles = StyleSheet.create({
     right: -8,
   },
   formSection: {
-    marginBottom: 20,
+    marginBottom: 4,
     position: 'relative',
   },
   formLabel: {
     fontSize: 12,
     color: '#6c757d',
-    marginBottom: 4,
+    marginBottom: 8,
     fontWeight: '500',
   },
   formInput: {
     fontSize: 16,
     fontWeight: '700',
     color: '#000000',
-    paddingVertical: 4,
+    flex: 1,
     borderWidth: 0,
+    paddingVertical: 0,
   },
   airportCode: {
     fontSize: 14,
     color: '#6c757d',
     fontWeight: '500',
-    marginTop: 2,
+    marginLeft: 8,
   },
   locationDivider: {
-    height: 1,
-    backgroundColor: '#e9ecef',
-    marginVertical: 16,
+    height: 20,
+    marginVertical: 8,
     position: 'relative',
-  },
-  flightPath: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: '85%',
-    height: 2,
-    borderTopWidth: 2,
-    borderTopColor: '#e9ecef',
-    borderStyle: 'dashed',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   swapButton: {
     position: 'absolute',
-    right: 0,
-    top: '50%',
-    marginTop: -20,
+    right: 20,
+    top: -35,
     width: 40,
     height: 40,
     backgroundColor: '#000000',
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 3,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
   },
   swapButtonIcon: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: '600',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  dateField: {
+    flex: 1,
   },
   bottomRow: {
     flexDirection: 'row',
@@ -465,12 +672,9 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   dropdownArrow: {
-    position: 'absolute',
-    right: 8,
-    top: '50%',
-    marginTop: -8,
     fontSize: 12,
     color: '#6c757d',
+    marginLeft: 8,
   },
   searchButton: {
     width: '100%',
@@ -490,62 +694,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  todaysFlights: {
-    flex: 1,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    color: '#000000',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  seeAll: {
-    color: '#6c757d',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  flightCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  airlineLogo: {
-    width: 40,
-    height: 40,
-    backgroundColor: '#2ecc71',
-    borderRadius: 8,
+  addFlightButton: {
+    width: '100%',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    marginBottom: 24,
   },
-  airlineLogoText: {
-    fontSize: 14,
+  addFlightText: {
+    color: '#000000',
+    fontSize: 16,
     fontWeight: '700',
-    color: '#FFFFFF',
   },
-  flightInfo: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minHeight: 50,
+  },
+  inputContent: {
     flex: 1,
   },
-  airlineName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#000000',
-    marginBottom: 2,
-  },
-  flightDate: {
+  inputLabel: {
     fontSize: 12,
     color: '#6c757d',
+    marginBottom: 8,
+    fontWeight: '500',
   },
 }); 
