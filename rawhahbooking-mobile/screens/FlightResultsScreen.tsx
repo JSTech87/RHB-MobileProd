@@ -381,7 +381,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
             <Text style={styles.airportName}>Surabaya, East Java</Text>
           </View>
           <View style={styles.routeArrow}>
-            <Text style={styles.flightIconHeader}>✈</Text>
+            <Text style={styles.flightIconHeader}>→</Text>
             <Text style={styles.routeDate}>Dec 21, 2023</Text>
           </View>
           <View style={styles.routeLocation}>
@@ -439,12 +439,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 20,
     fontWeight: 'bold',
   },
   pageTitle: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 20,
     fontWeight: '700',
     flex: 1,
@@ -464,13 +464,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   airportCode: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 28,
     fontWeight: '800',
     marginBottom: 2,
   },
   airportName: {
-    color: '#FFFFFF',
+    color: '#333333',
     fontSize: 12,
     opacity: 0.8,
   },
@@ -481,10 +481,10 @@ const styles = StyleSheet.create({
   flightIconHeader: {
     color: '#A83442',
     fontSize: 24,
-    transform: [{ rotate: '90deg' }],
+    transform: [{ rotate: '0deg' }],
   },
   routeDate: {
-    color: '#FFFFFF',
+    color: '#333333',
     fontSize: 12,
     opacity: 0.7,
   },
