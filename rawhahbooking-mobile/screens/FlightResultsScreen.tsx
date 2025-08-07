@@ -22,12 +22,14 @@ interface FlightData {
   };
   flightType: string;
   flightNumber: string;
+  cabinClass: string;
   departure: {
     time: string;
     code: string;
     location: string;
     terminal: string;
     gate: string;
+    date: string;
   };
   arrival: {
     time: string;
@@ -35,6 +37,7 @@ interface FlightData {
     location: string;
     terminal: string;
     gate: string;
+    date: string;
   };
   price: string;
   duration: string;
@@ -42,6 +45,7 @@ interface FlightData {
   baggage: string;
   refundable: boolean;
   seatSelection: boolean;
+  amenities: string[];
 }
 
 const mockFlights: FlightData[] = [
@@ -55,12 +59,14 @@ const mockFlights: FlightData[] = [
     },
     flightType: 'Type A330',
     flightNumber: 'GA 123',
+    cabinClass: 'Economy',
     departure: {
       time: '09:00 AM',
       code: 'SBY',
       location: 'Surabaya, East Java',
       terminal: 'Terminal 1',
       gate: 'Gate A12',
+      date: 'Dec 21, 2023',
     },
     arrival: {
       time: '13:30 PM',
@@ -68,6 +74,7 @@ const mockFlights: FlightData[] = [
       location: 'Denpasar, Bali',
       terminal: 'Terminal 2',
       gate: 'Gate B7',
+      date: 'Dec 21, 2023',
     },
     price: '$320',
     duration: '4h 30m',
@@ -75,6 +82,7 @@ const mockFlights: FlightData[] = [
     baggage: '20kg checked + 7kg cabin',
     refundable: true,
     seatSelection: true,
+    amenities: ['WiFi', 'In-flight Entertainment', 'Meal Service', 'USB Charging'],
   },
   {
     id: '2',
@@ -86,12 +94,14 @@ const mockFlights: FlightData[] = [
     },
     flightType: 'Type JT-25',
     flightNumber: 'JT 456',
+    cabinClass: 'Economy',
     departure: {
       time: '10:00 AM',
       code: 'SBY',
       location: 'Surabaya, East Java',
       terminal: 'Terminal 1',
       gate: 'Gate A8',
+      date: 'Dec 21, 2023',
     },
     arrival: {
       time: '15:30 PM',
@@ -99,6 +109,7 @@ const mockFlights: FlightData[] = [
       location: 'Denpasar, Bali',
       terminal: 'Terminal 1',
       gate: 'Gate C3',
+      date: 'Dec 21, 2023',
     },
     price: '$479',
     duration: '5h 30m',
@@ -106,6 +117,7 @@ const mockFlights: FlightData[] = [
     baggage: '15kg checked + 7kg cabin',
     refundable: false,
     seatSelection: true,
+    amenities: ['In-flight Entertainment', 'Snack Service'],
   },
   {
     id: '3',
@@ -117,12 +129,14 @@ const mockFlights: FlightData[] = [
     },
     flightType: 'Type JT-15',
     flightNumber: 'QG 789',
+    cabinClass: 'Economy',
     departure: {
       time: '12:30 PM',
       code: 'SBY',
       location: 'Surabaya, East Java',
       terminal: 'Terminal 2',
       gate: 'Gate B15',
+      date: 'Dec 21, 2023',
     },
     arrival: {
       time: '17:00 PM',
@@ -130,6 +144,7 @@ const mockFlights: FlightData[] = [
       location: 'Denpasar, Bali',
       terminal: 'Terminal 1',
       gate: 'Gate A9',
+      date: 'Dec 21, 2023',
     },
     price: '$285',
     duration: '4h 30m',
@@ -137,6 +152,7 @@ const mockFlights: FlightData[] = [
     baggage: '20kg checked + 7kg cabin',
     refundable: true,
     seatSelection: false,
+    amenities: ['WiFi', 'Meal Service'],
   },
 ];
 
@@ -180,8 +196,12 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
                   <Text style={styles.airlineName}>{flight.airline.name}</Text>
                 </View>
               </View>
-              <View style={styles.flightType}>
-                <Text style={styles.flightTypeText}>{flight.flightType}</Text>
+              <View style={styles.flightTypeContainer}>
+                <View style={styles.flightType}>
+                  <Text style={styles.flightTypeText}>{flight.flightType}</Text>
+                </View>
+                <Text style={styles.flightNumberText}>{flight.flightNumber}</Text>
+                <Text style={styles.cabinClassText}>{flight.cabinClass}</Text>
               </View>
             </View>
 
@@ -196,7 +216,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
               <View style={styles.routeMiddle}>
                 <View style={styles.routeLine} />
                 <View style={styles.routePlaneIcon}>
-                  <Text style={styles.planeIcon}>✈</Text>
+                  <Text style={styles.planeIcon}>→</Text>
                 </View>
               </View>
 
@@ -207,9 +227,12 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
               </View>
             </View>
 
-            {/* Bottom Row - Duration and Price */}
+            {/* Bottom Row - Duration with Date and Price */}
             <View style={styles.bottomRow}>
-              <Text style={styles.duration}>{flight.duration}</Text>
+              <View style={styles.durationContainer}>
+                <Text style={styles.duration}>{flight.duration}</Text>
+                <Text style={styles.flightDate}>{flight.departure.date}</Text>
+              </View>
               <View style={styles.flightPrice}>
                 <Text style={styles.priceAmount}>{flight.price}</Text>
                 <Text style={styles.pricePer}>/pax</Text>
@@ -241,7 +264,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
                 </View>
                 <View>
                   <Text style={styles.airlineName}>{flight.airline.name}</Text>
-                  <Text style={styles.flightNumber}>{flight.flightNumber}</Text>
+                  <Text style={styles.flightNumber}>{flight.flightNumber} • {flight.cabinClass}</Text>
                 </View>
               </View>
               <TouchableOpacity 
@@ -261,6 +284,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
                   <Text style={styles.routeCode}>{flight.departure.code}</Text>
                   <Text style={styles.terminalInfo}>{flight.departure.terminal}</Text>
                   <Text style={styles.gateInfo}>{flight.departure.gate}</Text>
+                  <Text style={styles.dateInfo}>{flight.departure.date}</Text>
                 </View>
                 
                 <View style={styles.routeMiddleDetailed}>
@@ -274,11 +298,16 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
                   <Text style={styles.routeCode}>{flight.arrival.code}</Text>
                   <Text style={styles.terminalInfo}>{flight.arrival.terminal}</Text>
                   <Text style={styles.gateInfo}>{flight.arrival.gate}</Text>
+                  <Text style={styles.dateInfo}>{flight.arrival.date}</Text>
                 </View>
               </View>
 
               {/* Flight Info */}
               <View style={styles.flightInfo}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Cabin Class:</Text>
+                  <Text style={styles.infoValue}>{flight.cabinClass}</Text>
+                </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Baggage:</Text>
                   <Text style={styles.infoValue}>{flight.baggage}</Text>
@@ -294,6 +323,19 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
                   <Text style={[styles.infoValue, { color: flight.seatSelection ? '#2ecc71' : '#e74c3c' }]}>
                     {flight.seatSelection ? 'Available' : 'Not Available'}
                   </Text>
+                </View>
+              </View>
+
+              {/* Amenities */}
+              <View style={styles.amenitiesSection}>
+                <Text style={styles.amenitiesTitle}>Amenities</Text>
+                <View style={styles.amenitiesList}>
+                  {flight.amenities.map((amenity, index) => (
+                    <View key={index} style={styles.amenityItem}>
+                      <Text style={styles.amenityBullet}>•</Text>
+                      <Text style={styles.amenityText}>{amenity}</Text>
+                    </View>
+                  ))}
                 </View>
               </View>
 
@@ -317,7 +359,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#D6D5C9" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -339,7 +381,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
             <Text style={styles.airportName}>Surabaya, East Java</Text>
           </View>
           <View style={styles.routeArrow}>
-            <Text style={styles.flightIcon}>✈</Text>
+            <Text style={styles.flightIconHeader}>✈</Text>
             <Text style={styles.routeDate}>Dec 21, 2023</Text>
           </View>
           <View style={styles.routeLocation}>
@@ -377,7 +419,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#D6D5C9',
   },
   header: {
-    backgroundColor: '#000000',
+    backgroundColor: '#D6D5C9',
     paddingTop: 50, // Account for status bar
     paddingBottom: 15,
     paddingHorizontal: 20,
@@ -436,7 +478,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
   },
-  flightIcon: {
+  flightIconHeader: {
     color: '#A83442',
     fontSize: 24,
     transform: [{ rotate: '90deg' }],
@@ -536,6 +578,20 @@ const styles = StyleSheet.create({
     color: '#6c757d',
     fontWeight: '500',
   },
+  flightNumberText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  cabinClassText: {
+    fontSize: 10,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  flightTypeContainer: {
+    alignItems: 'center',
+  },
   flightType: {
     backgroundColor: 'rgba(168, 52, 66, 0.1)',
     paddingHorizontal: 8,
@@ -612,10 +668,19 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
   },
+  durationContainer: {
+    alignItems: 'flex-start',
+  },
   duration: {
     fontSize: 12,
     color: '#6c757d',
     fontWeight: '500',
+  },
+  flightDate: {
+    fontSize: 10,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginTop: 2,
   },
   flightPrice: {
     alignItems: 'flex-end',
@@ -684,6 +749,11 @@ const styles = StyleSheet.create({
   gateInfo: {
     fontSize: 10,
     color: '#6c757d',
+  },
+  dateInfo: {
+    fontSize: 10,
+    color: '#6c757d',
+    marginTop: 2,
   },
   routeMiddleDetailed: {
     alignItems: 'center',
@@ -789,5 +859,35 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  amenitiesSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  amenitiesTitle: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  amenitiesList: {
+    flexDirection: 'column',
+  },
+  amenityItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  amenityBullet: {
+    fontSize: 10,
+    color: '#6c757d',
+    marginRight: 4,
+  },
+  amenityText: {
+    fontSize: 12,
+    color: '#000000',
+    fontWeight: '500',
   },
 }); 
