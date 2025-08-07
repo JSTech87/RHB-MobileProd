@@ -96,7 +96,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             </TouchableOpacity>
           </View>
 
-          <View style={styles.locationDivider} />
+          <View style={styles.locationDivider}>
+            <View style={styles.flightPath} />
+          </View>
 
           {/* Date Section */}
           <View style={styles.formSection}>
@@ -139,9 +141,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                       onChangeText={setSeatClass}
                       editable={false}
                     />
-                    <Text style={styles.dropdownArrow}>▼</Text>
                   </View>
                 </View>
+                <Text style={styles.dropdownArrow}>▼</Text>
               </View>
             </View>
           </View>
@@ -186,7 +188,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             </TouchableOpacity>
           </View>
 
-          <View style={styles.locationDivider} />
+          <View style={styles.locationDivider}>
+            <View style={styles.flightPath} />
+          </View>
 
           {/* Date Row for Round Trip */}
           <View style={styles.dateRow}>
@@ -244,9 +248,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                       onChangeText={setSeatClass}
                       editable={false}
                     />
-                    <Text style={styles.dropdownArrow}>▼</Text>
                   </View>
                 </View>
+                <Text style={styles.dropdownArrow}>▼</Text>
               </View>
             </View>
           </View>
@@ -288,7 +292,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             </View>
           </View>
 
-          <View style={styles.locationDivider} />
+          <View style={styles.locationDivider}>
+            <View style={styles.flightPath} />
+          </View>
 
           {/* Date Section */}
           <View style={styles.formSection}>
@@ -336,9 +342,9 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                       onChangeText={setSeatClass}
                       editable={false}
                     />
-                    <Text style={styles.dropdownArrow}>▼</Text>
                   </View>
                 </View>
+                <Text style={styles.dropdownArrow}>▼</Text>
               </View>
             </View>
           </View>
@@ -600,7 +606,7 @@ const styles = StyleSheet.create({
     right: -8,
   },
   formSection: {
-    marginBottom: 4,
+    marginBottom: 8,
     position: 'relative',
   },
   formLabel: {
@@ -616,6 +622,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 0,
     paddingVertical: 0,
+    marginTop: 4,
   },
   airportCode: {
     fontSize: 14,
@@ -629,6 +636,17 @@ const styles = StyleSheet.create({
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  flightPath: {
+    position: 'absolute',
+    left: 20,
+    right: 60,
+    top: '50%',
+    marginTop: -1,
+    height: 2,
+    borderTopWidth: 2,
+    borderTopColor: '#dee2e6',
+    borderStyle: 'dashed',
   },
   swapButton: {
     position: 'absolute',
@@ -667,14 +685,19 @@ const styles = StyleSheet.create({
   },
   bottomField: {
     flex: 1,
+    minWidth: 0,
   },
   fieldWrapper: {
+    flex: 1,
     position: 'relative',
   },
   dropdownArrow: {
+    position: 'absolute',
+    right: 16,
+    top: '50%',
+    marginTop: -6,
     fontSize: 12,
     color: '#6c757d',
-    marginLeft: 8,
   },
   searchButton: {
     width: '100%',
@@ -716,18 +739,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     borderRadius: 25,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 16,
     borderWidth: 1,
     borderColor: '#dee2e6',
-    minHeight: 50,
+    minHeight: 60,
   },
   inputContent: {
     flex: 1,
+    minWidth: 0,
   },
   inputLabel: {
     fontSize: 12,
     color: '#6c757d',
-    marginBottom: 8,
+    marginBottom: 4,
     fontWeight: '500',
   },
 }); 
