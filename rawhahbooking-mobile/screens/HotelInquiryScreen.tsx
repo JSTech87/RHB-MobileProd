@@ -11,18 +11,16 @@ import {
   KeyboardAvoidingView,
   StatusBar,
 } from 'react-native';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Typography } from '../constants/Typography';
-import { hotelInquirySchema, HotelInquiryFormData } from '../utils/validation';
+import { multiStayHotelInquirySchema, MultiStayHotelInquiryFormData } from '../utils/validation';
 import { debouncedSaveDraft, draftStorage } from '../utils/storage';
 import { apiService, whatsAppService } from '../services/api';
 
-// Form components (to be created)
-import DestinationInput from '../components/form/DestinationInput';
-import DateRangeField from '../components/form/DateRangeField';
+// Form components
+import StayCard, { StayData } from '../components/hotel/StayCard';
 import GuestCount from '../components/form/GuestCount';
-import BudgetRange from '../components/form/BudgetRange';
 import ContactForm from '../components/form/ContactForm';
 import GroupSection from '../components/form/GroupSection';
 import SpecialRequestsInput from '../components/form/SpecialRequestsInput';
@@ -43,18 +41,27 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     setValue,
     formState: { errors, isValid },
     reset,
-  } = useForm<HotelInquiryFormData>({
-    resolver: zodResolver(hotelInquirySchema),
+  } = useForm<MultiStayHotelInquiryFormData>({
+    resolver: zodResolver(multiStayHotelInquirySchema),
     defaultValues: {
-      destination: { city: '' },
-      dates: { checkIn: '', checkOut: '' },
-      rooms: 1,
-      guests: { adults: 2, children: 0 },
+      stays: [{
+        destination: { city: '' },
+        dates: { checkIn: '', checkOut: '' },
+        rooms: 1,
+        hotelChoice: { type: 'preferences' },
+        notes: '',
+      }],
+      travelers: { adults: 2, children: 0 },
       contact: { fullName: '', email: '', phone: '' },
       groupBooking: false,
-      specialRequests: '',
+      tripRequests: '',
     },
     mode: 'onChange',
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'stays',
   });
 
   // Watch form values for draft saving
@@ -67,8 +74,19 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
 
   // Auto-save draft when form changes
   useEffect(() => {
-    if (watchedValues.destination?.city || watchedValues.contact?.fullName) {
-      debouncedSaveDraft(watchedValues);
+    if (watchedValues.stays?.[0]?.destination?.city || watchedValues.contact?.fullName) {
+      // Convert to compatible format for draft saving
+      const draftData = {
+        destination: watchedValues.stays[0]?.destination || { city: '' },
+        dates: watchedValues.stays[0]?.dates || { checkIn: '', checkOut: '' },
+        rooms: watchedValues.stays[0]?.rooms || 1,
+        guests: watchedValues.travelers,
+        contact: watchedValues.contact,
+        groupBooking: watchedValues.groupBooking,
+        group: watchedValues.group,
+        specialRequests: watchedValues.tripRequests,
+      };
+      debouncedSaveDraft(draftData);
     }
   }, [watchedValues]);
 
@@ -89,14 +107,22 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
             {
               text: 'Restore',
               onPress: () => {
-                // Reset form with draft data
-                reset({
-                  ...draft,
-                  // Ensure required fields have defaults
-                  rooms: draft.rooms || 1,
-                  guests: draft.guests || { adults: 2, children: 0 },
+                // Convert old format to new multi-stay format
+                const multiStayData: MultiStayHotelInquiryFormData = {
+                  stays: [{
+                    destination: draft.destination || { city: '' },
+                    dates: draft.dates || { checkIn: '', checkOut: '' },
+                    rooms: draft.rooms || 1,
+                    hotelChoice: { type: 'preferences' },
+                    notes: draft.specialRequests || '',
+                  }],
+                  travelers: draft.guests || { adults: 2, children: 0 },
+                  contact: draft.contact || { fullName: '', email: '', phone: '' },
                   groupBooking: draft.groupBooking || false,
-                } as HotelInquiryFormData);
+                  group: draft.group,
+                  tripRequests: draft.specialRequests || '',
+                };
+                reset(multiStayData);
               },
             },
           ]
@@ -107,13 +133,53 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     }
   };
 
-  const onSubmit = async (data: HotelInquiryFormData) => {
+  const addStay = () => {
+    if (fields.length < 6) {
+      append({
+        destination: { city: '' },
+        dates: { checkIn: '', checkOut: '' },
+        rooms: 1,
+        hotelChoice: { type: 'preferences' },
+        notes: '',
+      });
+    }
+  };
+
+  const duplicateStay = (index: number) => {
+    if (fields.length < 6) {
+      const stayToDuplicate = watchedValues.stays[index];
+      append({
+        ...stayToDuplicate,
+        destination: { city: '' }, // Clear destination for new stay
+      });
+    }
+  };
+
+  const removeStay = (index: number) => {
+    if (fields.length > 1) {
+      remove(index);
+    }
+  };
+
+  const onSubmit = async (data: MultiStayHotelInquiryFormData) => {
     setIsSubmitting(true);
     
     try {
-      console.log('Submitting hotel inquiry:', data);
+      console.log('Submitting multi-stay hotel inquiry:', data);
       
-      const response = await apiService.submitHotelInquiry(data);
+      // Convert to single-stay format for backward compatibility
+      const singleStayData = {
+        destination: data.stays[0].destination,
+        dates: data.stays[0].dates,
+        rooms: data.stays[0].rooms,
+        guests: data.travelers,
+        contact: data.contact,
+        groupBooking: data.groupBooking,
+        group: data.group,
+        specialRequests: data.tripRequests,
+      };
+      
+      const response = await apiService.submitHotelInquiry(singleStayData);
       
       Alert.alert(
         'Inquiry Submitted',
@@ -132,7 +198,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       );
       
       // Analytics event
-      console.log('hotel_inquiry_submitted', { id: response.id });
+      console.log('multi_stay_hotel_inquiry_submitted', { id: response.id, stays: data.stays.length });
       
     } catch (error) {
       console.error('Submission error:', error);
@@ -149,26 +215,26 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     }
   };
 
-  const handleWhatsAppPress = async (data?: HotelInquiryFormData) => {
+  const handleWhatsAppPress = async (data?: MultiStayHotelInquiryFormData) => {
     try {
       // Use current form data if not provided
-      const formData = data || watchedValues as HotelInquiryFormData;
+      const formData = data || watchedValues as MultiStayHotelInquiryFormData;
       
       // Basic validation for WhatsApp
-      if (!formData.destination?.city || !formData.contact?.fullName) {
+      if (!formData.stays?.[0]?.destination?.city || !formData.contact?.fullName) {
         Alert.alert(
           'Incomplete Information',
-          'Please fill in at least the destination and your name before contacting us via WhatsApp.'
+          'Please fill in at least one destination and your name before contacting us via WhatsApp.'
         );
         return;
       }
 
-      const whatsappUrl = whatsAppService.generateWhatsAppLink(formData);
+      const whatsappUrl = formatMultiStayWhatsAppMessage(formData);
       
       if (!whatsappUrl) {
         Alert.alert(
           'WhatsApp Not Available',
-          'WhatsApp contact is not configured. Please submit the form or contact us directly.'
+          'WhatsApp contact is not configured. Please submit the form instead.'
         );
         return;
       }
@@ -177,7 +243,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       
       if (canOpen) {
         await Linking.openURL(whatsappUrl);
-        console.log('hotel_inquiry_whatsapp_clicked');
+        console.log('multi_stay_hotel_inquiry_whatsapp_clicked');
       } else {
         Alert.alert(
           'WhatsApp Not Installed',
@@ -191,6 +257,64 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
         'Could not open WhatsApp. Please submit the form instead.'
       );
     }
+  };
+
+  const formatMultiStayWhatsAppMessage = (data: MultiStayHotelInquiryFormData): string => {
+    const wabaNumber = process.env.EXPO_PUBLIC_WABA_NUMBER;
+    if (!wabaNumber) return '';
+
+    const { stays, travelers, contact, groupBooking, group, tripRequests } = data;
+    
+    let message = `Hotel inquiry (multi-stay)\n`;
+    message += `Traveler: ${contact.fullName} | ${contact.phone}\n`;
+    message += `Guests: ${travelers.adults} adults`;
+    if (travelers.children > 0) {
+      message += `, ${travelers.children} children`;
+    }
+    message += `\n\n`;
+    
+    stays.forEach((stay, index) => {
+      message += `Stay ${index + 1}:\n`;
+      message += `- Destination: ${stay.destination.city}${stay.destination.country ? `, ${stay.destination.country}` : ''}\n`;
+      message += `- Dates: ${stay.dates.checkIn} → ${stay.dates.checkOut}\n`;
+      message += `- Rooms: ${stay.rooms}\n`;
+      
+      if (stay.hotelChoice.type === 'specific') {
+        message += `- Hotel: ${stay.hotelChoice.hotelName}\n`;
+      } else {
+        message += `- Preferences: `;
+        const prefs = [];
+        if (stay.hotelChoice.rating) prefs.push(`${stay.hotelChoice.rating}★`);
+        if (stay.hotelChoice.budget?.min || stay.hotelChoice.budget?.max) {
+          prefs.push(`$${stay.hotelChoice.budget.min || 0}-${stay.hotelChoice.budget.max || '∞'}`);
+        }
+        if (stay.hotelChoice.mealPlan) prefs.push(stay.hotelChoice.mealPlan);
+        if (stay.hotelChoice.facilities?.length) prefs.push(stay.hotelChoice.facilities.join(', '));
+        message += prefs.length > 0 ? prefs.join(', ') : 'Any hotel';
+        message += `\n`;
+      }
+      
+      if (stay.notes) {
+        message += `- Notes: ${stay.notes}\n`;
+      }
+      message += `\n`;
+    });
+    
+    if (groupBooking && group) {
+      message += `Group: Yes, total ${group.totalTravelers}\n`;
+      if (group.roomingPreference) {
+        message += `Rooming: ${group.roomingPreference}\n`;
+      }
+    }
+    
+    if (tripRequests) {
+      message += `Trip notes: ${tripRequests}\n`;
+    }
+    
+    message += `#HOTEL_INQUIRY_MULTI`;
+    
+    const encodedMessage = encodeURIComponent(message);
+    return `https://wa.me/${wabaNumber}?text=${encodedMessage}`;
   };
 
   return (
@@ -208,7 +332,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
         >
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Hotel Inquiry</Text>
+        <Text style={styles.headerTitle}>Multi-Stay Hotel Inquiry</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -221,98 +345,54 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
         {/* Main Form Card */}
         <View style={styles.formCard}>
           <View style={styles.formHeader}>
-            <Text style={styles.formTitle}>Hotel Booking Inquiry</Text>
+            <Text style={styles.formTitle}>Multi-Stay Hotel Booking</Text>
             <Text style={styles.formSubtitle}>
-              Professional hotel accommodations with exceptional service and unmatched comfort
+              Plan your entire trip with multiple destinations and hotels in one inquiry
             </Text>
           </View>
 
-          {/* Destination */}
+          {/* Stays Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Destination</Text>
-            <Controller
-              control={control}
-              name="destination"
-              render={({ field: { onChange, value } }) => (
-                <DestinationInput
-                  value={value}
-                  onValueChange={onChange}
-                  error={errors.destination?.city?.message}
-                />
+            <View style={styles.staysHeader}>
+              <Text style={styles.sectionLabel}>Your Stays ({fields.length}/6)</Text>
+              {fields.length < 6 && (
+                <TouchableOpacity style={styles.addButton} onPress={addStay}>
+                  <Text style={styles.addButtonText}>+ Add Stay</Text>
+                </TouchableOpacity>
               )}
-            />
-          </View>
-
-          {/* Travel Dates */}
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Travel Dates</Text>
-            <Controller
-              control={control}
-              name="dates"
-              render={({ field: { onChange, value } }) => (
-                <DateRangeField
-                  value={value}
-                  onValueChange={onChange}
-                  error={errors.dates?.checkIn?.message || errors.dates?.checkOut?.message}
-                />
-              )}
-            />
-          </View>
-
-          {/* Guests and Rooms */}
-          <View style={styles.row}>
-            <View style={[styles.section, styles.halfWidth]}>
-              <Text style={styles.sectionLabel}>Guests</Text>
+            </View>
+            
+            {fields.map((field, index) => (
               <Controller
+                key={field.id}
                 control={control}
-                name="guests"
-                render={({ field: { onChange, value } }) => (
-                  <GuestCount
-                    value={value}
-                    onValueChange={onChange}
-                    error={errors.guests?.adults?.message || errors.guests?.childAges?.message}
+                name={`stays.${index}`}
+                render={({ field: { value, onChange } }) => (
+                  <StayCard
+                    index={index}
+                    stay={value}
+                    onUpdate={onChange}
+                    onDuplicate={() => duplicateStay(index)}
+                    onRemove={() => removeStay(index)}
+                    canRemove={fields.length > 1}
+                    errors={errors.stays?.[index]}
                   />
                 )}
               />
-            </View>
-
-            <View style={[styles.section, styles.halfWidth]}>
-              <Text style={styles.sectionLabel}>Rooms</Text>
-              <Controller
-                control={control}
-                name="rooms"
-                render={({ field: { onChange, value } }) => (
-                  <View style={styles.roomsInput}>
-                    <TouchableOpacity 
-                      style={styles.counterButton}
-                      onPress={() => onChange(Math.max(1, (value || 1) - 1))}
-                    >
-                      <Text style={styles.counterButtonText}>−</Text>
-                    </TouchableOpacity>
-                    <Text style={styles.counterValue}>{value || 1}</Text>
-                    <TouchableOpacity 
-                      style={styles.counterButton}
-                      onPress={() => onChange((value || 1) + 1)}
-                    >
-                      <Text style={styles.counterButtonText}>+</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              />
-            </View>
+            ))}
           </View>
 
-          {/* Budget Range */}
+          {/* Global Travelers Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Budget Range (per night)</Text>
+            <Text style={styles.sectionLabel}>Travelers (for all stays)</Text>
             <Controller
               control={control}
-              name="budget"
+              name="travelers"
               render={({ field: { onChange, value } }) => (
-                <BudgetRange
+                <GuestCount
                   value={value}
                   onValueChange={onChange}
-                  error={errors.budget?.max?.message}
+                  error={errors.travelers?.adults?.message || errors.travelers?.childAges?.message}
                 />
               )}
             />
@@ -378,12 +458,12 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
             </View>
           )}
 
-          {/* Special Requests */}
+          {/* Trip-wide Special Requests */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Special Requests</Text>
+            <Text style={styles.sectionLabel}>Trip-wide Special Requests</Text>
             <Controller
               control={control}
-              name="specialRequests"
+              name="tripRequests"
               render={({ field: { onChange, value } }) => (
                 <SpecialRequestsInput
                   value={value || ''}
@@ -401,7 +481,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
               disabled={!isValid || isSubmitting}
             >
               <Text style={styles.submitButtonText}>
-                {isSubmitting ? 'Submitting...' : 'Submit Hotel Inquiry'}
+                {isSubmitting ? 'Submitting...' : 'Submit Multi-Stay Inquiry'}
               </Text>
             </TouchableOpacity>
 
@@ -411,39 +491,6 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
             >
               <Text style={styles.whatsappButtonText}>Chat on WhatsApp Business</Text>
             </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Features Section */}
-        <View style={styles.featuresSection}>
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>👑</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Curated Selection</Text>
-              <Text style={styles.featureDescription}>Hand-picked quality hotels</Text>
-            </View>
-          </View>
-
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>💰</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Best Rate Guarantee</Text>
-              <Text style={styles.featureDescription}>Competitive pricing assured</Text>
-            </View>
-          </View>
-
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>⚡</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Instant Confirmation</Text>
-              <Text style={styles.featureDescription}>Response within 10-15 minutes</Text>
-            </View>
           </View>
         </View>
 
@@ -530,46 +577,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: '500',
   },
-  row: {
+  staysHeader: {
     flexDirection: 'row',
-    gap: 16,
-  },
-  halfWidth: {
-    flex: 1,
-  },
-  roomsInput: {
-    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
+    marginBottom: 16,
+  },
+  addButton: {
+    backgroundColor: '#A83442',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
+    paddingVertical: 8,
+    borderRadius: 20,
   },
-  counterButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  counterButtonText: {
-    ...Typography.styles.buttonMedium,
-    color: '#000000',
-  },
-  counterValue: {
-    ...Typography.styles.bodyMedium,
-    color: '#000000',
-    marginHorizontal: 20,
-    minWidth: 30,
-    textAlign: 'center',
+  addButtonText: {
+    ...Typography.styles.caption,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   groupToggle: {
     flexDirection: 'row',
@@ -636,46 +659,6 @@ const styles = StyleSheet.create({
   whatsappButtonText: {
     ...Typography.styles.buttonMedium,
     color: '#FFFFFF',
-  },
-  featuresSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#f8f9fa',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  featureIconText: {
-    fontSize: 24,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    ...Typography.styles.bodyMedium,
-    color: '#000000',
-    marginBottom: 4,
-  },
-  featureDescription: {
-    ...Typography.styles.caption,
-    color: '#6c757d',
   },
   bottomPadding: {
     height: 40,

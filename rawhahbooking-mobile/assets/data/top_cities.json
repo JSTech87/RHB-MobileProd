@@ -1,0 +1,12 @@
+[
+  { "id": "paris_fr", "city": "Paris", "region": "Île-de-France", "country": "France", "lat": 48.8566, "lon": 2.3522, "popularityScore": 99 },
+  { "id": "london_gb", "city": "London", "region": "England", "country": "United Kingdom", "lat": 51.5074, "lon": -0.1278, "popularityScore": 98 },
+  { "id": "dubai_ae", "city": "Dubai", "region": "Dubai", "country": "United Arab Emirates", "lat": 25.2048, "lon": 55.2708, "popularityScore": 97 },
+  { "id": "makkah_sa", "city": "Makkah", "region": "Makkah", "country": "Saudi Arabia", "lat": 21.3891, "lon": 39.8579, "popularityScore": 96 },
+  { "id": "istanbul_tr", "city": "Istanbul", "region": "Marmara", "country": "Türkiye", "lat": 41.0082, "lon": 28.9784, "popularityScore": 95 },
+  { "id": "newyork_us", "city": "New York", "region": "NY", "country": "United States", "lat": 40.7128, "lon": -74.006, "popularityScore": 95 },
+  { "id": "tokyo_jp", "city": "Tokyo", "region": "Kantō", "country": "Japan", "lat": 35.6762, "lon": 139.6503, "popularityScore": 94 },
+  { "id": "medina_sa", "city": "Medina", "region": "Medina", "country": "Saudi Arabia", "lat": 24.5247, "lon": 39.5692, "popularityScore": 93 },
+  { "id": "doha_qa", "city": "Doha", "region": "Doha", "country": "Qatar", "lat": 25.2854, "lon": 51.531, "popularityScore": 92 },
+  { "id": "kualalumpur_my", "city": "Kuala Lumpur", "region": "KL", "country": "Malaysia", "lat": 3.139, "lon": 101.6869, "popularityScore": 92 }
+] 

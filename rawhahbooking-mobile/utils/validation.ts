@@ -1,28 +1,62 @@
 import { z } from 'zod';
 
-// Destination validation
-const destinationSchema = z.object({
-  city: z.string().min(1, 'Destination is required'),
-  country: z.string().optional(),
-  lat: z.number().optional(),
-  lng: z.number().optional(),
+// Hotel choice validation
+const hotelChoiceSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('specific'),
+    hotelId: z.string().min(1, 'Hotel selection is required'),
+    hotelName: z.string().min(1, 'Hotel name is required'),
+  }),
+  z.object({
+    type: z.literal('preferences'),
+    rating: z.number().min(3).max(5).optional(),
+    distanceMeters: z.number().min(0).optional(),
+    mealPlan: z.enum(['RO', 'BB', 'HB', 'FB', 'AI']).optional(),
+    budget: z.object({
+      min: z.number().min(0).optional(),
+      max: z.number().min(0).optional(),
+    }).optional(),
+    brands: z.array(z.string()).optional(),
+    facilities: z.array(z.string()).optional(),
+  }).refine((data) => {
+    // At least one preference should be provided
+    return data.rating !== undefined || 
+           data.distanceMeters !== undefined || 
+           data.mealPlan !== undefined || 
+           data.budget !== undefined || 
+           (data.brands && data.brands.length > 0) || 
+           (data.facilities && data.facilities.length > 0);
+  }, {
+    message: 'Please provide at least one hotel preference',
+  }),
+]);
+
+// Stay validation
+const staySchema = z.object({
+  destination: z.object({
+    city: z.string().min(1, 'Destination is required'),
+    country: z.string().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+  }),
+  dates: z.object({
+    checkIn: z.string().min(1, 'Check-in date is required'),
+    checkOut: z.string().min(1, 'Check-out date is required'),
+  }).refine((data) => {
+    const checkIn = new Date(data.checkIn);
+    const checkOut = new Date(data.checkOut);
+    return checkIn < checkOut;
+  }, {
+    message: 'Check-out date must be after check-in date',
+    path: ['checkOut'],
+  }),
+  rooms: z.number().min(1, 'At least 1 room is required'),
+  hotelChoice: hotelChoiceSchema,
+  notes: z.string().optional(),
 });
 
-// Date validation
-const datesSchema = z.object({
-  checkIn: z.string().min(1, 'Check-in date is required'),
-  checkOut: z.string().min(1, 'Check-out date is required'),
-}).refine((data) => {
-  const checkIn = new Date(data.checkIn);
-  const checkOut = new Date(data.checkOut);
-  return checkIn < checkOut;
-}, {
-  message: 'Check-out date must be after check-in date',
-  path: ['checkOut'],
-});
-
-// Guests validation
-const guestsSchema = z.object({
+// Travelers validation
+const travelersSchema = z.object({
   adults: z.number().min(1, 'At least 1 adult is required'),
   children: z.number().min(0, 'Children count cannot be negative'),
   childAges: z.array(z.number().min(0).max(17)).optional(),
@@ -34,20 +68,6 @@ const guestsSchema = z.object({
 }, {
   message: 'Please provide ages for all children',
   path: ['childAges'],
-});
-
-// Budget validation
-const budgetSchema = z.object({
-  min: z.number().optional(),
-  max: z.number().optional(),
-}).refine((data) => {
-  if (data.min && data.max) {
-    return data.min <= data.max;
-  }
-  return true;
-}, {
-  message: 'Minimum budget cannot be greater than maximum budget',
-  path: ['max'],
 });
 
 // Contact validation
@@ -65,28 +85,30 @@ const subGroupSchema = z.object({
 
 // Group validation
 const groupSchema = z.object({
-  groupName: z.string().optional(),
   totalTravelers: z.number().min(1, 'Total travelers must be at least 1'),
   roomingPreference: z.enum(['twin', 'triple', 'quad', 'mixed']).optional(),
   subGroups: z.array(subGroupSchema).optional(),
-  coordinator: contactSchema.optional(),
+  coordinator: z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    phone: z.string().optional(),
+  }).optional(),
 });
 
-// Main hotel inquiry validation schema
-export const hotelInquirySchema = z.object({
-  destination: destinationSchema,
-  dates: datesSchema,
-  rooms: z.number().min(1, 'At least 1 room is required'),
-  guests: guestsSchema,
-  budget: budgetSchema.optional(),
+// Main multi-stay hotel inquiry validation schema
+export const multiStayHotelInquirySchema = z.object({
+  stays: z.array(staySchema)
+    .min(1, 'At least one stay is required')
+    .max(6, 'Maximum 6 stays allowed'),
+  travelers: travelersSchema,
   contact: contactSchema,
   groupBooking: z.boolean().default(false),
   group: groupSchema.optional(),
-  specialRequests: z.string().optional(),
+  tripRequests: z.string().optional(),
 }).refine((data) => {
   // Group booking validations
   if (data.groupBooking && data.group) {
-    const totalGuestsFromForm = data.guests.adults + data.guests.children;
+    const totalGuestsFromForm = data.travelers.adults + data.travelers.children;
     return data.group.totalTravelers >= totalGuestsFromForm;
   }
   return true;
@@ -103,6 +125,68 @@ export const hotelInquirySchema = z.object({
 }, {
   message: 'Sub-groups total cannot exceed total travelers',
   path: ['group', 'subGroups'],
+}).refine((data) => {
+  // Check for overlapping dates in the same city
+  const conflicts: string[] = [];
+  for (let i = 0; i < data.stays.length; i++) {
+    for (let j = i + 1; j < data.stays.length; j++) {
+      const stay1 = data.stays[i];
+      const stay2 = data.stays[j];
+      
+      // Only check if same city
+      if (stay1.destination.city.toLowerCase() === stay2.destination.city.toLowerCase()) {
+        const start1 = new Date(stay1.dates.checkIn);
+        const end1 = new Date(stay1.dates.checkOut);
+        const start2 = new Date(stay2.dates.checkIn);
+        const end2 = new Date(stay2.dates.checkOut);
+        
+        // Check for overlap
+        if (start1 < end2 && start2 < end1) {
+          conflicts.push(`Stay ${i + 1} and Stay ${j + 1} have overlapping dates in ${stay1.destination.city}`);
+        }
+      }
+    }
+  }
+  
+  // For now, just warn - don't block submission
+  if (conflicts.length > 0) {
+    console.warn('Date conflicts detected:', conflicts);
+  }
+  
+  return true; // Allow submission but log warnings
+});
+
+export type MultiStayHotelInquiryFormData = z.infer<typeof multiStayHotelInquirySchema>;
+
+// Backward compatibility - keep the old single-stay schema
+export const hotelInquirySchema = z.object({
+  destination: z.object({
+    city: z.string().min(1, 'Destination is required'),
+    country: z.string().optional(),
+    lat: z.number().optional(),
+    lng: z.number().optional(),
+  }),
+  dates: z.object({
+    checkIn: z.string().min(1, 'Check-in date is required'),
+    checkOut: z.string().min(1, 'Check-out date is required'),
+  }).refine((data) => {
+    const checkIn = new Date(data.checkIn);
+    const checkOut = new Date(data.checkOut);
+    return checkIn < checkOut;
+  }, {
+    message: 'Check-out date must be after check-in date',
+    path: ['checkOut'],
+  }),
+  rooms: z.number().min(1, 'At least 1 room is required'),
+  guests: travelersSchema, // Reuse the travelers schema
+  budget: z.object({
+    min: z.number().optional(),
+    max: z.number().optional(),
+  }).optional(),
+  contact: contactSchema,
+  groupBooking: z.boolean().default(false),
+  group: groupSchema.optional(),
+  specialRequests: z.string().optional(),
 });
 
 export type HotelInquiryFormData = z.infer<typeof hotelInquirySchema>;

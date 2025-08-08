@@ -3,6 +3,7 @@ import { emailService } from './emailService';
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.rawhahbooking.com';
 
+// Backward compatibility - keep the old single-stay payload
 export interface HotelInquiryPayload {
   source: 'mobile';
   destination: {
@@ -53,6 +54,43 @@ export interface HotelInquiryPayload {
   };
 }
 
+// Multi-Stay Hotel Inquiry Payload
+export interface MultiStayHotelInquiryPayload {
+  source: 'mobile' | 'web';
+  stays: Array<{
+    destination: { city: string; country?: string; lat?: number; lng?: number };
+    dates: { checkIn: string; checkOut: string };
+    rooms: number;
+    hotelChoice: 
+      | { type: 'specific'; hotelId: string; hotelName: string }
+      | {
+          type: 'preferences';
+          rating?: 3 | 4 | 5;
+          distanceMeters?: number;
+          mealPlan?: 'RO' | 'BB' | 'HB' | 'FB' | 'AI';
+          budget?: { min?: number; max?: number };
+          brands?: string[];
+          facilities?: string[];
+        };
+    notes?: string;
+  }>;
+  travelers: {
+    adults: number;
+    children: number;
+    childAges?: number[];
+  };
+  contact: { fullName: string; email: string; phone: string };
+  groupBooking?: boolean;
+  group?: {
+    totalTravelers: number;
+    roomingPreference?: 'twin' | 'triple' | 'quad' | 'mixed';
+    subGroups?: { label: string; travelers: number }[];
+    coordinator?: { name?: string; email?: string; phone?: string };
+  };
+  tripRequests?: string;
+  appMeta?: { appVersion?: string; locale?: string; currency?: string };
+}
+
 export interface HotelInquiryResponse {
   id: string;
   status: 'received' | 'processing' | 'completed' | 'error';
@@ -91,11 +129,13 @@ class ApiService {
         contact: formData.contact,
         groupBooking: formData.groupBooking,
         group: formData.group ? {
-          ...formData.group,
+          totalTravelers: formData.group.totalTravelers,
+          roomingPreference: formData.group.roomingPreference,
+          subGroups: formData.group.subGroups,
           coordinator: formData.group.coordinator ? {
-            name: formData.group.coordinator.fullName,
-            phone: formData.group.coordinator.phone,
-            email: formData.group.coordinator.email,
+            name: formData.group.coordinator.name || '',
+            phone: formData.group.coordinator.phone || '',
+            email: formData.group.coordinator.email || '',
           } : undefined,
         } : undefined,
         specialRequests: formData.specialRequests,
