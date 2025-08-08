@@ -1,31 +1,28 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  TextInput,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, TextInput } from 'react-native';
 import { Typography } from '../../constants/Typography';
 
 interface GuestCountProps {
-  value: { adults: number; children: number; childAges?: number[] };
-  onValueChange: (value: { adults: number; children: number; childAges?: number[] }) => void;
+  value: {
+    adults: number;
+    children: number;
+    childAges?: number[];
+  };
+  onValueChange: (value: {
+    adults: number;
+    children: number;
+    childAges?: number[];
+  }) => void;
   error?: string;
 }
 
-const GuestCount: React.FC<GuestCountProps> = ({
-  value,
-  onValueChange,
-  error,
-}) => {
+const GuestCount: React.FC<GuestCountProps> = ({ value, onValueChange, error }) => {
   const [showModal, setShowModal] = useState(false);
 
-  const updateCount = (type: 'adults' | 'children', increment: boolean) => {
+  const updateCount = (field: 'adults' | 'children', increment: boolean) => {
     const newValue = { ...value };
     
-    if (type === 'adults') {
+    if (field === 'adults') {
       newValue.adults = Math.max(1, increment ? value.adults + 1 : value.adults - 1);
     } else {
       const newChildren = Math.max(0, increment ? value.children + 1 : value.children - 1);
@@ -35,27 +32,28 @@ const GuestCount: React.FC<GuestCountProps> = ({
       if (newChildren === 0) {
         newValue.childAges = [];
       } else if (newChildren > (value.childAges?.length || 0)) {
-        // Add new child ages
+        // Add new ages (default to 5)
         newValue.childAges = [...(value.childAges || []), ...Array(newChildren - (value.childAges?.length || 0)).fill(5)];
       } else if (newChildren < (value.childAges?.length || 0)) {
-        // Remove excess child ages
-        newValue.childAges = value.childAges?.slice(0, newChildren);
+        // Remove excess ages
+        newValue.childAges = value.childAges?.slice(0, newChildren) || [];
       }
     }
     
     onValueChange(newValue);
   };
 
-  const updateChildAge = (index: number, age: number) => {
+  const updateChildAge = (index: number, age: string) => {
+    const ageNum = parseInt(age) || 0;
     const newAges = [...(value.childAges || [])];
-    newAges[index] = Math.max(0, Math.min(17, age));
+    newAges[index] = Math.max(0, Math.min(17, ageNum));
     onValueChange({ ...value, childAges: newAges });
   };
 
   const getGuestText = () => {
-    let text = `${value.adults} Adult${value.adults > 1 ? 's' : ''}`;
+    let text = `${value.adults} adult${value.adults > 1 ? 's' : ''}`;
     if (value.children > 0) {
-      text += `, ${value.children} Child${value.children > 1 ? 'ren' : ''}`;
+      text += `, ${value.children} child${value.children > 1 ? 'ren' : ''}`;
     }
     return text;
   };
@@ -67,88 +65,96 @@ const GuestCount: React.FC<GuestCountProps> = ({
         onPress={() => setShowModal(true)}
       >
         <Text style={styles.guestText}>{getGuestText()}</Text>
+        <Text style={styles.guestArrow}>▼</Text>
       </TouchableOpacity>
-
+      
       {error && <Text style={styles.errorText}>{error}</Text>}
 
       <Modal
         visible={showModal}
+        transparent={true}
         animationType="slide"
-        presentationStyle="pageSheet"
+        onRequestClose={() => setShowModal(false)}
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.cancelButton}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Select Guests</Text>
-            <TouchableOpacity onPress={() => setShowModal(false)}>
-              <Text style={styles.doneButton}>Done</Text>
-            </TouchableOpacity>
-          </View>
-
+        <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* Adults */}
-            <View style={styles.guestRow}>
-              <Text style={styles.guestLabel}>Adults</Text>
-              <View style={styles.counter}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => updateCount('adults', false)}
-                >
-                  <Text style={styles.counterButtonText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.counterValue}>{value.adults}</Text>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => updateCount('adults', true)}
-                >
-                  <Text style={styles.counterButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Guests</Text>
+              <TouchableOpacity onPress={() => setShowModal(false)}>
+                <Text style={styles.doneButton}>Done</Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Children */}
-            <View style={styles.guestRow}>
-              <View>
-                <Text style={styles.guestLabel}>Children</Text>
-                <Text style={styles.guestSubLabel}>Ages 0-17</Text>
+            <ScrollView style={styles.modalBody}>
+              {/* Adults */}
+              <View style={styles.counterRow}>
+                <View style={styles.counterInfo}>
+                  <Text style={styles.counterLabel}>Adults</Text>
+                  <Text style={styles.counterSubLabel}>Ages 18+</Text>
+                </View>
+                <View style={styles.counterControls}>
+                  <TouchableOpacity
+                    style={[styles.counterButton, value.adults <= 1 && styles.counterButtonDisabled]}
+                    onPress={() => updateCount('adults', false)}
+                    disabled={value.adults <= 1}
+                  >
+                    <Text style={styles.counterButtonText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{value.adults}</Text>
+                  <TouchableOpacity
+                    style={styles.counterButton}
+                    onPress={() => updateCount('adults', true)}
+                  >
+                    <Text style={styles.counterButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-              <View style={styles.counter}>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => updateCount('children', false)}
-                >
-                  <Text style={styles.counterButtonText}>−</Text>
-                </TouchableOpacity>
-                <Text style={styles.counterValue}>{value.children}</Text>
-                <TouchableOpacity
-                  style={styles.counterButton}
-                  onPress={() => updateCount('children', true)}
-                >
-                  <Text style={styles.counterButtonText}>+</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
 
-            {/* Child Ages */}
-            {value.children > 0 && (
-              <View style={styles.childAgesSection}>
-                <Text style={styles.childAgesTitle}>Children Ages</Text>
-                {Array.from({ length: value.children }, (_, index) => (
-                  <View key={index} style={styles.childAgeRow}>
-                    <Text style={styles.childAgeLabel}>Child {index + 1} Age</Text>
-                    <TextInput
-                      style={styles.ageInput}
-                      value={String(value.childAges?.[index] || 5)}
-                      onChangeText={(text) => updateChildAge(index, parseInt(text) || 5)}
-                      keyboardType="numeric"
-                      maxLength={2}
-                    />
+              {/* Children */}
+              <View style={styles.counterRow}>
+                <View style={styles.counterInfo}>
+                  <Text style={styles.counterLabel}>Children</Text>
+                  <Text style={styles.counterSubLabel}>Ages 0-17</Text>
+                </View>
+                <View style={styles.counterControls}>
+                  <TouchableOpacity
+                    style={[styles.counterButton, value.children <= 0 && styles.counterButtonDisabled]}
+                    onPress={() => updateCount('children', false)}
+                    disabled={value.children <= 0}
+                  >
+                    <Text style={styles.counterButtonText}>−</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{value.children}</Text>
+                  <TouchableOpacity
+                    style={styles.counterButton}
+                    onPress={() => updateCount('children', true)}
+                  >
+                    <Text style={styles.counterButtonText}>+</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Child Ages */}
+              {value.children > 0 && (
+                <View style={styles.childAgesSection}>
+                  <Text style={styles.childAgesTitle}>Child Ages</Text>
+                  <View style={styles.childAgesGrid}>
+                    {Array.from({ length: value.children }).map((_, index) => (
+                      <View key={index} style={styles.childAgeItem}>
+                        <Text style={styles.childAgeLabel}>Child {index + 1}</Text>
+                        <TextInput
+                          style={styles.childAgeInput}
+                          value={(value.childAges?.[index] || 5).toString()}
+                          onChangeText={(text) => updateChildAge(index, text)}
+                          keyboardType="numeric"
+                          maxLength={2}
+                        />
+                      </View>
+                    ))}
                   </View>
-                ))}
-              </View>
-            )}
+                </View>
+              )}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -162,9 +168,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#dee2e6',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   guestButtonError: {
     borderColor: '#dc3545',
@@ -173,14 +182,25 @@ const styles = StyleSheet.create({
     ...Typography.styles.bodyMedium,
     color: '#000000',
   },
+  guestArrow: {
+    ...Typography.styles.bodyMedium,
+    color: '#6c757d',
+  },
   errorText: {
     ...Typography.styles.caption,
     color: '#dc3545',
     marginTop: 4,
   },
-  modalContainer: {
+  modalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
     backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -188,7 +208,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    paddingTop: 50,
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
@@ -196,20 +215,16 @@ const styles = StyleSheet.create({
     ...Typography.styles.headerMedium,
     color: '#000000',
   },
-  cancelButton: {
-    ...Typography.styles.bodyMedium,
-    color: '#6c757d',
-  },
   doneButton: {
     ...Typography.styles.bodyMedium,
     color: '#A83442',
+    fontWeight: '600',
   },
-  modalContent: {
-    flex: 1,
+  modalBody: {
     paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingVertical: 16,
   },
-  guestRow: {
+  counterRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -217,72 +232,79 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
-  guestLabel: {
+  counterInfo: {
+    flex: 1,
+  },
+  counterLabel: {
     ...Typography.styles.bodyMedium,
     color: '#000000',
+    marginBottom: 2,
   },
-  guestSubLabel: {
+  counterSubLabel: {
     ...Typography.styles.caption,
     color: '#6c757d',
-    marginTop: 2,
   },
-  counter: {
+  counterControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    paddingHorizontal: 8,
+    gap: 16,
   },
   counterButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
     alignItems: 'center',
     justifyContent: 'center',
-    margin: 4,
+  },
+  counterButtonDisabled: {
+    opacity: 0.5,
   },
   counterButtonText: {
-    ...Typography.styles.buttonMedium,
+    ...Typography.styles.bodyMedium,
     color: '#000000',
+    fontWeight: '600',
   },
   counterValue: {
     ...Typography.styles.bodyMedium,
     color: '#000000',
-    marginHorizontal: 12,
-    minWidth: 20,
+    minWidth: 24,
     textAlign: 'center',
   },
   childAgesSection: {
-    marginTop: 20,
     paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
   },
   childAgesTitle: {
     ...Typography.styles.bodyMedium,
     color: '#000000',
-    marginBottom: 16,
-  },
-  childAgeRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginBottom: 12,
+    fontWeight: '600',
+  },
+  childAgesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  childAgeItem: {
+    alignItems: 'center',
+    minWidth: 80,
   },
   childAgeLabel: {
-    ...Typography.styles.bodyMedium,
-    color: '#000000',
+    ...Typography.styles.caption,
+    color: '#6c757d',
+    marginBottom: 6,
   },
-  ageInput: {
+  childAgeInput: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#dee2e6',
-    width: 60,
     textAlign: 'center',
+    width: 60,
     ...Typography.styles.bodyMedium,
     color: '#000000',
   },

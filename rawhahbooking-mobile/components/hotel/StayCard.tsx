@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Switch, TextInput } from 'react-native';
 import { Typography } from '../../constants/Typography';
 import DestinationSelector from '../form/DestinationSelector';
 import DateRangeField from '../form/DateRangeField';
@@ -140,14 +140,14 @@ const StayCard: React.FC<StayCardProps> = ({
         {hasSpecificHotel ? (
           <HotelPicker
             value={stay.hotelChoice}
-            onValueChange={(hotelChoice) => updateStay('hotelChoice', hotelChoice)}
+            onValueChange={(hotelChoice: any) => updateStay('hotelChoice', hotelChoice)}
             destination={stay.destination}
             error={errors?.hotelChoice?.hotelId?.message}
           />
         ) : (
           <HotelPreferences
             value={stay.hotelChoice}
-            onValueChange={(hotelChoice) => updateStay('hotelChoice', hotelChoice)}
+            onValueChange={(hotelChoice: any) => updateStay('hotelChoice', hotelChoice)}
             error={errors?.hotelChoice?.message}
           />
         )}
@@ -156,9 +156,16 @@ const StayCard: React.FC<StayCardProps> = ({
       {/* Notes */}
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Notes for this stay (optional)</Text>
-        <View style={styles.notesInput}>
-          <Text style={styles.notesPlaceholder}>Any special requests for this stay...</Text>
-        </View>
+        <TextInput
+          style={styles.notesInput}
+          placeholder="Any special requests for this stay..."
+          placeholderTextColor="#6c757d"
+          value={stay.notes || ''}
+          onChangeText={(text) => updateStay('notes', text)}
+          multiline={true}
+          numberOfLines={3}
+          textAlignVertical="top"
+        />
       </View>
     </View>
   );
@@ -261,8 +268,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#dee2e6',
-    minHeight: 60,
-    justifyContent: 'center',
+    minHeight: 80,
+    maxHeight: 120,
+    ...Typography.styles.bodyMedium,
+    color: '#000000',
   },
   notesPlaceholder: {
     ...Typography.styles.bodyMedium,

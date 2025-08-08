@@ -1,36 +1,26 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Modal,
-  Platform,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Typography } from '../../constants/Typography';
 
 interface DateRangeFieldProps {
   value: { checkIn: string; checkOut: string };
-  onValueChange: (value: { checkIn: string; checkOut: string }) => void;
+  onValueChange: (dates: { checkIn: string; checkOut: string }) => void;
   error?: string;
 }
 
-const DateRangeField: React.FC<DateRangeFieldProps> = ({
-  value,
-  onValueChange,
-  error,
-}) => {
+const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, error }) => {
   const [showCheckInPicker, setShowCheckInPicker] = useState(false);
   const [showCheckOutPicker, setShowCheckOutPicker] = useState(false);
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'Select dates';
+    if (!dateString) return 'Select date';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
+    return date.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      month: 'short', 
       day: 'numeric',
-      year: 'numeric',
+      year: 'numeric'
     });
   };
 
@@ -38,10 +28,7 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({
     setShowCheckInPicker(Platform.OS === 'ios');
     if (selectedDate) {
       const dateString = selectedDate.toISOString().split('T')[0];
-      onValueChange({
-        ...value,
-        checkIn: dateString,
-      });
+      onValueChange({ ...value, checkIn: dateString });
     }
   };
 
@@ -49,155 +36,153 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({
     setShowCheckOutPicker(Platform.OS === 'ios');
     if (selectedDate) {
       const dateString = selectedDate.toISOString().split('T')[0];
-      onValueChange({
-        ...value,
-        checkOut: dateString,
-      });
+      onValueChange({ ...value, checkOut: dateString });
     }
   };
 
-  const today = new Date();
-  const checkInDate = value.checkIn ? new Date(value.checkIn) : today;
-  const minCheckOutDate = value.checkIn ? new Date(value.checkIn) : today;
-  minCheckOutDate.setDate(minCheckOutDate.getDate() + 1);
+  const getMinDate = () => {
+    return new Date(); // Today
+  };
+
+  const getCheckOutMinDate = () => {
+    if (value.checkIn) {
+      const checkInDate = new Date(value.checkIn);
+      checkInDate.setDate(checkInDate.getDate() + 1); // Next day after check-in
+      return checkInDate;
+    }
+    return new Date();
+  };
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        style={[styles.dateButton, error && styles.dateButtonError]}
-        onPress={() => setShowCheckInPicker(true)}
-      >
-        <Text style={styles.dateLabel}>Check-in</Text>
-        <Text style={styles.dateValue}>
-          {value.checkIn ? formatDate(value.checkIn) : 'Select date'}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.dateRow}>
+        {/* Check-in Date */}
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Check-in</Text>
+          <TouchableOpacity
+            style={[styles.dateButton, error && styles.dateButtonError]}
+            onPress={() => setShowCheckInPicker(true)}
+          >
+            <Text style={[
+              styles.dateButtonText,
+              !value.checkIn && styles.dateButtonPlaceholder
+            ]}>
+              {formatDate(value.checkIn)}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity
-        style={[styles.dateButton, error && styles.dateButtonError]}
-        onPress={() => setShowCheckOutPicker(true)}
-      >
-        <Text style={styles.dateLabel}>Check-out</Text>
-        <Text style={styles.dateValue}>
-          {value.checkOut ? formatDate(value.checkOut) : 'Select date'}
-        </Text>
-      </TouchableOpacity>
+        {/* Check-out Date */}
+        <View style={styles.dateField}>
+          <Text style={styles.dateLabel}>Check-out</Text>
+          <TouchableOpacity
+            style={[styles.dateButton, error && styles.dateButtonError]}
+            onPress={() => setShowCheckOutPicker(true)}
+          >
+            <Text style={[
+              styles.dateButtonText,
+              !value.checkOut && styles.dateButtonPlaceholder
+            ]}>
+              {formatDate(value.checkOut)}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Duration Display */}
+      {value.checkIn && value.checkOut && (
+        <View style={styles.durationContainer}>
+          <Text style={styles.durationText}>
+            {(() => {
+              const checkIn = new Date(value.checkIn);
+              const checkOut = new Date(value.checkOut);
+              const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              return `${diffDays} night${diffDays > 1 ? 's' : ''}`;
+            })()}
+          </Text>
+        </View>
+      )}
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
+      {/* Check-in Date Picker */}
       {showCheckInPicker && (
-        <Modal transparent={true} animationType="slide">
-          <View style={styles.modalContainer}>
-            <View style={styles.pickerContainer}>
-              <View style={styles.pickerHeader}>
-                <TouchableOpacity onPress={() => setShowCheckInPicker(false)}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
-                </TouchableOpacity>
-                <Text style={styles.pickerTitle}>Check-in Date</Text>
-                <TouchableOpacity onPress={() => setShowCheckInPicker(false)}>
-                  <Text style={styles.doneButton}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={checkInDate}
-                mode="date"
-                display="spinner"
-                onChange={handleCheckInChange}
-                minimumDate={today}
-              />
-            </View>
-          </View>
-        </Modal>
+        <DateTimePicker
+          value={value.checkIn ? new Date(value.checkIn) : new Date()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleCheckInChange}
+          minimumDate={getMinDate()}
+        />
       )}
 
+      {/* Check-out Date Picker */}
       {showCheckOutPicker && (
-        <Modal transparent={true} animationType="slide">
-          <View style={styles.modalContainer}>
-            <View style={styles.pickerContainer}>
-              <View style={styles.pickerHeader}>
-                <TouchableOpacity onPress={() => setShowCheckOutPicker(false)}>
-                  <Text style={styles.cancelButton}>Cancel</Text>
-                </TouchableOpacity>
-                <Text style={styles.pickerTitle}>Check-out Date</Text>
-                <TouchableOpacity onPress={() => setShowCheckOutPicker(false)}>
-                  <Text style={styles.doneButton}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={value.checkOut ? new Date(value.checkOut) : minCheckOutDate}
-                mode="date"
-                display="spinner"
-                onChange={handleCheckOutChange}
-                minimumDate={minCheckOutDate}
-              />
-            </View>
-          </View>
-        </Modal>
+        <DateTimePicker
+          value={value.checkOut ? new Date(value.checkOut) : getCheckOutMinDate()}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={handleCheckOutChange}
+          minimumDate={getCheckOutMinDate()}
+        />
       )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  container: {},
+  dateRow: {
+    flexDirection: 'row',
     gap: 12,
+  },
+  dateField: {
+    flex: 1,
+  },
+  dateLabel: {
+    ...Typography.styles.caption,
+    color: '#6c757d',
+    marginBottom: 6,
   },
   dateButton: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#dee2e6',
+    alignItems: 'center',
   },
   dateButtonError: {
     borderColor: '#dc3545',
   },
-  dateLabel: {
-    ...Typography.styles.caption,
-    color: '#6c757d',
-    marginBottom: 4,
-  },
-  dateValue: {
+  dateButtonText: {
     ...Typography.styles.bodyMedium,
     color: '#000000',
+  },
+  dateButtonPlaceholder: {
+    color: '#6c757d',
+  },
+  durationContainer: {
+    alignItems: 'center',
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#e8f5e8',
+    borderRadius: 20,
+    alignSelf: 'center',
+  },
+  durationText: {
+    ...Typography.styles.caption,
+    color: '#28a745',
+    fontWeight: '600',
   },
   errorText: {
     ...Typography.styles.caption,
     color: '#dc3545',
     marginTop: 4,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  pickerContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 40,
-  },
-  pickerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  pickerTitle: {
-    ...Typography.styles.bodyMedium,
-    color: '#000000',
-  },
-  cancelButton: {
-    ...Typography.styles.bodyMedium,
-    color: '#6c757d',
-  },
-  doneButton: {
-    ...Typography.styles.bodyMedium,
-    color: '#A83442',
+    textAlign: 'center',
   },
 });
 

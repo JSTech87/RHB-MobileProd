@@ -4,80 +4,70 @@ import { Typography } from '../../constants/Typography';
 
 interface GroupSectionProps {
   value?: {
-    groupName?: string;
     totalTravelers: number;
     roomingPreference?: 'twin' | 'triple' | 'quad' | 'mixed';
-    coordinator?: { fullName: string; phone: string; email: string };
+    subGroups?: { label: string; travelers: number }[];
+    coordinator?: { name?: string; email?: string; phone?: string };
   };
   onValueChange: (value: {
-    groupName?: string;
     totalTravelers: number;
     roomingPreference?: 'twin' | 'triple' | 'quad' | 'mixed';
-    coordinator?: { fullName: string; phone: string; email: string };
+    subGroups?: { label: string; travelers: number }[];
+    coordinator?: { name?: string; email?: string; phone?: string };
   }) => void;
-  contactInfo?: { fullName: string; phone: string; email: string };
-  errors: {
+  contactInfo?: { fullName: string; email: string; phone: string };
+  errors?: {
     totalTravelers?: string;
     subGroups?: string;
   };
 }
 
-const GroupSection: React.FC<GroupSectionProps> = ({
-  value = { totalTravelers: 5 },
-  onValueChange,
-  contactInfo,
-  errors,
+const GroupSection: React.FC<GroupSectionProps> = ({ 
+  value, 
+  onValueChange, 
+  contactInfo, 
+  errors 
 }) => {
-  const roomingOptions = [
-    { key: 'twin', label: 'Twin' },
-    { key: 'triple', label: 'Triple' },
-    { key: 'quad', label: 'Quad' },
-    { key: 'mixed', label: 'Mixed' },
-  ];
-
   const handleChange = (field: string, newValue: any) => {
-    onValueChange({ ...value, [field]: newValue });
+    onValueChange({ ...value, [field]: newValue } as any);
   };
 
   const updateTravelers = (increment: boolean) => {
-    const newCount = Math.max(1, increment ? value.totalTravelers + 1 : value.totalTravelers - 1);
-    handleChange('totalTravelers', newCount);
+    const current = value?.totalTravelers || 1;
+    const newValue = Math.max(1, increment ? current + 1 : current - 1);
+    handleChange('totalTravelers', newValue);
   };
 
-  // Use contact info as default coordinator if not set
-  const coordinator = value.coordinator || (contactInfo ? {
-    fullName: contactInfo.fullName,
-    phone: contactInfo.phone,
-    email: contactInfo.email,
-  } : { fullName: '', phone: '', email: '' });
+  const roomingOptions = [
+    { key: 'twin', label: 'Twin Beds' },
+    { key: 'triple', label: 'Triple Rooms' },
+    { key: 'quad', label: 'Quad Rooms' },
+    { key: 'mixed', label: 'Mixed' },
+  ];
+
+  // Default coordinator to contact info if available
+  const coordinator = value?.coordinator || {
+    name: contactInfo?.fullName || '',
+    email: contactInfo?.email || '',
+    phone: contactInfo?.phone || '',
+  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.sectionTitle}>Group Booking Details</Text>
 
-      {/* Group Name */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Group Name (Optional)</Text>
-        <TextInput
-          style={styles.input}
-          value={value.groupName || ''}
-          onChangeText={(text) => handleChange('groupName', text)}
-          placeholder="e.g., Family & Friends"
-          placeholderTextColor="#6c757d"
-        />
-      </View>
-
       {/* Total Travelers */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Total Travelers</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Total Travelers *</Text>
         <View style={styles.counterContainer}>
           <TouchableOpacity
-            style={styles.counterButton}
+            style={[styles.counterButton, (value?.totalTravelers || 1) <= 1 && styles.counterButtonDisabled]}
             onPress={() => updateTravelers(false)}
+            disabled={(value?.totalTravelers || 1) <= 1}
           >
             <Text style={styles.counterButtonText}>−</Text>
           </TouchableOpacity>
-          <Text style={styles.counterValue}>{value.totalTravelers}</Text>
+          <Text style={styles.counterValue}>{value?.totalTravelers || 1}</Text>
           <TouchableOpacity
             style={styles.counterButton}
             onPress={() => updateTravelers(true)}
@@ -85,25 +75,27 @@ const GroupSection: React.FC<GroupSectionProps> = ({
             <Text style={styles.counterButtonText}>+</Text>
           </TouchableOpacity>
         </View>
-        {errors.totalTravelers && <Text style={styles.errorText}>{errors.totalTravelers}</Text>}
+        {errors?.totalTravelers && <Text style={styles.errorText}>{errors.totalTravelers}</Text>}
       </View>
 
       {/* Rooming Preference */}
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Rooming Preference (Optional)</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Rooming Preference (optional)</Text>
         <View style={styles.roomingOptions}>
           {roomingOptions.map((option) => (
             <TouchableOpacity
               key={option.key}
               style={[
                 styles.roomingOption,
-                value.roomingPreference === option.key && styles.roomingOptionSelected
+                value?.roomingPreference === option.key && styles.roomingOptionSelected
               ]}
-              onPress={() => handleChange('roomingPreference', option.key)}
+              onPress={() => handleChange('roomingPreference', 
+                value?.roomingPreference === option.key ? undefined : option.key
+              )}
             >
               <Text style={[
                 styles.roomingOptionText,
-                value.roomingPreference === option.key && styles.roomingOptionTextSelected
+                value?.roomingPreference === option.key && styles.roomingOptionTextSelected
               ]}>
                 {option.label}
               </Text>
@@ -113,16 +105,37 @@ const GroupSection: React.FC<GroupSectionProps> = ({
       </View>
 
       {/* Group Coordinator */}
-      <View style={styles.coordinatorSection}>
-        <Text style={styles.sectionTitle}>Group Coordinator</Text>
+      <View style={styles.field}>
+        <Text style={styles.label}>Group Coordinator</Text>
         <Text style={styles.coordinatorNote}>
-          {contactInfo ? 'Using your contact information as coordinator' : 'Please provide coordinator details'}
+          Defaults to your contact information. Edit if needed.
         </Text>
         
-        <View style={styles.coordinatorInfo}>
-          <Text style={styles.coordinatorText}>Name: {coordinator.fullName || 'Not provided'}</Text>
-          <Text style={styles.coordinatorText}>Phone: {coordinator.phone || 'Not provided'}</Text>
-          <Text style={styles.coordinatorText}>Email: {coordinator.email || 'Not provided'}</Text>
+        <View style={styles.coordinatorFields}>
+          <TextInput
+            style={styles.coordinatorInput}
+            placeholder="Coordinator name"
+            placeholderTextColor="#6c757d"
+            value={coordinator.name}
+            onChangeText={(text) => handleChange('coordinator', { ...coordinator, name: text })}
+          />
+          <TextInput
+            style={styles.coordinatorInput}
+            placeholder="Coordinator email"
+            placeholderTextColor="#6c757d"
+            value={coordinator.email}
+            onChangeText={(text) => handleChange('coordinator', { ...coordinator, email: text })}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <TextInput
+            style={styles.coordinatorInput}
+            placeholder="Coordinator phone"
+            placeholderTextColor="#6c757d"
+            value={coordinator.phone}
+            onChangeText={(text) => handleChange('coordinator', { ...coordinator, phone: text })}
+            keyboardType="phone-pad"
+          />
         </View>
       </View>
     </View>
@@ -131,57 +144,54 @@ const GroupSection: React.FC<GroupSectionProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 20,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 16,
   },
   sectionTitle: {
     ...Typography.styles.bodyMedium,
     color: '#000000',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 20,
   },
-  inputGroup: {
-    gap: 8,
+  field: {
+    marginBottom: 20,
   },
-  inputLabel: {
+  label: {
     ...Typography.styles.caption,
-    color: '#6c757d',
-  },
-  input: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-    ...Typography.styles.bodyMedium,
     color: '#000000',
+    marginBottom: 8,
+    fontWeight: '500',
   },
   counterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    alignSelf: 'flex-start',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderWidth: 1,
     borderColor: '#dee2e6',
-    alignSelf: 'flex-start',
   },
   counterButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+  },
+  counterButtonDisabled: {
+    opacity: 0.5,
   },
   counterButtonText: {
-    ...Typography.styles.buttonMedium,
+    ...Typography.styles.bodyMedium,
     color: '#000000',
+    fontWeight: '600',
   },
   counterValue: {
     ...Typography.styles.bodyMedium,
@@ -199,7 +209,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#dee2e6',
   },
@@ -214,25 +224,23 @@ const styles = StyleSheet.create({
   roomingOptionTextSelected: {
     color: '#FFFFFF',
   },
-  coordinatorSection: {
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
   coordinatorNote: {
     ...Typography.styles.caption,
     color: '#6c757d',
     marginBottom: 12,
     fontStyle: 'italic',
   },
-  coordinatorInfo: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 12,
-    padding: 16,
-    gap: 4,
+  coordinatorFields: {
+    gap: 12,
   },
-  coordinatorText: {
-    ...Typography.styles.bodySmall,
+  coordinatorInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    ...Typography.styles.bodyMedium,
     color: '#000000',
   },
   errorText: {

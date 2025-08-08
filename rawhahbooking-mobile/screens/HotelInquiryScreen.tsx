@@ -266,10 +266,12 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     const { stays, travelers, contact, groupBooking, group, tripRequests } = data;
     
     let message = `Hotel inquiry (multi-stay)\n`;
-    message += `Traveler: ${contact.fullName} | ${contact.phone}\n`;
-    message += `Guests: ${travelers.adults} adults`;
+    message += `Traveler: ${contact.fullName}\n`;
+    message += `Email: ${contact.email}\n`;
+    message += `Phone: ${contact.phone}\n`;
+    message += `Guests: ${travelers.adults} adult${travelers.adults > 1 ? 's' : ''}`;
     if (travelers.children > 0) {
-      message += `, ${travelers.children} children`;
+      message += `, ${travelers.children} child${travelers.children > 1 ? 'ren' : ''}`;
     }
     message += `\n\n`;
     
