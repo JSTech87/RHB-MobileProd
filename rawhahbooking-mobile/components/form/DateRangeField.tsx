@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
+import DateTimePicker from 'react-native-ui-datepicker';
 import { Typography } from '../../constants/Typography';
 
 interface DateRangeFieldProps {
@@ -10,8 +10,8 @@ interface DateRangeFieldProps {
 }
 
 const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, error }) => {
-  const [showCheckInPicker, setShowCheckInPicker] = useState(false);
-  const [showCheckOutPicker, setShowCheckOutPicker] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [tempDates, setTempDates] = useState<{ checkIn: string; checkOut: string }>({ checkIn: '', checkOut: '' });
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Select date';
@@ -19,170 +19,273 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, e
     return date.toLocaleDateString('en-US', { 
       weekday: 'short',
       month: 'short', 
-      day: 'numeric',
-      year: 'numeric'
+      day: 'numeric'
     });
   };
 
-  const handleCheckInChange = (event: any, selectedDate?: Date) => {
-    setShowCheckInPicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      const dateString = selectedDate.toISOString().split('T')[0];
-      onValueChange({ ...value, checkIn: dateString });
-    }
+  const formatDateRange = () => {
+    if (!value.checkIn && !value.checkOut) return 'Select dates';
+    if (!value.checkIn) return 'Select check-in date';
+    if (!value.checkOut) return `${formatDate(value.checkIn)} - Select check-out`;
+    return `${formatDate(value.checkIn)} - ${formatDate(value.checkOut)}`;
   };
 
-  const handleCheckOutChange = (event: any, selectedDate?: Date) => {
-    setShowCheckOutPicker(Platform.OS === 'ios');
-    if (selectedDate) {
-      const dateString = selectedDate.toISOString().split('T')[0];
-      onValueChange({ ...value, checkOut: dateString });
-    }
+  const calculateDaysBetween = () => {
+    if (!value.checkIn || !value.checkOut) return 0;
+    const checkIn = new Date(value.checkIn);
+    const checkOut = new Date(value.checkOut);
+    const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
   };
 
-  const getMinDate = () => {
-    return new Date(); // Today
+  const getDurationText = () => {
+    if (!value.checkIn || !value.checkOut) return '';
+    const nights = calculateDaysBetween();
+    return `${nights} night${nights > 1 ? 's' : ''}`;
   };
 
-  const getCheckOutMinDate = () => {
-    if (value.checkIn) {
-      const checkInDate = new Date(value.checkIn);
-      checkInDate.setDate(checkInDate.getDate() + 1); // Next day after check-in
-      return checkInDate;
+  const handleModalOpen = useCallback(() => {
+    // Initialize temp dates with current values
+    setTempDates(value);
+    setShowDateModal(true);
+  }, [value]);
+
+  const handleDateChange = useCallback((params: any) => {
+    console.log('Date change params:', params);
+    
+    if (params.startDate && params.endDate) {
+      // Both dates selected - update temp state
+      const checkInDate = new Date(params.startDate);
+      const checkOutDate = new Date(params.endDate);
+      
+      if (checkOutDate > checkInDate) {
+        setTempDates({
+          checkIn: checkInDate.toISOString().split('T')[0],
+          checkOut: checkOutDate.toISOString().split('T')[0],
+        });
+      }
+    } else if (params.startDate) {
+      // Only start date selected
+      const checkInDate = new Date(params.startDate);
+      setTempDates({
+        checkIn: checkInDate.toISOString().split('T')[0],
+        checkOut: '',
+      });
     }
-    return new Date();
-  };
+  }, []);
+
+  const handleDonePress = useCallback(() => {
+    // Only update parent state when user confirms
+    if (tempDates.checkIn && tempDates.checkOut) {
+      onValueChange(tempDates);
+    }
+    setShowDateModal(false);
+  }, [tempDates, onValueChange]);
+
+  const handleModalClose = useCallback(() => {
+    setShowDateModal(false);
+    // Reset temp dates to current values
+    setTempDates(value);
+  }, [value]);
 
   return (
     <View style={styles.container}>
-      <View style={styles.dateRow}>
-        {/* Check-in Date */}
-        <View style={styles.dateField}>
-          <Text style={styles.dateLabel}>Check-in</Text>
-          <TouchableOpacity
-            style={[styles.dateButton, error && styles.dateButtonError]}
-            onPress={() => setShowCheckInPicker(true)}
-          >
+      {/* Single Date Pill - matching flight search design */}
+      <TouchableOpacity 
+        style={styles.singleDateRowContainer}
+        onPress={handleModalOpen}
+      >
+        <View style={[styles.inputContainer, error && styles.inputContainerError]}>
+          <View style={styles.inputContent}>
+            <Text style={styles.inputLabel}>Check-in - Check-out</Text>
             <Text style={[
-              styles.dateButtonText,
-              !value.checkIn && styles.dateButtonPlaceholder
+              styles.formInputText,
+              (!value.checkIn || !value.checkOut) && styles.formInputPlaceholder
             ]}>
-              {formatDate(value.checkIn)}
+              {formatDateRange()}
             </Text>
-          </TouchableOpacity>
+          </View>
         </View>
-
-        {/* Check-out Date */}
-        <View style={styles.dateField}>
-          <Text style={styles.dateLabel}>Check-out</Text>
-          <TouchableOpacity
-            style={[styles.dateButton, error && styles.dateButtonError]}
-            onPress={() => setShowCheckOutPicker(true)}
-          >
-            <Text style={[
-              styles.dateButtonText,
-              !value.checkOut && styles.dateButtonPlaceholder
-            ]}>
-              {formatDate(value.checkOut)}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Duration Display */}
-      {value.checkIn && value.checkOut && (
-        <View style={styles.durationContainer}>
-          <Text style={styles.durationText}>
-            {(() => {
-              const checkIn = new Date(value.checkIn);
-              const checkOut = new Date(value.checkOut);
-              const diffTime = Math.abs(checkOut.getTime() - checkIn.getTime());
-              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-              return `${diffDays} night${diffDays > 1 ? 's' : ''}`;
-            })()}
-          </Text>
-        </View>
-      )}
+        {getDurationText() && (
+          <View style={styles.durationBadge}>
+            <Text style={styles.durationText}>{getDurationText()}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {/* Check-in Date Picker */}
-      {showCheckInPicker && (
-        <DateTimePicker
-          value={value.checkIn ? new Date(value.checkIn) : new Date()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleCheckInChange}
-          minimumDate={getMinDate()}
-        />
-      )}
+      {/* Modern Date Selection Modal - Same as Flight Search */}
+      <Modal
+        visible={showDateModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onDismiss={handleModalClose}
+      >
+        <View style={styles.modernDateModalContainer}>
+          {/* Header */}
+          <View style={styles.modernDateHeader}>
+            <Text style={styles.modernModalTitle}>Select Dates</Text>
+            <TouchableOpacity 
+              style={styles.modernCloseButton}
+              onPress={handleModalClose}
+            >
+              <Text style={styles.modernCloseButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
 
-      {/* Check-out Date Picker */}
-      {showCheckOutPicker && (
-        <DateTimePicker
-          value={value.checkOut ? new Date(value.checkOut) : getCheckOutMinDate()}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          onChange={handleCheckOutChange}
-          minimumDate={getCheckOutMinDate()}
-        />
-      )}
+          {/* Modern Date Picker */}
+          <View style={styles.datePickerContainer}>
+            <DateTimePicker
+              mode="range"
+              startDate={tempDates.checkIn ? new Date(tempDates.checkIn) : undefined}
+              endDate={tempDates.checkOut ? new Date(tempDates.checkOut) : undefined}
+              onChange={handleDateChange}
+              minDate={new Date()}
+              firstDayOfWeek={1}
+              styles={{
+                selected: { backgroundColor: '#A83442' },
+                selected_label: { color: '#FFFFFF' },
+                today: { borderColor: '#A83442' },
+                today_label: { color: '#A83442' },
+              }}
+            />
+          </View>
+
+          {/* Footer */}
+          <View style={styles.modernDateFooter}>
+            <TouchableOpacity 
+              style={styles.modernDoneButton}
+              onPress={handleDonePress}
+            >
+              <Text style={styles.modernDoneButtonText}>Confirm Dates</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {},
-  dateRow: {
+  singleDateRowContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 12,
   },
-  dateField: {
+  inputContainer: {
     flex: 1,
-  },
-  dateLabel: {
-    ...Typography.styles.caption,
-    color: '#6c757d',
-    marginBottom: 6,
-  },
-  dateButton: {
     backgroundColor: '#f8f9fa',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#dee2e6',
-    alignItems: 'center',
   },
-  dateButtonError: {
+  inputContainerError: {
     borderColor: '#dc3545',
   },
-  dateButtonText: {
+  inputContent: {
+    alignItems: 'center',
+  },
+  inputLabel: {
+    ...Typography.styles.caption,
+    color: '#6c757d',
+    marginBottom: 4,
+    fontSize: 12,
+  },
+  formInputText: {
     ...Typography.styles.bodyMedium,
     color: '#000000',
+    fontWeight: '600',
   },
-  dateButtonPlaceholder: {
+  formInputPlaceholder: {
     color: '#6c757d',
+    fontWeight: '400',
   },
-  durationContainer: {
-    alignItems: 'center',
-    marginTop: 12,
-    paddingVertical: 8,
+  durationBadge: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    backgroundColor: '#e8f5e8',
-    borderRadius: 20,
-    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minWidth: 80,
+    alignItems: 'center',
   },
   durationText: {
-    ...Typography.styles.caption,
-    color: '#28a745',
+    ...Typography.styles.bodyMedium,
+    color: '#000000',
     fontWeight: '600',
+    fontSize: 14,
   },
   errorText: {
     ...Typography.styles.caption,
     color: '#dc3545',
     marginTop: 4,
     textAlign: 'center',
+  },
+  // Modern Date Modal Styles - Same as Flight Search
+  modernDateModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  modernDateHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    paddingTop: 50, // Account for status bar
+  },
+  modernModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  modernCloseButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernCloseButtonText: {
+    fontSize: 16,
+    color: '#6c757d',
+    fontWeight: '600',
+  },
+  datePickerContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  modernDateFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  modernDoneButton: {
+    backgroundColor: '#A83442',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  modernDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

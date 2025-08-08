@@ -1,22 +1,22 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, StyleSheet, ScrollView } from 'react-native';
 import { Typography } from '../../constants/Typography';
 
 interface HotelPreferencesProps {
   value: {
     type: 'preferences';
-    rating?: number;
+    rating?: 3 | 4 | 5;
     distanceMeters?: number;
-    mealPlan?: string;
+    mealPlan?: 'RO' | 'BB' | 'HB' | 'FB' | 'AI';
     budget?: { min?: number; max?: number };
     brands?: string[];
     facilities?: string[];
   };
   onValueChange: (value: {
     type: 'preferences';
-    rating?: number;
+    rating?: 3 | 4 | 5;
     distanceMeters?: number;
-    mealPlan?: string;
+    mealPlan?: 'RO' | 'BB' | 'HB' | 'FB' | 'AI';
     budget?: { min?: number; max?: number };
     brands?: string[];
     facilities?: string[];
@@ -24,80 +24,102 @@ interface HotelPreferencesProps {
   error?: string;
 }
 
-const HotelPreferences: React.FC<HotelPreferencesProps> = ({ value, onValueChange, error }) => {
+const HotelPreferences: React.FC<HotelPreferencesProps> = ({ 
+  value, 
+  onValueChange, 
+  error 
+}) => {
   const updatePreference = (field: string, newValue: any) => {
     onValueChange({ ...value, [field]: newValue });
   };
 
-  const ratings = [3, 4, 5];
-  const mealPlans = [
-    { key: 'RO', label: 'Room Only' },
-    { key: 'BB', label: 'Bed & Breakfast' },
-    { key: 'HB', label: 'Half Board' },
-    { key: 'FB', label: 'Full Board' },
-    { key: 'AI', label: 'All Inclusive' },
+  const toggleFacility = (facility: string) => {
+    const facilities = value.facilities || [];
+    const updated = facilities.includes(facility)
+      ? facilities.filter(f => f !== facility)
+      : [...facilities, facility];
+    updatePreference('facilities', updated);
+  };
+
+  const ratingOptions = [
+    { value: 3, label: '3 Stars' },
+    { value: 4, label: '4 Stars' },
+    { value: 5, label: '5 Stars' },
   ];
 
-  const facilities = ['WiFi', 'Pool', 'Gym', 'Spa', 'Shuttle', 'Parking', 'Restaurant', 'Bar'];
+  const mealPlanOptions = [
+    { value: 'RO', label: 'Room Only' },
+    { value: 'BB', label: 'Bed & Breakfast' },
+    { value: 'HB', label: 'Half Board' },
+    { value: 'FB', label: 'Full Board' },
+    { value: 'AI', label: 'All Inclusive' },
+  ];
+
+  const facilityOptions = [
+    'WiFi', 'Pool', 'Gym', 'Spa', 'Restaurant', 'Bar', 
+    'Room Service', 'Parking', 'Airport Shuttle', 'Business Center',
+    'Conference Rooms', 'Pet Friendly', 'Family Rooms', 'Non-Smoking'
+  ];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.sectionTitle}>Hotel Preferences</Text>
-
-      {/* Rating */}
+      {/* Minimum Rating */}
       <View style={styles.section}>
-        <Text style={styles.label}>Minimum Rating</Text>
-        <View style={styles.ratingRow}>
-          {ratings.map((rating) => (
+        <Text style={styles.sectionLabel}>Minimum Rating</Text>
+        <View style={styles.optionRow}>
+          {ratingOptions.map((option) => (
             <TouchableOpacity
-              key={rating}
+              key={option.value}
               style={[
-                styles.ratingButton,
-                value.rating === rating && styles.ratingButtonSelected
+                styles.ratingOption,
+                value.rating === option.value && styles.optionSelected
               ]}
-              onPress={() => updatePreference('rating', rating)}
+              onPress={() => updatePreference('rating', 
+                value.rating === option.value ? undefined : option.value
+              )}
             >
               <Text style={[
-                styles.ratingButtonText,
-                value.rating === rating && styles.ratingButtonTextSelected
+                styles.optionText,
+                value.rating === option.value && styles.optionTextSelected
               ]}>
-                {rating}★
+                {option.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Budget */}
+      {/* Budget Range */}
       <View style={styles.section}>
-        <Text style={styles.label}>Budget per night (USD)</Text>
+        <Text style={styles.sectionLabel}>Budget per night (USD)</Text>
         <View style={styles.budgetRow}>
-          <View style={styles.budgetInput}>
+          <View style={styles.budgetField}>
             <Text style={styles.budgetLabel}>Min</Text>
             <TextInput
-              style={styles.budgetField}
+              style={styles.budgetInput}
               placeholder="0"
               placeholderTextColor="#6c757d"
-              keyboardType="numeric"
               value={value.budget?.min?.toString() || ''}
               onChangeText={(text) => {
-                const min = text ? parseInt(text) || undefined : undefined;
+                const min = parseInt(text) || undefined;
                 updatePreference('budget', { ...value.budget, min });
               }}
+              keyboardType="numeric"
             />
           </View>
-          <View style={styles.budgetInput}>
+          <Text style={styles.budgetSeparator}>—</Text>
+          <View style={styles.budgetField}>
             <Text style={styles.budgetLabel}>Max</Text>
             <TextInput
-              style={styles.budgetField}
+              style={styles.budgetInput}
               placeholder="∞"
               placeholderTextColor="#6c757d"
-              keyboardType="numeric"
               value={value.budget?.max?.toString() || ''}
               onChangeText={(text) => {
-                const max = text ? parseInt(text) || undefined : undefined;
+                const max = parseInt(text) || undefined;
                 updatePreference('budget', { ...value.budget, max });
               }}
+              keyboardType="numeric"
             />
           </View>
         </View>
@@ -105,50 +127,46 @@ const HotelPreferences: React.FC<HotelPreferencesProps> = ({ value, onValueChang
 
       {/* Meal Plan */}
       <View style={styles.section}>
-        <Text style={styles.label}>Meal Plan (optional)</Text>
-        <View style={styles.mealPlanRow}>
-          {mealPlans.map((plan) => (
+        <Text style={styles.sectionLabel}>Meal Plan (optional)</Text>
+        <View style={styles.optionGrid}>
+          {mealPlanOptions.map((option) => (
             <TouchableOpacity
-              key={plan.key}
+              key={option.value}
               style={[
-                styles.mealPlanButton,
-                value.mealPlan === plan.key && styles.mealPlanButtonSelected
+                styles.mealOption,
+                value.mealPlan === option.value && styles.optionSelected
               ]}
-              onPress={() => updatePreference('mealPlan', value.mealPlan === plan.key ? undefined : plan.key)}
+              onPress={() => updatePreference('mealPlan', 
+                value.mealPlan === option.value ? undefined : option.value
+              )}
             >
               <Text style={[
-                styles.mealPlanButtonText,
-                value.mealPlan === plan.key && styles.mealPlanButtonTextSelected
+                styles.optionText,
+                value.mealPlan === option.value && styles.optionTextSelected
               ]}>
-                {plan.key}
+                {option.label}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
       </View>
 
-      {/* Facilities */}
+      {/* Must-Have Facilities */}
       <View style={styles.section}>
-        <Text style={styles.label}>Must-have facilities (optional)</Text>
-        <View style={styles.facilitiesGrid}>
-          {facilities.map((facility) => (
+        <Text style={styles.sectionLabel}>Must-Have Facilities</Text>
+        <View style={styles.facilityGrid}>
+          {facilityOptions.map((facility) => (
             <TouchableOpacity
               key={facility}
               style={[
-                styles.facilityChip,
-                value.facilities?.includes(facility) && styles.facilityChipSelected
+                styles.facilityOption,
+                value.facilities?.includes(facility) && styles.optionSelected
               ]}
-              onPress={() => {
-                const currentFacilities = value.facilities || [];
-                const newFacilities = currentFacilities.includes(facility)
-                  ? currentFacilities.filter(f => f !== facility)
-                  : [...currentFacilities, facility];
-                updatePreference('facilities', newFacilities);
-              }}
+              onPress={() => toggleFacility(facility)}
             >
               <Text style={[
-                styles.facilityChipText,
-                value.facilities?.includes(facility) && styles.facilityChipTextSelected
+                styles.facilityText,
+                value.facilities?.includes(facility) && styles.optionTextSelected
               ]}>
                 {facility}
               </Text>
@@ -163,120 +181,108 @@ const HotelPreferences: React.FC<HotelPreferencesProps> = ({ value, onValueChang
 };
 
 const styles = StyleSheet.create({
-  container: {},
-  sectionTitle: {
-    ...Typography.styles.bodyMedium,
-    color: '#000000',
-    marginBottom: 16,
-    fontWeight: '600',
+  container: {
+    // Remove maxHeight to prevent internal scrolling
   },
   section: {
     marginBottom: 20,
   },
-  label: {
+  sectionLabel: {
     ...Typography.styles.caption,
-    color: '#6c757d',
-    marginBottom: 8,
+    color: '#000000',
+    marginBottom: 12,
+    fontWeight: '500',
   },
-  ratingRow: {
+  optionRow: {
     flexDirection: 'row',
     gap: 8,
   },
-  ratingButton: {
+  optionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  ratingOption: {
+    flex: 1,
+    paddingVertical: 12,
     paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    alignItems: 'center',
+  },
+  mealOption: {
     paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    borderRadius: 16,
     backgroundColor: '#f8f9fa',
     borderWidth: 1,
     borderColor: '#dee2e6',
   },
-  ratingButtonSelected: {
+  facilityGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  facilityOption: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  optionSelected: {
     backgroundColor: '#A83442',
     borderColor: '#A83442',
   },
-  ratingButtonText: {
+  optionText: {
     ...Typography.styles.caption,
-    color: '#6c757d',
+    color: '#000000',
+    fontWeight: '500',
   },
-  ratingButtonTextSelected: {
+  facilityText: {
+    ...Typography.styles.caption,
+    color: '#000000',
+    fontSize: 12,
+  },
+  optionTextSelected: {
     color: '#FFFFFF',
   },
   budgetRow: {
     flexDirection: 'row',
+    alignItems: 'flex-end',
     gap: 12,
   },
-  budgetInput: {
+  budgetField: {
     flex: 1,
   },
   budgetLabel: {
     ...Typography.styles.caption,
     color: '#6c757d',
-    marginBottom: 4,
+    marginBottom: 6,
   },
-  budgetField: {
+  budgetInput: {
     backgroundColor: '#f8f9fa',
     borderRadius: 8,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderWidth: 1,
     borderColor: '#dee2e6',
     ...Typography.styles.bodyMedium,
     color: '#000000',
+    textAlign: 'center',
   },
-  mealPlanRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  mealPlanButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  mealPlanButtonSelected: {
-    backgroundColor: '#A83442',
-    borderColor: '#A83442',
-  },
-  mealPlanButtonText: {
-    ...Typography.styles.caption,
+  budgetSeparator: {
+    ...Typography.styles.bodyMedium,
     color: '#6c757d',
-    fontSize: 12,
-  },
-  mealPlanButtonTextSelected: {
-    color: '#FFFFFF',
-  },
-  facilitiesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  facilityChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    backgroundColor: '#f8f9fa',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  facilityChipSelected: {
-    backgroundColor: '#A83442',
-    borderColor: '#A83442',
-  },
-  facilityChipText: {
-    ...Typography.styles.caption,
-    color: '#6c757d',
-    fontSize: 12,
-  },
-  facilityChipTextSelected: {
-    color: '#FFFFFF',
+    paddingBottom: 10,
   },
   errorText: {
     ...Typography.styles.caption,
     color: '#dc3545',
-    marginTop: 8,
+    marginTop: 4,
   },
 });
 

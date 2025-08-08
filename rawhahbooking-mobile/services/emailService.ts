@@ -141,12 +141,6 @@ class EmailService {
               <h2>👥 Group Booking Details</h2>
               <div class="group-info">
                 <div class="info-grid">
-                  ${group.groupName ? `
-                  <div class="info-item full-width">
-                    <div class="info-label">Group Name</div>
-                    <div class="info-value">${group.groupName}</div>
-                  </div>
-                  ` : ''}
                   <div class="info-item priority">
                     <div class="info-label">Total Travelers</div>
                     <div class="info-value">${group.totalTravelers} People</div>
@@ -157,10 +151,10 @@ class EmailService {
                     <div class="info-value">${group.roomingPreference.charAt(0).toUpperCase() + group.roomingPreference.slice(1)}</div>
                   </div>
                   ` : ''}
-                  ${group.coordinator ? `
+                  ${group.coordinator?.name ? `
                   <div class="info-item full-width">
                     <div class="info-label">Group Coordinator</div>
-                    <div class="info-value">${group.coordinator.fullName} • ${group.coordinator.phone} • ${group.coordinator.email}</div>
+                    <div class="info-value">${group.coordinator.name}${group.coordinator.phone ? ` • ${group.coordinator.phone}` : ''}${group.coordinator.email ? ` • ${group.coordinator.email}` : ''}</div>
                   </div>
                   ` : ''}
                 </div>
@@ -221,10 +215,9 @@ ${budget?.min || budget?.max ? `Budget: ${budget.min ? `$${budget.min}` : ''}${b
 
 ${groupBooking && group ? `
 GROUP BOOKING:
-${group.groupName ? `Group Name: ${group.groupName}` : ''}
 Total Travelers: ${group.totalTravelers}
 ${group.roomingPreference ? `Rooming: ${group.roomingPreference}` : ''}
-${group.coordinator ? `Coordinator: ${group.coordinator.fullName} (${group.coordinator.phone})` : ''}
+${group.coordinator?.name ? `Coordinator: ${group.coordinator.name}${group.coordinator.phone ? ` (${group.coordinator.phone})` : ''}` : ''}
 ` : ''}
 
 ${specialRequests ? `SPECIAL REQUESTS:\n${specialRequests}` : ''}
@@ -235,23 +228,23 @@ Submitted via Rawhah Booking Mobile App on ${new Date().toLocaleString()}
     return { html, text };
   }
 
-  // Send hotel inquiry notification email
+  // Send notification email to admin
   async sendHotelInquiryNotification(data: HotelInquiryFormData, inquiryId: string): Promise<ResendEmailResponse> {
     try {
-      const fromEmail = process.env.INQUIRY_EMAIL_FROM || 'noreply@rawhahbooking.com';
-      const toEmail = process.env.INQUIRY_EMAIL_TO || 'inquiries@rawhahbooking.com';
+      const toEmail = process.env.EXPO_PUBLIC_INQUIRY_EMAIL_TO || 'inquiries@rawhahbooking.com';
+      const fromEmail = process.env.EXPO_PUBLIC_INQUIRY_EMAIL_FROM || 'noreply@rawhahbooking.com';
 
       const { html, text } = this.formatHotelInquiryEmail(data, inquiryId);
 
       const payload: ResendEmailPayload = {
         from: fromEmail,
         to: [toEmail],
-        subject: `🏨 New Hotel Inquiry - ${data.destination.city} | ${inquiryId}`,
+        subject: `New Hotel Inquiry - ${inquiryId}`,
         html,
         text,
       };
 
-      console.log('Sending hotel inquiry email notification...');
+      console.log('Sending admin notification email...');
 
       const response = await fetch(`${this.baseURL}/emails`, {
         method: 'POST',
@@ -268,11 +261,11 @@ Submitted via Rawhah Booking Mobile App on ${new Date().toLocaleString()}
       }
 
       const result = await response.json();
-      console.log('Hotel inquiry email sent successfully:', result.id);
+      console.log('Admin notification email sent successfully:', result.id);
       
       return result;
     } catch (error) {
-      console.error('Error sending hotel inquiry email:', error);
+      console.error('Error sending admin notification email:', error);
       throw error;
     }
   }
@@ -280,9 +273,15 @@ Submitted via Rawhah Booking Mobile App on ${new Date().toLocaleString()}
   // Send confirmation email to guest
   async sendGuestConfirmation(data: HotelInquiryFormData, inquiryId: string): Promise<ResendEmailResponse> {
     try {
-      const fromEmail = process.env.INQUIRY_EMAIL_FROM || 'noreply@rawhahbooking.com';
-      const { destination, dates, contact } = data;
+      const fromEmail = process.env.EXPO_PUBLIC_INQUIRY_EMAIL_FROM || 'noreply@rawhahbooking.com';
+      const { contact, destination, dates, guests, rooms, budget, groupBooking, group, specialRequests } = data;
 
+      // Calculate nights
+      const checkInDate = new Date(dates.checkIn);
+      const checkOutDate = new Date(dates.checkOut);
+      const nights = Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      // HTML Email Template for Guest
       const html = `
         <!DOCTYPE html>
         <html>
@@ -291,62 +290,123 @@ Submitted via Rawhah Booking Mobile App on ${new Date().toLocaleString()}
           <title>Hotel Inquiry Confirmation</title>
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background-color: #f8f9fa; }
-            .container { max-width: 500px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
             .header { background: #A83442; color: white; padding: 30px; text-align: center; }
-            .content { padding: 30px; text-align: center; }
-            .icon { font-size: 48px; margin-bottom: 20px; }
-            h1 { color: #A83442; margin: 0 0 20px; }
-            .highlight { background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #6c757d; font-size: 14px; }
+            .header h1 { margin: 0; font-size: 28px; font-weight: 600; }
+            .content { padding: 30px; }
+            .section { margin-bottom: 20px; }
+            .section h3 { color: #A83442; margin: 0 0 10px; font-size: 18px; }
+            .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
+            .detail-row:last-child { border-bottom: none; }
+            .footer { background: #f8f9fa; padding: 20px; text-align: center; color: #666; }
           </style>
         </head>
         <body>
           <div class="container">
             <div class="header">
-              <div class="icon">✅</div>
-              <h1 style="color: white; margin: 0;">Inquiry Received!</h1>
+              <h1>Thank You for Your Inquiry!</h1>
+              <p>Inquiry ID: ${inquiryId}</p>
             </div>
-            
             <div class="content">
-              <p>Dear <strong>${contact.fullName}</strong>,</p>
+              <p>Dear ${contact.fullName},</p>
+              <p>Thank you for your hotel inquiry. We have received your request and our team will get back to you within 10-15 minutes with personalized recommendations.</p>
               
-              <p>Thank you for your hotel inquiry! We've received your request and our team will review it shortly.</p>
-              
-              <div class="highlight">
-                <h3 style="margin-top: 0;">Your Inquiry Details:</h3>
-                <p><strong>Reference ID:</strong> ${inquiryId}</p>
-                <p><strong>Destination:</strong> ${destination.city}${destination.country ? `, ${destination.country}` : ''}</p>
-                <p><strong>Dates:</strong> ${dates.checkIn} to ${dates.checkOut}</p>
+              <div class="section">
+                <h3>Your Inquiry Details:</h3>
+                <div class="detail-row">
+                  <span><strong>Destination:</strong></span>
+                  <span>${destination.city}${destination.country ? `, ${destination.country}` : ''}</span>
+                </div>
+                <div class="detail-row">
+                  <span><strong>Check-in:</strong></span>
+                  <span>${dates.checkIn}</span>
+                </div>
+                <div class="detail-row">
+                  <span><strong>Check-out:</strong></span>
+                  <span>${dates.checkOut}</span>
+                </div>
+                <div class="detail-row">
+                  <span><strong>Duration:</strong></span>
+                  <span>${nights} night${nights > 1 ? 's' : ''}</span>
+                </div>
+                <div class="detail-row">
+                  <span><strong>Guests:</strong></span>
+                  <span>${guests.adults} adult${guests.adults > 1 ? 's' : ''}${guests.children > 0 ? `, ${guests.children} child${guests.children > 1 ? 'ren' : ''}` : ''}</span>
+                </div>
+                <div class="detail-row">
+                  <span><strong>Rooms:</strong></span>
+                  <span>${rooms}</span>
+                </div>
+                ${budget?.min || budget?.max ? `
+                <div class="detail-row">
+                  <span><strong>Budget:</strong></span>
+                  <span>$${budget.min || 0} - $${budget.max || '∞'} per night</span>
+                </div>
+                ` : ''}
               </div>
-              
-              <p><strong>What happens next?</strong></p>
-              <p>Our hotel specialists will review your requirements and respond within <strong>10-15 minutes</strong> during business hours with personalized recommendations.</p>
-              
-              <p>If you have any urgent questions, feel free to contact us directly.</p>
-            </div>
 
+              ${groupBooking && group ? `
+              <div class="section">
+                <h3>Group Details:</h3>
+                <div class="detail-row">
+                  <span><strong>Total Travelers:</strong></span>
+                  <span>${group.totalTravelers}</span>
+                </div>
+                ${group.roomingPreference ? `
+                <div class="detail-row">
+                  <span><strong>Rooming Preference:</strong></span>
+                  <span>${group.roomingPreference}</span>
+                </div>
+                ` : ''}
+              </div>
+              ` : ''}
+
+              ${specialRequests ? `
+              <div class="section">
+                <h3>Special Requests:</h3>
+                <p>${specialRequests}</p>
+              </div>
+              ` : ''}
+
+              <p>Our travel specialists will contact you shortly with curated hotel options that match your preferences and budget.</p>
+              
+              <p>If you have any immediate questions, feel free to reach out to us.</p>
+              
+              <p>Best regards,<br>The Rawhah Booking Team</p>
+            </div>
             <div class="footer">
-              <p><strong>Rawhah Booking</strong></p>
-              <p>Professional hotel accommodations with exceptional service</p>
+              <p>© 2025 Rawhah Booking. All rights reserved.</p>
             </div>
           </div>
         </body>
         </html>
       `;
 
+      // Plain text version
       const text = `
-Dear ${contact.fullName},
-
-Thank you for your hotel inquiry! We've received your request for ${destination.city}${destination.country ? `, ${destination.country}` : ''} from ${dates.checkIn} to ${dates.checkOut}.
-
-Reference ID: ${inquiryId}
-
-Our hotel specialists will review your requirements and respond within 10-15 minutes during business hours with personalized recommendations.
-
-If you have any urgent questions, feel free to contact us directly.
-
-Best regards,
-Rawhah Booking Team
+        Thank You for Your Hotel Inquiry!
+        
+        Dear ${contact.fullName},
+        
+        Thank you for your hotel inquiry. We have received your request and our team will get back to you within 10-15 minutes.
+        
+        Inquiry ID: ${inquiryId}
+        
+        Your Details:
+        - Destination: ${destination.city}${destination.country ? `, ${destination.country}` : ''}
+        - Check-in: ${dates.checkIn}
+        - Check-out: ${dates.checkOut}
+        - Duration: ${nights} night${nights > 1 ? 's' : ''}
+        - Guests: ${guests.adults} adult${guests.adults > 1 ? 's' : ''}${guests.children > 0 ? `, ${guests.children} child${guests.children > 1 ? 'ren' : ''}` : ''}
+        - Rooms: ${rooms}
+        ${budget?.min || budget?.max ? `- Budget: $${budget.min || 0} - $${budget.max || '∞'} per night` : ''}
+        ${groupBooking && group ? `\nGroup Details:\n- Total Travelers: ${group.totalTravelers}${group.roomingPreference ? `\n- Rooming: ${group.roomingPreference}` : ''}` : ''}
+        ${specialRequests ? `\nSpecial Requests: ${specialRequests}` : ''}
+        
+        Our travel specialists will contact you shortly with curated hotel options.
+        
+        Best regards,
+        The Rawhah Booking Team
       `.trim();
 
       const payload: ResendEmailPayload = {
@@ -385,7 +445,7 @@ Rawhah Booking Team
 }
 
 // Create singleton instance
-const resendApiKey = process.env.RESEND_API_KEY;
+const resendApiKey = process.env.EXPO_PUBLIC_RESEND_API_KEY;
 export const emailService = resendApiKey ? new EmailService(resendApiKey) : null;
 
 export default emailService; 

@@ -139,15 +139,15 @@ const StayCard: React.FC<StayCardProps> = ({
       <View style={styles.section}>
         {hasSpecificHotel ? (
           <HotelPicker
-            value={stay.hotelChoice}
-            onValueChange={(hotelChoice: any) => updateStay('hotelChoice', hotelChoice)}
+            value={stay.hotelChoice as { type: 'specific'; hotelId?: string; hotelName?: string }}
+            onValueChange={(hotelChoice: { type: 'specific'; hotelId?: string; hotelName?: string }) => updateStay('hotelChoice', hotelChoice)}
             destination={stay.destination}
             error={errors?.hotelChoice?.hotelId?.message}
           />
         ) : (
           <HotelPreferences
-            value={stay.hotelChoice}
-            onValueChange={(hotelChoice: any) => updateStay('hotelChoice', hotelChoice)}
+            value={stay.hotelChoice as { type: 'preferences'; rating?: 3 | 4 | 5; distanceMeters?: number; mealPlan?: 'RO' | 'BB' | 'HB' | 'FB' | 'AI'; budget?: { min?: number; max?: number }; brands?: string[]; facilities?: string[] }}
+            onValueChange={(hotelChoice: { type: 'preferences'; rating?: 3 | 4 | 5; distanceMeters?: number; mealPlan?: 'RO' | 'BB' | 'HB' | 'FB' | 'AI'; budget?: { min?: number; max?: number }; brands?: string[]; facilities?: string[] }) => updateStay('hotelChoice', hotelChoice)}
             error={errors?.hotelChoice?.message}
           />
         )}
