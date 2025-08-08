@@ -441,15 +441,14 @@ const styles = StyleSheet.create({
   backButtonText: {
     color: '#000000',
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '600', // Changed from 'bold' to semi-bold
   },
   pageTitle: {
-    color: '#000000',
     fontSize: 20,
-    fontWeight: '700',
-    flex: 1,
+    fontWeight: '600', // Changed from '700' to semi-bold
+    color: '#000000',
     textAlign: 'center',
-    marginHorizontal: 20,
+    flex: 1,
   },
   spacer: {
     width: 40,
@@ -466,12 +465,13 @@ const styles = StyleSheet.create({
   airportCode: {
     color: '#000000',
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700', // Keep bold for airport codes as they're key identifiers
     marginBottom: 2,
   },
   airportName: {
     color: '#333333',
     fontSize: 12,
+    fontWeight: '400', // Added normal weight
     opacity: 0.8,
   },
   routeArrow: {
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   airlineLogoText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
   },
   airlineText: {
     flexDirection: 'column',
@@ -566,28 +566,29 @@ const styles = StyleSheet.create({
   airlineLabel: {
     fontSize: 10,
     color: '#6c757d',
+    fontWeight: '400', // Added normal weight
     marginBottom: 1,
   },
   airlineName: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '500', // Changed from '700' to medium
     color: '#000000',
   },
   flightNumber: {
     fontSize: 12,
     color: '#6c757d',
-    fontWeight: '500',
+    fontWeight: '400', // Changed from '500' to normal
   },
   flightNumberText: {
     fontSize: 12,
     color: '#6c757d',
-    fontWeight: '500',
+    fontWeight: '400', // Changed from '500' to normal
     marginTop: 4,
   },
   cabinClassText: {
     fontSize: 10,
     color: '#6c757d',
-    fontWeight: '500',
+    fontWeight: '400', // Changed from '500' to normal
   },
   flightTypeContainer: {
     alignItems: 'center',
@@ -601,7 +602,7 @@ const styles = StyleSheet.create({
   flightTypeText: {
     color: '#A83442',
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: '500', // Changed from '600' to medium
   },
   flightRoute: {
     flexDirection: 'row',
@@ -614,7 +615,7 @@ const styles = StyleSheet.create({
   },
   routeTime: {
     fontSize: 18,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
     color: '#000000',
     marginBottom: 2,
   },

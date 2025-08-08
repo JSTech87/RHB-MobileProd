@@ -10,6 +10,9 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
+import FromToPicker from '../components/FromToPicker';
+import { AirportOption } from '../services/airportSearch';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,11 +26,15 @@ interface PassengerCounts {
 export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const [selectedService, setSelectedService] = useState<'hotel' | 'flight'>('flight');
   const [selectedTripType, setSelectedTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('oneWay');
-  const [fromLocation, setFromLocation] = useState('Surabaya, East Java');
-  const [toLocation, setToLocation] = useState('Denpasar, Bali');
-  const [departureDate, setDepartureDate] = useState('Dec 21, 2023');
-  const [returnDate, setReturnDate] = useState('Dec 26, 2023');
+  const [fromAirport, setFromAirport] = useState<AirportOption | null>(null);
+  const [toAirport, setToAirport] = useState<AirportOption | null>(null);
   const [seatClass, setSeatClass] = useState('Business');
+  
+  // Date objects for calendar
+  const [selectedDepartureDate, setSelectedDepartureDate] = useState(new Date(2025, 7, 12)); // Aug 12, 2025
+  const [selectedReturnDate, setSelectedReturnDate] = useState(new Date(2025, 7, 19)); // Aug 19, 2025
+  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 7, 1)); // August 2025
+  const [isSelectingDeparture, setIsSelectingDeparture] = useState(true);
   
   // Modal states
   const [showPassengerModal, setShowPassengerModal] = useState(false);
@@ -47,25 +54,155 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     navigation?.navigate('FlightResults');
   };
 
-  const swapLocations = () => {
-    const temp = fromLocation;
-    setFromLocation(toLocation);
-    setToLocation(temp);
+  const handleHotelInquiry = () => {
+    // Navigate to Hotel Inquiry Screen
+    navigation?.navigate('HotelInquiry');
+  };
+
+  const renderHotelForm = () => {
+    return (
+      <>
+        {/* Hotel Inquiry Header */}
+        <View style={styles.hotelHeader}>
+          <Text style={styles.hotelTitle}>🏨 Professional Hotel Accommodations</Text>
+          <Text style={styles.hotelSubtitle}>
+            Curated selection of premium hotels with exceptional service and unmatched comfort
+          </Text>
+        </View>
+
+        {/* Hotel Features */}
+        <View style={styles.hotelFeatures}>
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Text style={styles.featureIconText}>👑</Text>
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Curated Selection</Text>
+              <Text style={styles.featureDescription}>Hand-picked quality hotels worldwide</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Text style={styles.featureIconText}>💰</Text>
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Best Rate Guarantee</Text>
+              <Text style={styles.featureDescription}>Competitive pricing assured</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Text style={styles.featureIconText}>⚡</Text>
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Instant Response</Text>
+              <Text style={styles.featureDescription}>Get quotes within 10-15 minutes</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureItem}>
+            <View style={styles.featureIcon}>
+              <Text style={styles.featureIconText}>👥</Text>
+            </View>
+            <View style={styles.featureContent}>
+              <Text style={styles.featureTitle}>Group Bookings</Text>
+              <Text style={styles.featureDescription}>Special rates for group travel</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* How It Works */}
+        <View style={styles.howItWorksSection}>
+          <Text style={styles.sectionTitle}>How It Works</Text>
+          
+          <View style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>1</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Submit Your Requirements</Text>
+              <Text style={styles.stepDescription}>Tell us your destination, dates, and preferences</Text>
+            </View>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>2</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Get Personalized Recommendations</Text>
+              <Text style={styles.stepDescription}>Our specialists curate the best options for you</Text>
+            </View>
+          </View>
+
+          <View style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>3</Text>
+            </View>
+            <View style={styles.stepContent}>
+              <Text style={styles.stepTitle}>Book with Confidence</Text>
+              <Text style={styles.stepDescription}>Secure booking with our best rate guarantee</Text>
+            </View>
+          </View>
+        </View>
+      </>
+    );
   };
 
   const getPassengerText = () => {
-    const total = passengers.adults + passengers.children + passengers.infantsInSeat + passengers.infantsOnLap;
-    if (total === 1) return '1 traveler';
-    return `${total} travelers`;
+    const parts = [];
+    if (passengers.adults > 0) parts.push(`${passengers.adults}A`);
+    if (passengers.children > 0) parts.push(`${passengers.children}C`);
+    if (passengers.infantsInSeat > 0) parts.push(`${passengers.infantsInSeat}IS`);
+    if (passengers.infantsOnLap > 0) parts.push(`${passengers.infantsOnLap}IL`);
+    
+    return parts.length > 0 ? parts.join(' ') : '1A';
+  };
+
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatDateRange = (departure: Date, returnDate: Date) => {
+    const depFormatted = formatDate(departure);
+    const retFormatted = formatDate(returnDate);
+    return `${depFormatted} - ${retFormatted}`;
+  };
+
+  const calculateDaysBetween = (start: Date, end: Date) => {
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const isSameDay = (date1: Date, date2: Date) => {
+    return date1.getDate() === date2.getDate() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+  };
+
+  const isDateInRange = (date: Date, start: Date, end: Date) => {
+    return date >= start && date <= end;
   };
 
   const getDurationText = () => {
     if (selectedTripType === 'roundTrip') {
-      // Calculate days between departure and return
-      const departure = new Date(departureDate);
-      const returnD = new Date(returnDate);
-      const diffTime = Math.abs(returnD.getTime() - departure.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const diffDays = calculateDaysBetween(selectedDepartureDate, selectedReturnDate);
       return `${diffDays} days`;
     }
     return '';
@@ -107,129 +244,67 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     if (selectedTripType === 'oneWay') {
       return (
         <>
-          {/* From Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>From</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={fromLocation}
-                  onChangeText={setFromLocation}
-                  editable={false}
-                />
-                <Text style={styles.airportCode}>(SBY)</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* To Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>To</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={toLocation}
-                  onChangeText={setToLocation}
-                  editable={false}
-                />
-                <Text style={styles.airportCode}>(DPS)</Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity style={styles.swapButton} onPress={swapLocations}>
-              <Text style={styles.swapButtonIcon}>⇅</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.locationDivider}>
-            <View style={styles.flightPath} />
-          </View>
+          {/* From/To Picker */}
+          <FromToPicker
+            mode="flight"
+            onChange={({ from, to }) => {
+              setFromAirport(from);
+              setToAirport(to);
+            }}
+            onSwap={() => {
+              const temp = fromAirport;
+              setFromAirport(toAirport);
+              setToAirport(temp);
+            }}
+          />
 
           {/* Date Section */}
           <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setShowDateModal(true)}
+            >
               <View style={styles.inputContent}>
                 <Text style={styles.inputLabel}>Departure Date</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={departureDate}
-                  onChangeText={setDepartureDate}
-                  editable={false}
-                />
+                <Text style={styles.formInputText}>{formatDate(selectedDepartureDate)}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Bottom Row */}
           <View style={styles.bottomRow}>
-            <View style={styles.bottomField}>
-              <TouchableOpacity 
-                style={styles.inputContainer}
-                onPress={() => setShowPassengerModal(true)}
-              >
-                <View style={styles.inputContent}>
-                  <Text style={styles.inputLabel}>Passengers</Text>
-                  <Text style={styles.formInputText}>{getPassengerText()}</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.bottomField}>
-              <View style={styles.fieldWrapper}>
-                <TouchableOpacity 
-                  style={styles.inputContainer}
-                  onPress={() => setShowClassModal(true)}
-                >
-                  <View style={styles.inputContent}>
-                    <Text style={styles.inputLabel}>Class</Text>
-                    <Text style={styles.formInputText}>{seatClass}</Text>
-                  </View>
-                </TouchableOpacity>
-                <Text style={styles.dropdownArrow}>▼</Text>
+            <TouchableOpacity 
+              style={styles.passengerCabinContainer}
+              onPress={() => setShowPassengerModal(true)}
+            >
+              <View style={styles.passengerSection}>
+                <Text style={styles.inputLabel}>Travelers</Text>
+                <Text style={styles.formInputText}>{getPassengerText()}</Text>
               </View>
-            </View>
+              <View style={styles.cabinSection}>
+                <Text style={styles.inputLabel}>Class</Text>
+                <Text style={styles.cabinClassText}>{seatClass}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </>
       );
     } else if (selectedTripType === 'roundTrip') {
       return (
         <>
-          {/* From Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>From</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={fromLocation}
-                  onChangeText={setFromLocation}
-                  editable={false}
-                />
-                <Text style={styles.airportCode}>(SBY)</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* To Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>To</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={toLocation}
-                  onChangeText={setToLocation}
-                  editable={false}
-                />
-                <Text style={styles.airportCode}>(DPS)</Text>
-              </View>
-            </View>
-            
-            <TouchableOpacity style={styles.swapButton} onPress={swapLocations}>
-              <Text style={styles.swapButtonIcon}>⇅</Text>
-            </TouchableOpacity>
-          </View>
+          {/* From/To Picker */}
+          <FromToPicker
+            mode="flight"
+            onChange={({ from, to }) => {
+              setFromAirport(from);
+              setToAirport(to);
+            }}
+            onSwap={() => {
+              const temp = fromAirport;
+              setFromAirport(toAirport);
+              setToAirport(temp);
+            }}
+          />
 
           <View style={styles.locationDivider}>
             <View style={styles.flightPath} />
@@ -237,25 +312,15 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
           {/* Date Row for Round Trip */}
           <TouchableOpacity 
-            style={styles.dateRowContainer}
+            style={styles.singleDateRowContainer}
             onPress={() => setShowDateModal(true)}
           >
-            <View style={styles.dateRow}>
-              <View style={styles.dateField}>
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputContent}>
-                    <Text style={styles.inputLabel}>Departure Date</Text>
-                    <Text style={styles.formInputText}>{departureDate}</Text>
-                  </View>
-                </View>
-              </View>
-              <View style={styles.dateField}>
-                <View style={styles.inputContainer}>
-                  <View style={styles.inputContent}>
-                    <Text style={styles.inputLabel}>Return Date</Text>
-                    <Text style={styles.formInputText}>{returnDate}</Text>
-                  </View>
-                </View>
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Departure Date - Return Date</Text>
+                <Text style={styles.formInputText}>
+                  {formatDate(selectedDepartureDate)} - {formatDate(selectedReturnDate)}
+                </Text>
               </View>
             </View>
             {getDurationText() && (
@@ -267,31 +332,19 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
           {/* Bottom Row */}
           <View style={styles.bottomRow}>
-            <View style={styles.bottomField}>
-              <TouchableOpacity 
-                style={styles.inputContainer}
-                onPress={() => setShowPassengerModal(true)}
-              >
-                <View style={styles.inputContent}>
-                  <Text style={styles.inputLabel}>Passengers</Text>
-                  <Text style={styles.formInputText}>{getPassengerText()}</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.bottomField}>
-              <View style={styles.fieldWrapper}>
-                <TouchableOpacity 
-                  style={styles.inputContainer}
-                  onPress={() => setShowClassModal(true)}
-                >
-                  <View style={styles.inputContent}>
-                    <Text style={styles.inputLabel}>Seat Class</Text>
-                    <Text style={styles.formInputText}>{seatClass}</Text>
-                  </View>
-                </TouchableOpacity>
-                <Text style={styles.dropdownArrow}>▼</Text>
+            <TouchableOpacity 
+              style={styles.passengerCabinContainer}
+              onPress={() => setShowPassengerModal(true)}
+            >
+              <View style={styles.passengerSection}>
+                <Text style={styles.inputLabel}>Travelers</Text>
+                <Text style={styles.formInputText}>{getPassengerText()}</Text>
               </View>
-            </View>
+              <View style={styles.cabinSection}>
+                <Text style={styles.inputLabel}>Class</Text>
+                <Text style={styles.cabinClassText}>{seatClass}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </>
       );
@@ -299,37 +352,19 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       // Multi City
       return (
         <>
-          {/* From Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>From</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={fromLocation}
-                  onChangeText={setFromLocation}
-                  editable={false}
-                />
-                <Text style={styles.airportCode}>(SBY)</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* To Section */}
-          <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
-              <View style={styles.inputContent}>
-                <Text style={styles.inputLabel}>To</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={toLocation}
-                  onChangeText={setToLocation}
-                  editable={false}
-                />
-                <Text style={styles.airportCode}>(DPS)</Text>
-              </View>
-            </View>
-          </View>
+          {/* From/To Picker */}
+          <FromToPicker
+            mode="flight"
+            onChange={({ from, to }) => {
+              setFromAirport(from);
+              setToAirport(to);
+            }}
+            onSwap={() => {
+              const temp = fromAirport;
+              setFromAirport(toAirport);
+              setToAirport(temp);
+            }}
+          />
 
           <View style={styles.locationDivider}>
             <View style={styles.flightPath} />
@@ -337,17 +372,15 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
           {/* Date Section */}
           <View style={styles.formSection}>
-            <View style={styles.inputContainer}>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setShowDateModal(true)}
+            >
               <View style={styles.inputContent}>
                 <Text style={styles.inputLabel}>Departure Date</Text>
-                <TextInput
-                  style={styles.formInput}
-                  value={departureDate}
-                  onChangeText={setDepartureDate}
-                  editable={false}
-                />
+                <Text style={styles.formInputText}>{formatDate(selectedDepartureDate)}</Text>
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Add Flight Button */}
@@ -357,31 +390,19 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
           {/* Bottom Row */}
           <View style={styles.bottomRow}>
-            <View style={styles.bottomField}>
-              <TouchableOpacity 
-                style={styles.inputContainer}
-                onPress={() => setShowPassengerModal(true)}
-              >
-                <View style={styles.inputContent}>
-                  <Text style={styles.inputLabel}>Passengers</Text>
-                  <Text style={styles.formInputText}>{getPassengerText()}</Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.bottomField}>
-              <View style={styles.fieldWrapper}>
-                <TouchableOpacity 
-                  style={styles.inputContainer}
-                  onPress={() => setShowClassModal(true)}
-                >
-                  <View style={styles.inputContent}>
-                    <Text style={styles.inputLabel}>Class</Text>
-                    <Text style={styles.formInputText}>{seatClass}</Text>
-                  </View>
-                </TouchableOpacity>
-                <Text style={styles.dropdownArrow}>▼</Text>
+            <TouchableOpacity 
+              style={styles.passengerCabinContainer}
+              onPress={() => setShowPassengerModal(true)}
+            >
+              <View style={styles.passengerSection}>
+                <Text style={styles.inputLabel}>Travelers</Text>
+                <Text style={styles.formInputText}>{getPassengerText()}</Text>
               </View>
-            </View>
+              <View style={styles.cabinSection}>
+                <Text style={styles.inputLabel}>Class</Text>
+                <Text style={styles.cabinClassText}>{seatClass}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         </>
       );
@@ -420,12 +441,14 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <ServiceTab type="flight" label="Flight" />
           </View>
 
-          {/* Trip Type Options */}
-          <View style={styles.tripTypes}>
-            <TripTypeOption type="oneWay" label="One way" />
-            <TripTypeOption type="roundTrip" label="Round Trip" />
-            <TripTypeOption type="multiCity" label="Multi City" />
-          </View>
+          {/* Trip Type Selection - Only show for flights */}
+          {selectedService === 'flight' && (
+            <View style={styles.tripTypes}>
+              <TripTypeOption type="oneWay" label="One way" />
+              <TripTypeOption type="roundTrip" label="Round Trip" />
+              <TripTypeOption type="multiCity" label="Multi City" />
+            </View>
+          )}
         </View>
 
         {/* Main Content */}
@@ -436,12 +459,18 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <View style={[styles.cutout, styles.leftCutout]} />
             <View style={[styles.cutout, styles.rightCutout]} />
 
-            {renderSearchForm()}
+            {selectedService === 'hotel' ? renderHotelForm() : renderSearchForm()}
 
             {/* Search Button */}
-            <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
+            <TouchableOpacity 
+              style={styles.searchButton} 
+              onPress={selectedService === 'hotel' ? handleHotelInquiry : handleSearch}
+            >
               <Text style={styles.searchButtonText}>
-                {selectedTripType === 'multiCity' ? 'Search Ticket' : 'Search'}
+                {selectedService === 'hotel' 
+                  ? 'Start Hotel Inquiry' 
+                  : (selectedTripType === 'multiCity' ? 'Search Ticket' : 'Search')
+                }
               </Text>
             </TouchableOpacity>
           </View>
@@ -555,54 +584,101 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
             {/* Cabin Class */}
             <View style={styles.cabinClassSection}>
-              <TouchableOpacity style={styles.cabinClassSelector}>
-                <Text style={styles.cabinClassLabel}>Cabin class</Text>
+              <Text style={styles.sectionTitle}>Cabin class</Text>
+              <TouchableOpacity 
+                style={styles.cabinClassSelector}
+                onPress={() => setShowClassModal(true)}
+              >
                 <Text style={styles.cabinClassValue}>{seatClass}</Text>
                 <Text style={styles.dropdownArrow}>▼</Text>
               </TouchableOpacity>
+              
+              {showClassModal && (
+                <View style={styles.classDropdown}>
+                  {['Economy', 'Premium Economy', 'Business', 'First Class'].map((classType) => (
+                    <TouchableOpacity
+                      key={classType}
+                      style={[styles.classDropdownOption, seatClass === classType && styles.classDropdownOptionSelected]}
+                      onPress={() => {
+                        setSeatClass(classType);
+                        setShowClassModal(false);
+                      }}
+                    >
+                      <Text style={[styles.classDropdownText, seatClass === classType && styles.classDropdownTextSelected]}>
+                        {classType}
+                      </Text>
+                      {seatClass === classType && <Text style={styles.checkmark}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           </ScrollView>
 
-          <TouchableOpacity 
-            style={styles.doneButton}
-            onPress={() => setShowPassengerModal(false)}
-          >
-            <Text style={styles.doneButtonText}>Done</Text>
-          </TouchableOpacity>
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.doneButton}
+              onPress={() => setShowPassengerModal(false)}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
 
-      {/* Class Selection Modal */}
+      {/* Date Selection Modal */}
       <Modal
-        visible={showClassModal}
+        visible={showDateModal}
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowClassModal(false)}>
-              <Text style={styles.closeButton}>✕</Text>
+        <View style={styles.modernDateModalContainer}>
+          {/* Header */}
+          <View style={styles.modernDateHeader}>
+            <Text style={styles.modernModalTitle}>Select Dates</Text>
+            <TouchableOpacity 
+              style={styles.modernCloseButton}
+              onPress={() => setShowDateModal(false)}
+            >
+              <Text style={styles.modernCloseButtonText}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Select Class</Text>
-            <View style={styles.headerSpacer} />
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            {['Economy', 'Premium Economy', 'Business', 'First Class'].map((classType) => (
-              <TouchableOpacity
-                key={classType}
-                style={[styles.classOption, seatClass === classType && styles.classOptionSelected]}
-                onPress={() => {
-                  setSeatClass(classType);
-                  setShowClassModal(false);
-                }}
-              >
-                <Text style={[styles.classOptionText, seatClass === classType && styles.classOptionTextSelected]}>
-                  {classType}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          {/* Modern Date Picker */}
+          <View style={styles.datePickerContainer}>
+            <DateTimePicker
+              mode={selectedTripType === 'roundTrip' ? 'range' : 'single'}
+              startDate={selectedTripType === 'roundTrip' ? selectedDepartureDate : undefined}
+              endDate={selectedTripType === 'roundTrip' ? selectedReturnDate : undefined}
+              date={selectedTripType === 'oneWay' ? selectedDepartureDate : undefined}
+              onChange={(params: any) => {
+                if (selectedTripType === 'roundTrip') {
+                  if (params.startDate) setSelectedDepartureDate(params.startDate as Date);
+                  if (params.endDate) setSelectedReturnDate(params.endDate as Date);
+                } else {
+                  if (params.date) setSelectedDepartureDate(params.date as Date);
+                }
+              }}
+              minDate={new Date()}
+              firstDayOfWeek={1}
+              styles={{
+                selected: { backgroundColor: '#A83442' },
+                selected_label: { color: '#FFFFFF' },
+                today: { borderColor: '#A83442' },
+                today_label: { color: '#A83442' },
+              }}
+            />
+          </View>
+
+          {/* Footer */}
+          <View style={styles.modernDateFooter}>
+            <TouchableOpacity 
+              style={styles.modernDoneButton}
+              onPress={() => setShowDateModal(false)}
+            >
+              <Text style={styles.modernDoneButtonText}>Confirm Dates</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
@@ -661,7 +737,7 @@ const styles = StyleSheet.create({
   profileAvatarText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
   },
   greetingText: {
     flexDirection: 'column',
@@ -673,7 +749,7 @@ const styles = StyleSheet.create({
   },
   username: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
     color: '#000000',
   },
   bellIcon: {
@@ -721,7 +797,7 @@ const styles = StyleSheet.create({
   },
   serviceTabText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
     color: '#6c757d',
   },
   serviceTabTextActive: {
@@ -761,7 +837,7 @@ const styles = StyleSheet.create({
   },
   tripTypeText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '400', // Changed from '500' to normal
     color: '#000000',
   },
   mainContent: {
@@ -810,7 +886,7 @@ const styles = StyleSheet.create({
   },
   formInput: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500', // Changed from '700' to medium
     color: '#000000',
     flex: 1,
     borderWidth: 0,
@@ -872,25 +948,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bottomRow: {
-    flexDirection: 'row',
-    gap: 16,
     marginBottom: 24,
   },
   bottomField: {
     flex: 1,
     minWidth: 0,
   },
-  fieldWrapper: {
-    flex: 1,
-    position: 'relative',
-  },
   dropdownArrow: {
-    position: 'absolute',
-    right: 16,
-    top: '50%',
-    marginTop: -6,
     fontSize: 12,
     color: '#6c757d',
+    marginLeft: 8,
   },
   searchButton: {
     width: '100%',
@@ -908,7 +975,7 @@ const styles = StyleSheet.create({
   searchButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
   },
   addFlightButton: {
     width: '100%',
@@ -924,7 +991,7 @@ const styles = StyleSheet.create({
   addFlightText: {
     color: '#000000',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500', // Changed from '700' to medium
   },
   inputContainer: {
     flexDirection: 'row',
@@ -949,7 +1016,7 @@ const styles = StyleSheet.create({
   },
   formInputText: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500', // Changed from '700' to medium
     color: '#000000',
   },
   dateRowContainer: {
@@ -986,7 +1053,7 @@ const styles = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
     color: '#000000',
   },
   headerSpacer: {
@@ -994,6 +1061,9 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
+  },
+  modalFooter: {
+    paddingBottom: 20,
   },
   passengerRow: {
     flexDirection: 'row',
@@ -1028,11 +1098,11 @@ const styles = StyleSheet.create({
   counterButtonText: {
     fontSize: 20,
     color: '#000000',
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
   },
   counterValue: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600', // Changed from '700' to semi-bold
     color: '#000000',
     paddingHorizontal: 10,
   },
@@ -1051,34 +1121,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#dee2e6',
   },
-  cabinClassLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-  },
   cabinClassValue: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '500', // Changed from '700' to medium
     color: '#000000',
-  },
-  classOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-  },
-  classOptionSelected: {
-    backgroundColor: '#f8f9fa',
-  },
-  classOptionText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  classOptionTextSelected: {
-    color: '#A83442',
   },
   doneButton: {
     width: '100%',
@@ -1091,6 +1137,511 @@ const styles = StyleSheet.create({
   doneButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600', // Changed from '700' to semi-bold
+  },
+  passengerCabinContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minHeight: 60,
+  },
+  passengerSection: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cabinSection: {
+    minWidth: 0,
+  },
+  cabinClassText: {
+    fontSize: 16,
+    fontWeight: '500', // Changed from '700' to medium
+    color: '#000000',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  classDropdown: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  classDropdownOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  classDropdownOptionSelected: {
+    backgroundColor: '#f8f9fa',
+  },
+  classDropdownText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  classDropdownTextSelected: {
+    color: '#A83442',
+  },
+  checkmark: {
+    fontSize: 18,
+    color: '#A83442',
+    marginLeft: 10,
+  },
+  dateModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+  },
+  dateModalHeader: {
+    flexDirection: 'column',
+    marginBottom: 20,
+  },
+  closeButtonContainer: {
+    alignSelf: 'flex-end',
+    padding: 10,
+    marginBottom: 10,
+  },
+  roundTripDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  oneWayDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  dateRangePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    flex: 1,
+    marginRight: 12,
+  },
+  dateSection: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  dateSectionActive: {
+    backgroundColor: '#A83442',
+    borderRadius: 25,
+    paddingVertical: 10,
+  },
+  dateSectionText: {
+    fontSize: 16,
     fontWeight: '700',
+    color: '#6c757d',
+  },
+  dateSectionTextActive: {
+    color: '#FFFFFF',
+  },
+  singleDatePill: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  singleDateText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  dateArrow: {
+    fontSize: 20,
+    color: '#6c757d',
+    marginHorizontal: 10,
+  },
+  dayCounter: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  dayCounterText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  calendarContainer: {
+    flex: 1,
+  },
+  monthSection: {
+    marginBottom: 20,
+  },
+  monthTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  weekHeaderText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+  },
+  dayButton: {
+    width: (width - 40 - 16) / 7, // Adjust for padding and gap
+    aspectRatio: 1,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  dayText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  selectedDayText: {
+    color: '#FFFFFF',
+  },
+  departureDay: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  returnDay: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  rangeDay: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+  },
+  pastDay: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+    opacity: 0.5,
+  },
+  pastDayText: {
+    color: '#6c757d',
+  },
+  emptyDay: {
+    width: (width - 40 - 16) / 7,
+    aspectRatio: 1,
+  },
+  dateModalFooter: {
+    paddingBottom: 20,
+  },
+  singleDateRowContainer: {
+    marginBottom: 20,
+  },
+  modernDateModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+  },
+  modernDateHeader: {
+    marginBottom: 20,
+  },
+  modernHeaderTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  modernModalTitle: {
+    fontSize: 20,
+    fontWeight: '600', // Changed from '700' to semi-bold
+    color: '#000000',
+  },
+  modernCloseButton: {
+    padding: 10,
+  },
+  modernCloseButtonText: {
+    fontSize: 24,
+    color: '#6c757d',
+  },
+  modernDateTabs: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  modernDateTab: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  modernDateTabActive: {
+    backgroundColor: '#A83442',
+    borderRadius: 25,
+    paddingVertical: 10,
+  },
+  modernTabLabel: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernTabDate: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  modernTabDateActive: {
+    color: '#FFFFFF',
+  },
+  modernDateConnector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  modernConnectorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#dee2e6',
+    marginHorizontal: 10,
+  },
+  modernConnectorText: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernCalendarContainer: {
+    flex: 1,
+  },
+  modernMonthContainer: {
+    marginBottom: 20,
+  },
+  modernMonthTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modernWeekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  modernWeekHeaderText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernCalendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+  },
+  modernEmptyDay: {
+    width: (width - 40 - 16) / 7,
+    aspectRatio: 1,
+  },
+  modernDayButton: {
+    width: (width - 40 - 16) / 7, // Adjust for padding and gap
+    aspectRatio: 1,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  modernDayText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  modernTodayButton: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+  },
+  modernDepartureDay: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  modernReturnDay: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  modernRangeDay: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+  },
+  modernPastDay: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+    opacity: 0.5,
+  },
+  modernTodayText: {
+    color: '#000000',
+  },
+  modernSelectedDayText: {
+    color: '#FFFFFF',
+  },
+  modernPastDayText: {
+    color: '#6c757d',
+  },
+  modernDateFooter: {
+    paddingBottom: 20,
+  },
+  modernDoneButton: {
+    width: '100%',
+    backgroundColor: '#000000',
+    borderRadius: 25,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600', // Changed from '700' to semi-bold
+  },
+  datePickerContainer: {
+    flex: 1,
+  },
+  hotelHeader: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  hotelTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  hotelSubtitle: {
+    fontSize: 16,
+    color: '#6c757d',
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  hotelFeatures: {
+    flexDirection: 'column', // Changed from 'row' to 'column'
+    gap: 16, // Added gap for vertical layout
+    marginTop: 20,
+    marginBottom: 20,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  featureIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#e9ecef',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureIconText: {
+    fontSize: 24,
+  },
+  featureContent: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  featureDescription: {
+    fontSize: 14,
+    color: '#6c757d',
+  },
+  howItWorksSection: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 20,
+    padding: 24,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  stepNumber: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#A83442',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 15,
+  },
+  stepNumberText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  stepDescription: {
+    fontSize: 14,
+    color: '#6c757d',
   },
 }); 

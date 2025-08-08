@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { BottomTabNavigator } from './components/BottomTabNavigator';
 import { FlightResultsScreen } from './screens/FlightResultsScreen';
+import { HotelInquiryScreen } from './screens/HotelInquiryScreen';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
 
 // Keep the splash screen visible while we fetch resources
@@ -66,6 +67,14 @@ function AppContent() {
           <Stack.Screen 
             name="FlightResults" 
             component={FlightResultsScreen}
+            options={{
+              presentation: 'card',
+              cardStyle: { backgroundColor: '#D6D5C9' }
+            }}
+          />
+          <Stack.Screen 
+            name="HotelInquiry" 
+            component={HotelInquiryScreen}
             options={{
               presentation: 'card',
               cardStyle: { backgroundColor: '#D6D5C9' }
