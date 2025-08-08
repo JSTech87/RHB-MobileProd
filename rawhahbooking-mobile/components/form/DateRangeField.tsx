@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal } from 'react-native';
-import DateTimePicker from 'react-native-ui-datepicker';
+import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
 import { Typography } from '../../constants/Typography';
 
 interface DateRangeFieldProps {
@@ -11,7 +11,14 @@ interface DateRangeFieldProps {
 
 const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, error }) => {
   const [showDateModal, setShowDateModal] = useState(false);
-  const [tempDates, setTempDates] = useState<{ checkIn: string; checkOut: string }>({ checkIn: '', checkOut: '' });
+  
+  // Local Date state like the flight picker
+  const [localCheckIn, setLocalCheckIn] = useState<Date>(() => 
+    value.checkIn ? new Date(value.checkIn) : new Date()
+  );
+  const [localCheckOut, setLocalCheckOut] = useState<Date>(() => 
+    value.checkOut ? new Date(value.checkOut) : new Date()
+  );
 
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Select date';
@@ -46,48 +53,34 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, e
   };
 
   const handleModalOpen = useCallback(() => {
-    // Initialize temp dates with current values
-    setTempDates(value);
+    // Sync local state with props when opening modal
+    if (value.checkIn) setLocalCheckIn(new Date(value.checkIn));
+    if (value.checkOut) setLocalCheckOut(new Date(value.checkOut));
     setShowDateModal(true);
-  }, [value]);
+  }, [value.checkIn, value.checkOut]);
 
   const handleDateChange = useCallback((params: any) => {
-    console.log('Date change params:', params);
+    console.log('Hotel date change params:', params);
     
+    // Update local state exactly like flight picker
+    if (params.startDate) {
+      setLocalCheckIn(params.startDate as Date);
+    }
+    if (params.endDate) {
+      setLocalCheckOut(params.endDate as Date);
+    }
+    
+    // Update parent only when both dates are selected
     if (params.startDate && params.endDate) {
-      // Both dates selected - update temp state
       const checkInDate = new Date(params.startDate);
       const checkOutDate = new Date(params.endDate);
       
-      if (checkOutDate > checkInDate) {
-        setTempDates({
-          checkIn: checkInDate.toISOString().split('T')[0],
-          checkOut: checkOutDate.toISOString().split('T')[0],
-        });
-      }
-    } else if (params.startDate) {
-      // Only start date selected
-      const checkInDate = new Date(params.startDate);
-      setTempDates({
+      onValueChange({
         checkIn: checkInDate.toISOString().split('T')[0],
-        checkOut: '',
+        checkOut: checkOutDate.toISOString().split('T')[0],
       });
     }
-  }, []);
-
-  const handleDonePress = useCallback(() => {
-    // Only update parent state when user confirms
-    if (tempDates.checkIn && tempDates.checkOut) {
-      onValueChange(tempDates);
-    }
-    setShowDateModal(false);
-  }, [tempDates, onValueChange]);
-
-  const handleModalClose = useCallback(() => {
-    setShowDateModal(false);
-    // Reset temp dates to current values
-    setTempDates(value);
-  }, [value]);
+  }, [onValueChange]);
 
   return (
     <View style={styles.container}>
@@ -116,12 +109,11 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, e
 
       {error && <Text style={styles.errorText}>{error}</Text>}
 
-      {/* Modern Date Selection Modal - Same as Flight Search */}
+      {/* Modern Date Selection Modal - IDENTICAL to Flight Search */}
       <Modal
         visible={showDateModal}
         animationType="slide"
         presentationStyle="pageSheet"
-        onDismiss={handleModalClose}
       >
         <View style={styles.modernDateModalContainer}>
           {/* Header */}
@@ -129,18 +121,18 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, e
             <Text style={styles.modernModalTitle}>Select Dates</Text>
             <TouchableOpacity 
               style={styles.modernCloseButton}
-              onPress={handleModalClose}
+              onPress={() => setShowDateModal(false)}
             >
               <Text style={styles.modernCloseButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Modern Date Picker */}
+          {/* Modern Date Picker - IDENTICAL to Flight Search */}
           <View style={styles.datePickerContainer}>
             <DateTimePicker
               mode="range"
-              startDate={tempDates.checkIn ? new Date(tempDates.checkIn) : undefined}
-              endDate={tempDates.checkOut ? new Date(tempDates.checkOut) : undefined}
+              startDate={localCheckIn}
+              endDate={localCheckOut}
               onChange={handleDateChange}
               minDate={new Date()}
               firstDayOfWeek={1}
@@ -157,7 +149,7 @@ const DateRangeField: React.FC<DateRangeFieldProps> = ({ value, onValueChange, e
           <View style={styles.modernDateFooter}>
             <TouchableOpacity 
               style={styles.modernDoneButton}
-              onPress={handleDonePress}
+              onPress={() => setShowDateModal(false)}
             >
               <Text style={styles.modernDoneButtonText}>Confirm Dates</Text>
             </TouchableOpacity>
@@ -227,7 +219,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: 'center',
   },
-  // Modern Date Modal Styles - Same as Flight Search
+  // Modern Date Modal Styles - IDENTICAL to Flight Search
   modernDateModalContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',

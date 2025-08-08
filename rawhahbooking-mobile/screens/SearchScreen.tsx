@@ -9,6 +9,7 @@ import {
   Dimensions,
   TextInput,
   Modal,
+  Platform,
 } from 'react-native';
 import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
 import FromToPicker from '../components/FromToPicker';
@@ -61,93 +62,50 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
   const renderHotelForm = () => {
     return (
-      <>
-        {/* Hotel Inquiry Header */}
-        <View style={styles.hotelHeader}>
-          <Text style={styles.hotelTitle}>🏨 Professional Hotel Accommodations</Text>
-          <Text style={styles.hotelSubtitle}>
-            Curated selection of premium hotels with exceptional service and unmatched comfort
-          </Text>
-        </View>
+      <View style={styles.hotelContainer}>
+        {/* Main Heading */}
+        <Text style={styles.hotelMainHeading}>Professional Hotel Accommodations</Text>
+        
+        {/* Subheading */}
+        <Text style={styles.hotelSubheading}>
+          A trusted selection of quality hotels offering excellent service, comfort, and value.
+        </Text>
 
-        {/* Hotel Features */}
-        <View style={styles.hotelFeatures}>
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>👑</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Curated Selection</Text>
-              <Text style={styles.featureDescription}>Hand-picked quality hotels worldwide</Text>
-            </View>
+        {/* How It Works Section */}
+        <View style={styles.hotelSection}>
+          <Text style={styles.hotelSectionTitle}>How It Works</Text>
+          <View style={styles.hotelStepItem}>
+            <Text style={styles.hotelStepNumber}>1.</Text>
+            <Text style={styles.hotelStepText}>Tell Us Your Plans – Destination, travel dates, and preferences.</Text>
           </View>
-
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>💰</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Best Rate Guarantee</Text>
-              <Text style={styles.featureDescription}>Competitive pricing assured</Text>
-            </View>
+          <View style={styles.hotelStepItem}>
+            <Text style={styles.hotelStepNumber}>2.</Text>
+            <Text style={styles.hotelStepText}>Get Expert Options – We'll find the most suitable hotels for you.</Text>
           </View>
-
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>⚡</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Instant Response</Text>
-              <Text style={styles.featureDescription}>Get quotes within 10-15 minutes</Text>
-            </View>
-          </View>
-
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Text style={styles.featureIconText}>👥</Text>
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Group Bookings</Text>
-              <Text style={styles.featureDescription}>Special rates for group travel</Text>
-            </View>
+          <View style={styles.hotelStepItem}>
+            <Text style={styles.hotelStepNumber}>3.</Text>
+            <Text style={styles.hotelStepText}>Book Securely – Confirm with confidence at the best rate.</Text>
           </View>
         </View>
 
-        {/* How It Works */}
-        <View style={styles.howItWorksSection}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
-          
-          <View style={styles.stepItem}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>1</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Submit Your Requirements</Text>
-              <Text style={styles.stepDescription}>Tell us your destination, dates, and preferences</Text>
-            </View>
-          </View>
-
-          <View style={styles.stepItem}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>2</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Get Personalized Recommendations</Text>
-              <Text style={styles.stepDescription}>Our specialists curate the best options for you</Text>
-            </View>
-          </View>
-
-          <View style={styles.stepItem}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>3</Text>
-            </View>
-            <View style={styles.stepContent}>
-              <Text style={styles.stepTitle}>Book with Confidence</Text>
-              <Text style={styles.stepDescription}>Secure booking with our best rate guarantee</Text>
-            </View>
-          </View>
+        {/* Quality Selection Section */}
+        <View style={styles.hotelSection}>
+          <Text style={styles.hotelSectionTitle}>Quality Selection</Text>
+          <Text style={styles.hotelBodyText}>Hotels approved for reliability and comfort.</Text>
         </View>
-      </>
+
+        {/* Best Rate Guarantee Section */}
+        <View style={styles.hotelSection}>
+          <Text style={styles.hotelSectionTitle}>Best Rate Guarantee</Text>
+          <Text style={styles.hotelBodyText}>Competitive pricing you can trust.</Text>
+        </View>
+
+        {/* Fast Response Section */}
+        <View style={styles.hotelSection}>
+          <Text style={styles.hotelSectionTitle}>Fast Response</Text>
+          <Text style={styles.hotelBodyText}>Booking options sent within 10–15 minutes.</Text>
+        </View>
+      </View>
     );
   };
 
@@ -1542,106 +1500,76 @@ const styles = StyleSheet.create({
   datePickerContainer: {
     flex: 1,
   },
-  hotelHeader: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  hotelContainer: {
+    paddingTop: 24,
+    paddingHorizontal: '5%', // 90% width, 5% margin on each side
+    maxWidth: '90%',
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
   },
-  hotelTitle: {
-    fontSize: 24,
+  hotelMainHeading: {
+    fontSize: width > 768 ? 28 : 24, // Responsive: 26-28px on tablet, 22-24px on mobile
     fontWeight: '700',
-    color: '#000000',
+    color: '#A83442', // Brand color for main heading
+    textAlign: 'left', // Left aligned as specified
     marginBottom: 8,
-    textAlign: 'center',
+    lineHeight: width > 768 ? 36 : 32,
   },
-  hotelSubtitle: {
-    fontSize: 16,
+  hotelSubheading: {
+    fontSize: width > 768 ? 17 : 16, // 15-16px base, slightly larger on tablet
+    lineHeight: 22,
+    fontWeight: '400',
     color: '#6c757d',
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  hotelFeatures: {
-    flexDirection: 'column', // Changed from 'row' to 'column'
-    gap: 16, // Added gap for vertical layout
-    marginTop: 20,
-    marginBottom: 20,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  featureIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#e9ecef',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureIconText: {
-    fontSize: 24,
-  },
-  featureContent: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  featureDescription: {
-    fontSize: 14,
-    color: '#6c757d',
-  },
-  howItWorksSection: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  stepItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    textAlign: 'left', // Left aligned as specified
     marginBottom: 16,
+    maxWidth: '95%', // Ensure line length stays under ~60 characters
   },
-  stepNumber: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: '#A83442',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 15,
+  hotelSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginVertical: width > 768 ? 20 : 16, // More spacing on tablet
+    borderWidth: 1,
+    borderColor: '#A83442', // Brand color border
+    shadowColor: '#A83442', // Brand color shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  stepNumberText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitle: {
-    fontSize: 16,
+  hotelSectionTitle: {
+    fontSize: width > 768 ? 18 : 17, // 16-17px base, slightly larger on tablet
     fontWeight: '600',
-    color: '#000000',
-    marginBottom: 4,
+    color: '#A83442', // Brand color for section titles
+    textAlign: 'left', // Left aligned as specified
+    marginBottom: 12,
   },
-  stepDescription: {
-    fontSize: 14,
+  hotelStepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start', // Top align for better text flow
+    marginBottom: 8, // 8px between list items as specified
+    paddingRight: 10, // Prevent text from touching edge
+  },
+  hotelStepNumber: {
+    fontSize: width > 768 ? 16 : 15, // Body text size
+    fontWeight: '600',
+    color: '#A83442',
+    marginRight: 8,
+    minWidth: 20, // Ensure consistent alignment
+  },
+  hotelStepText: {
+    fontSize: width > 768 ? 16 : 15, // 14-15px body text, slightly larger on tablet
+    lineHeight: width > 768 ? 22 : 20, // 20-22px line height
+    fontWeight: '400',
+    color: '#000000',
+    flex: 1,
+    textAlign: 'left',
+  },
+  hotelBodyText: {
+    fontSize: width > 768 ? 16 : 15, // 14-15px body text
+    lineHeight: width > 768 ? 22 : 20, // 20-22px line height
+    fontWeight: '400',
     color: '#6c757d',
+    textAlign: 'left', // Left aligned as specified
   },
 }); 
