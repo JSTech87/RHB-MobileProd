@@ -30,6 +30,16 @@
     "web": {
       "favicon": "./assets/Favicon Original.ico"
     },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF",
+          "image": "./assets/rawhah-logo.png",
+          "imageWidth": 200
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "69b5ae12-3e24-4a83-a955-b00540b79e2a"
