@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { LoginScreen } from './screens/LoginScreen';
 import { BottomTabNavigator } from './components/BottomTabNavigator';
 import { FlightResultsScreen } from './screens/FlightResultsScreen';
+import { FlightCheckoutScreen } from './screens/FlightCheckoutScreen';
 import { HotelInquiryScreen } from './screens/HotelInquiryScreen';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
 
@@ -73,6 +74,14 @@ function AppContent() {
             }}
           />
           <Stack.Screen 
+            name="FlightCheckout" 
+            component={FlightCheckoutScreen}
+            options={{
+              presentation: 'card',
+              cardStyle: { backgroundColor: '#D6D5C9' }
+            }}
+          />
+          <Stack.Screen 
             name="HotelInquiry" 
             component={HotelInquiryScreen}
             options={{
@@ -88,13 +97,12 @@ function AppContent() {
   return (
     <View style={styles.container}>
       <LoginScreen />
-      {/* Temporary test button */}
-      <View style={styles.testButtonContainer}>
+      <View style={styles.testModeContainer}>
         <TouchableOpacity 
-          style={styles.testButton}
+          style={styles.testModeButton}
           onPress={() => setTestMode(true)}
         >
-          <Text style={styles.testButtonText}>Skip Login (Test Mode)</Text>
+          <Text style={styles.testModeButtonText}>Continue without Login (Test Mode)</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -112,6 +120,7 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#D6D5C9',
   },
   loadingContainer: {
     flex: 1,
@@ -120,26 +129,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#D6D5C9',
   },
   loadingText: {
-    fontSize: 18,
-    color: '#333333',
-    fontWeight: '500',
+    fontSize: 16,
+    color: '#000000',
   },
-  testButtonContainer: {
+  testModeContainer: {
     position: 'absolute',
     bottom: 50,
     left: 20,
     right: 20,
   },
-  testButton: {
-    backgroundColor: '#10b981',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
+  testModeButton: {
+    backgroundColor: '#A83442',
+    padding: 15,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  testButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
+  testModeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
     fontWeight: '600',
   },
 });

@@ -8,6 +8,7 @@ import {
   Dimensions,
   StatusBar,
   Animated,
+  Alert,
 } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -167,6 +168,14 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
       newFlippedCards.add(flightId);
     }
     setFlippedCards(newFlippedCards);
+  };
+
+  // ADD THIS FUNCTION - Navigation handler for Book Now button
+  const handleBookNow = (flight: FlightData) => {
+    navigation?.navigate('FlightCheckout', {
+      flight,
+      passengerCount: 1,
+    });
   };
 
   const FlightCard = ({ flight }: { flight: FlightData }) => {
@@ -346,7 +355,7 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
                   <Text style={styles.totalPrice}>{flight.price}</Text>
                   <Text style={styles.perPax}>/pax</Text>
                 </View>
-                <TouchableOpacity style={styles.bookButton}>
+                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(flight)}>
                   <Text style={styles.bookButtonText}>Book Now</Text>
                 </TouchableOpacity>
               </View>
