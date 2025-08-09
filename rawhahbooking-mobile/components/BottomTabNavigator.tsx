@@ -1,30 +1,52 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SearchScreen } from '../screens/SearchScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 
 const Tab = createBottomTabNavigator();
 
 // Icon components for tabs
 const HomeIcon = ({ focused }: { focused: boolean }) => (
-  <View style={[styles.icon, { backgroundColor: focused ? '#A83442' : '#6c757d' }]} />
+  <Ionicons 
+    name="home" 
+    size={24} 
+    color={focused ? '#A83442' : '#6c757d'} 
+  />
 );
 
 const SearchIcon = ({ focused }: { focused: boolean }) => (
-  <View style={[styles.icon, { backgroundColor: focused ? '#A83442' : '#6c757d' }]} />
+  <Ionicons 
+    name="search" 
+    size={24} 
+    color={focused ? '#A83442' : '#6c757d'} 
+  />
 );
 
 const BookingsIcon = ({ focused }: { focused: boolean }) => (
-  <View style={[styles.icon, { backgroundColor: focused ? '#A83442' : '#6c757d' }]} />
+  <MaterialIcons 
+    name="event" 
+    size={24} 
+    color={focused ? '#A83442' : '#6c757d'} 
+  />
 );
 
 const NewsIcon = ({ focused }: { focused: boolean }) => (
-  <View style={[styles.icon, { backgroundColor: focused ? '#A83442' : '#6c757d' }]} />
+  <MaterialIcons 
+    name="star" 
+    size={24} 
+    color={focused ? '#A83442' : '#6c757d'} 
+  />
 );
 
 const ProfileIcon = ({ focused }: { focused: boolean }) => (
-  <View style={[styles.icon, { backgroundColor: focused ? '#A83442' : '#6c757d' }]} />
+  <Ionicons 
+    name="person" 
+    size={24} 
+    color={focused ? '#A83442' : '#6c757d'} 
+  />
 );
 
 // Placeholder screens with beige backgrounds
@@ -32,13 +54,6 @@ const NewsScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderTitle}>News</Text>
     <Text style={styles.placeholderText}>Latest travel news and updates</Text>
-  </View>
-);
-
-const ProfileScreen = () => (
-  <View style={styles.placeholderContainer}>
-    <Text style={styles.placeholderTitle}>Profile</Text>
-    <Text style={styles.placeholderText}>Manage your profile and settings</Text>
   </View>
 );
 
@@ -55,17 +70,21 @@ export const BottomTabNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#e9ecef',
+          backgroundColor: '#D6D5C9',
+          borderTopColor: 'rgba(255, 255, 255, 0.3)',
           borderTopWidth: 1,
-          paddingTop: 10,
-          paddingBottom: 20,
-          height: 80,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 4,
+          paddingTop: 15,
+          paddingBottom: 25,
+          height: 90,
+          shadowColor: 'rgba(31, 38, 135, 0.2)',
+          shadowOffset: { width: 0, height: -10 },
+          shadowOpacity: 1,
+          shadowRadius: 40,
           elevation: 8,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
         },
         tabBarActiveTintColor: '#A83442',
         tabBarInactiveTintColor: '#6c757d',
@@ -116,11 +135,6 @@ export const BottomTabNavigator: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  icon: {
-    width: 24,
-    height: 24,
-    borderRadius: 2,
-  },
   placeholderContainer: {
     flex: 1,
     justifyContent: 'center',
