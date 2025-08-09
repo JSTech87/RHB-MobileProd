@@ -24,7 +24,7 @@ interface Document {
   imageUri?: string;
 }
 
-export const TravelDocumentsScreen: React.FC = () => {
+export const TravelDocumentsScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
 
@@ -223,7 +223,7 @@ export const TravelDocumentsScreen: React.FC = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Travel Documents</Text>

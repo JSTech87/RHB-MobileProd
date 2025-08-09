@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export const PrivacySecurityScreen: React.FC = () => {
+export const PrivacySecurityScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [biometricEnabled, setBiometricEnabled] = useState(true);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [dataSharing, setDataSharing] = useState(false);
@@ -106,7 +106,7 @@ export const PrivacySecurityScreen: React.FC = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy & Security</Text>

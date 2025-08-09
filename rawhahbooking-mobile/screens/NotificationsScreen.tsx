@@ -20,7 +20,7 @@ interface NotificationSetting {
   category: 'bookings' | 'travel' | 'promotions' | 'account';
 }
 
-export const NotificationsScreen: React.FC = () => {
+export const NotificationsScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [smsEnabled, setSmsEnabled] = useState(false);
@@ -225,7 +225,7 @@ export const NotificationsScreen: React.FC = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Notifications</Text>

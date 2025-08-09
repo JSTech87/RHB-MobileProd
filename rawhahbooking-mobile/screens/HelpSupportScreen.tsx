@@ -19,7 +19,7 @@ interface FAQItem {
   category: 'booking' | 'account' | 'payment' | 'travel';
 }
 
-export const HelpSupportScreen: React.FC = () => {
+export const HelpSupportScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [expandedFAQ, setExpandedFAQ] = useState<string | null>(null);
 
   const faqs: FAQItem[] = [
@@ -155,7 +155,7 @@ export const HelpSupportScreen: React.FC = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Help & Support</Text>

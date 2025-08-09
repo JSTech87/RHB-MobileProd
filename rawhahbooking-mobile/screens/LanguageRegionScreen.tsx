@@ -25,7 +25,7 @@ interface Region {
   flag: string;
 }
 
-export const LanguageRegionScreen: React.FC = () => {
+export const LanguageRegionScreen: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [selectedLanguage, setSelectedLanguage] = useState('en-US');
   const [selectedRegion, setSelectedRegion] = useState('US');
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
@@ -163,7 +163,7 @@ export const LanguageRegionScreen: React.FC = () => {
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Language & Region</Text>

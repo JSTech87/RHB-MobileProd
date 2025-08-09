@@ -21,6 +21,8 @@ import { LanguageRegionScreen } from './LanguageRegionScreen';
 import { NotificationsScreen } from './NotificationsScreen';
 import { PrivacySecurityScreen } from './PrivacySecurityScreen';
 import { HelpSupportScreen } from './HelpSupportScreen';
+import { FamilyManagementScreen } from './FamilyManagementScreen';
+import { AddMemberScreen } from './AddMemberScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -161,11 +163,11 @@ const ProfileScreen: React.FC = () => {
   };
 
   const handleAddMember = () => {
-    Alert.alert('Add Family Member', 'Add member form would open here');
+    setCurrentScreen('addMember');
   };
 
   const handleManageFamily = () => {
-    Alert.alert('Manage Family', 'Family management screen would open here');
+    setCurrentScreen('familyManagement');
   };
 
   const handleDocumentAlert = () => {
@@ -189,6 +191,8 @@ const ProfileScreen: React.FC = () => {
   const handleNavigateToNotifications = () => setCurrentScreen('notifications');
   const handleNavigateToPrivacy = () => setCurrentScreen('privacy');
   const handleNavigateToHelp = () => setCurrentScreen('help');
+  const handleNavigateToFamilyManagement = () => setCurrentScreen('familyManagement');
+  const handleNavigateToAddMember = () => setCurrentScreen('addMember');
 
   const handleBackToProfile = () => setCurrentScreen('profile');
 
@@ -196,15 +200,23 @@ const ProfileScreen: React.FC = () => {
   const renderCurrentScreen = () => {
     switch (currentScreen) {
       case 'documents':
-        return <TravelDocumentsScreen />;
+        return <TravelDocumentsScreen onBack={handleBackToProfile} />;
       case 'language':
-        return <LanguageRegionScreen />;
+        return <LanguageRegionScreen onBack={handleBackToProfile} />;
       case 'notifications':
-        return <NotificationsScreen />;
+        return <NotificationsScreen onBack={handleBackToProfile} />;
       case 'privacy':
-        return <PrivacySecurityScreen />;
+        return <PrivacySecurityScreen onBack={handleBackToProfile} />;
       case 'help':
-        return <HelpSupportScreen />;
+        return <HelpSupportScreen onBack={handleBackToProfile} />;
+      case 'familyManagement':
+        return <FamilyManagementScreen 
+          onBack={handleBackToProfile} 
+          onAddMember={handleNavigateToAddMember}
+          familyMembers={familyMembers}
+        />;
+      case 'addMember':
+        return <AddMemberScreen onBack={handleBackToProfile} />;
       default:
         return renderProfileScreen();
     }
