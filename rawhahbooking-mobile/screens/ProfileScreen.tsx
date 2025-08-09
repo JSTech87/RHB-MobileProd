@@ -15,6 +15,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { Typography } from '../constants/Typography';
 
+// Import the new screens
+import { TravelDocumentsScreen } from './TravelDocumentsScreen';
+import { LanguageRegionScreen } from './LanguageRegionScreen';
+import { NotificationsScreen } from './NotificationsScreen';
+import { PrivacySecurityScreen } from './PrivacySecurityScreen';
+import { HelpSupportScreen } from './HelpSupportScreen';
+
 const { width } = Dimensions.get('window');
 
 interface FamilyMember {
@@ -41,6 +48,7 @@ interface TravelStats {
 const ProfileScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [currentScreen, setCurrentScreen] = useState<string>('profile');
 
   // Mock data - in production, this would come from API/Redux
   const userProfile = {
@@ -169,10 +177,37 @@ const ProfileScreen: React.FC = () => {
       'Documents Expiring',
       `${expiringDocs.length} documents need attention:\n${expiringDocs.map(m => `• ${m.name}`).join('\n')}`,
       [
-        { text: 'View Details', onPress: () => console.log('Navigate to documents') },
+        { text: 'View Details', onPress: () => setCurrentScreen('documents') },
         { text: 'Later', style: 'cancel' },
       ]
     );
+  };
+
+  // Navigation handlers for settings screens
+  const handleNavigateToDocuments = () => setCurrentScreen('documents');
+  const handleNavigateToLanguage = () => setCurrentScreen('language');
+  const handleNavigateToNotifications = () => setCurrentScreen('notifications');
+  const handleNavigateToPrivacy = () => setCurrentScreen('privacy');
+  const handleNavigateToHelp = () => setCurrentScreen('help');
+
+  const handleBackToProfile = () => setCurrentScreen('profile');
+
+  // Render different screens based on currentScreen state
+  const renderCurrentScreen = () => {
+    switch (currentScreen) {
+      case 'documents':
+        return <TravelDocumentsScreen />;
+      case 'language':
+        return <LanguageRegionScreen />;
+      case 'notifications':
+        return <NotificationsScreen />;
+      case 'privacy':
+        return <PrivacySecurityScreen />;
+      case 'help':
+        return <HelpSupportScreen />;
+      default:
+        return renderProfileScreen();
+    }
   };
 
   const StatusBadge: React.FC<{ status: string; expiry?: string }> = ({ status, expiry }) => {
@@ -281,7 +316,7 @@ const ProfileScreen: React.FC = () => {
     );
   };
 
-  return (
+  const renderProfileScreen = () => (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
@@ -409,13 +444,38 @@ const ProfileScreen: React.FC = () => {
 
           <View style={styles.settingsList}>
             {[
-              { icon: 'document-text', title: 'Travel Documents', subtitle: 'Manage passports and visas' },
-              { icon: 'language', title: 'Language & Region', subtitle: 'English (US)' },
-              { icon: 'notifications', title: 'Notifications', subtitle: 'Push, email, SMS preferences' },
-              { icon: 'shield-checkmark', title: 'Privacy & Security', subtitle: 'Account security settings' },
-              { icon: 'help-circle', title: 'Help & Support', subtitle: '24/7 customer support' },
+              { 
+                icon: 'document-text', 
+                title: 'Travel Documents', 
+                subtitle: 'Manage passports and visas',
+                onPress: handleNavigateToDocuments
+              },
+              { 
+                icon: 'language', 
+                title: 'Language & Region', 
+                subtitle: 'English (US)',
+                onPress: handleNavigateToLanguage
+              },
+              { 
+                icon: 'notifications', 
+                title: 'Notifications', 
+                subtitle: 'Push, email, SMS preferences',
+                onPress: handleNavigateToNotifications
+              },
+              { 
+                icon: 'shield-checkmark', 
+                title: 'Privacy & Security', 
+                subtitle: 'Account security settings',
+                onPress: handleNavigateToPrivacy
+              },
+              { 
+                icon: 'help-circle', 
+                title: 'Help & Support', 
+                subtitle: '24/7 customer support',
+                onPress: handleNavigateToHelp
+              },
             ].map((item, index) => (
-              <TouchableOpacity key={index} style={styles.settingItem}>
+              <TouchableOpacity key={index} style={styles.settingItem} onPress={item.onPress}>
                 <View style={styles.settingItemLeft}>
                   <Ionicons name={item.icon as any} size={20} color="#6B7280" />
                   <View style={styles.settingItemText}>
@@ -442,6 +502,8 @@ const ProfileScreen: React.FC = () => {
       </ScrollView>
     </SafeAreaView>
   );
+
+  return renderCurrentScreen();
 };
 
 const styles = StyleSheet.create({
