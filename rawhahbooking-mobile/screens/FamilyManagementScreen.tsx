@@ -21,6 +21,7 @@ interface FamilyMember {
   age: number;
   dateOfBirth: string;
   passportStatus: 'valid' | 'expiring' | 'expired';
+  passportNumber: string;
   passportExpiry: string;
   visaStatus: 'valid' | 'expiring' | 'expired' | 'none';
   visaExpiry?: string;
@@ -101,6 +102,13 @@ export const FamilyManagementScreen: React.FC<{
     }
   };
 
+  const maskPassportNumber = (passportNumber: string) => {
+    if (!passportNumber || passportNumber.length < 4) return passportNumber;
+    const lastFour = passportNumber.slice(-4);
+    const masked = '•'.repeat(passportNumber.length - 4);
+    return `${masked}${lastFour}`;
+  };
+
   const StatusBadge: React.FC<{ status: string; expiry?: string }> = ({ status, expiry }) => {
     const getStatusConfig = () => {
       switch (status) {
@@ -178,14 +186,22 @@ export const FamilyManagementScreen: React.FC<{
 
       <View style={styles.documentStatus}>
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Passport:</Text>
+          <View style={styles.documentInfo}>
+            <Text style={styles.statusLabel}>Passport:</Text>
+            <Text style={styles.documentNumber}>{maskPassportNumber(member.passportNumber)}</Text>
+          </View>
           <StatusBadge 
             status={member.passportStatus} 
             expiry={member.passportExpiry ? `Exp: ${new Date(member.passportExpiry).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : undefined}
           />
         </View>
         <View style={styles.statusRow}>
-          <Text style={styles.statusLabel}>Visa:</Text>
+          <View style={styles.documentInfo}>
+            <Text style={styles.statusLabel}>Visa:</Text>
+            {member.visaStatus !== 'none' && (
+              <Text style={styles.documentNumber}>••••••••</Text>
+            )}
+          </View>
           <StatusBadge 
             status={member.visaStatus} 
             expiry={member.visaExpiry ? `Exp: ${new Date(member.visaExpiry).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}` : undefined}
@@ -667,10 +683,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  documentInfo: {
+    flex: 1,
+  },
   statusLabel: {
     fontSize: 14,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  documentNumber: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#374151',
+    marginTop: 2,
+    fontFamily: 'monospace',
   },
   statusBadge: {
     paddingHorizontal: 12,

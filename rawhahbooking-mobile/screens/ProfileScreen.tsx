@@ -38,6 +38,7 @@ interface FamilyMember {
   visaExpiry?: string;
   specialNeeds?: string[];
   profileImage?: string;
+  passportNumber: string;
 }
 
 interface TravelStats {
@@ -70,6 +71,7 @@ const ProfileScreen: React.FC = () => {
       age: 32,
       dateOfBirth: '1992-03-15',
       passportStatus: 'valid',
+      passportNumber: 'A12345678',
       passportExpiry: '2028-05-20',
       visaStatus: 'valid',
       visaExpiry: '2025-12-31',
@@ -82,6 +84,7 @@ const ProfileScreen: React.FC = () => {
       age: 8,
       dateOfBirth: '2016-07-10',
       passportStatus: 'valid',
+      passportNumber: 'B87654321',
       passportExpiry: '2027-01-15',
       visaStatus: 'expiring',
       visaExpiry: '2024-03-20',
@@ -94,6 +97,7 @@ const ProfileScreen: React.FC = () => {
       age: 5,
       dateOfBirth: '2019-11-22',
       passportStatus: 'expiring',
+      passportNumber: 'C11223344',
       passportExpiry: '2024-04-10',
       visaStatus: 'valid',
       visaExpiry: '2026-08-15',
@@ -106,6 +110,7 @@ const ProfileScreen: React.FC = () => {
       age: 2,
       dateOfBirth: '2022-01-05',
       passportStatus: 'valid',
+      passportNumber: 'D99887766',
       passportExpiry: '2027-06-30',
       visaStatus: 'none',
       specialNeeds: ['Infant seat', 'Infant meal'],
@@ -693,12 +698,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
     paddingVertical: 16,
-    gap: 8,
+    paddingHorizontal: 8,
+    gap: 6,
   },
   secondaryButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#A83442',
+    textAlign: 'center',
+    flexShrink: 1,
   },
   membersContainer: {
     gap: 16,
