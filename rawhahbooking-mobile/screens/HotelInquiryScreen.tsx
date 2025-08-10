@@ -192,8 +192,8 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       }
     }
     return true;
-  };
-
+      };
+      
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
@@ -232,7 +232,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       message += `📅 Check-out: ${stay.checkOut || 'Not selected'}\n`;
       message += `🏨 Rooms: ${stay.rooms}\n\n`;
     });
-    
+      
     // Group booking section
     if (formData.isGroupBooking) {
       message += `🎯 GROUP BOOKING:\n`;
@@ -262,11 +262,11 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       message += `Name: ${formData.fullName}\n`;
       message += `Email: ${formData.email}\n`;
       message += `Phone: ${formData.phone}\n`;
-    }
+        }
     
     if (formData.specialRequests.trim()) {
       message += `\n📝 Special Requests:\n${formData.specialRequests}\n`;
-    }
+      }
     
     if (formData.isGroupBooking && formData.groupDetails.specialGroupRequests.trim()) {
       message += `\n🏢 Group Requirements:\n${formData.groupDetails.specialGroupRequests}\n`;
