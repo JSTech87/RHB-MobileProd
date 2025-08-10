@@ -163,12 +163,12 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'confirmed': return '#10B981';
-      case 'upcoming': return '#3B82F6';
-      case 'pending': return '#F59E0B';
-      case 'cancelled': return '#EF4444';
-      case 'completed': return '#6B7280';
-      default: return '#6B7280';
+      case 'confirmed': return '#059669';
+      case 'upcoming': return '#6366F1';
+      case 'pending': return '#D97706';
+      case 'cancelled': return '#DC2626';
+      case 'completed': return '#64748B';
+      default: return '#64748B';
     }
   };
 
@@ -183,10 +183,10 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'flight': return '#3B82F6';
-      case 'hotel': return '#A83442';
-      case 'inquiry': return '#8B5CF6';
-      default: return '#6B7280';
+      case 'flight': return '#64748B';
+      case 'hotel': return '#6366F1';
+      case 'inquiry': return '#D97706';
+      default: return '#64748B';
     }
   };
 
@@ -455,7 +455,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FAFAFA',
   },
   header: {
     flexDirection: 'row',
@@ -464,35 +464,47 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#111827',
   },
   filterButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
   },
   tabContainer: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    marginHorizontal: 20,
+    marginTop: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   tabScrollContent: {
     paddingHorizontal: 20,
@@ -504,22 +516,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F8FAFC',
     gap: 8,
   },
   activeTab: {
-    backgroundColor: '#A83442',
+    backgroundColor: '#6366F1',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#64748B',
   },
   activeTabText: {
     color: '#FFFFFF',
   },
   tabBadge: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: '#E2E8F0',
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -532,7 +544,7 @@ const styles = StyleSheet.create({
   tabBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: '#64748B',
   },
   activeTabBadgeText: {
     color: '#FFFFFF',
@@ -546,81 +558,79 @@ const styles = StyleSheet.create({
   },
   bookingCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   bookingHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   typeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   bookingInfo: {
     flex: 1,
   },
   bookingTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   bookingSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 3,
   },
   bookingDate: {
-    fontSize: 13,
-    color: '#9CA3AF',
+    fontSize: 12,
+    color: '#94A3B8',
   },
   bookingMeta: {
     alignItems: 'flex-end',
   },
   bookingPrice: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#A83442',
-    marginBottom: 8,
+    color: '#6366F1',
+    marginBottom: 6,
   },
   statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     alignSelf: 'flex-end',
   },
   statusText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
   bookingMetadata: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
+    gap: 12,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
   },
   metaText: {
-    fontSize: 12,
-    color: '#6B7280',
+    fontSize: 11,
+    color: '#64748B',
   },
   emptyState: {
     flex: 1,
@@ -629,15 +639,15 @@ const styles = StyleSheet.create({
     paddingVertical: 60,
   },
   emptyTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#111827',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
+    fontSize: 14,
+    color: '#64748B',
     textAlign: 'center',
     paddingHorizontal: 40,
   },
@@ -653,11 +663,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#F1F5F9',
   },
   modalCancel: {
     fontSize: 16,
-    color: '#A83442',
+    color: '#6366F1',
     fontWeight: '500',
   },
   modalTitle: {
@@ -673,20 +683,20 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   detailCard: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 16,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
     padding: 20,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   detailHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   detailIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -695,25 +705,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   detailTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
   },
   detailSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 12,
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 10,
   },
   detailStatusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 16,
+    borderRadius: 12,
     alignSelf: 'flex-start',
   },
   detailStatusText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
   },
   priceContainer: {
@@ -723,14 +733,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   priceLabel: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: 12,
+    color: '#64748B',
     marginBottom: 4,
   },
   priceValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#A83442',
+    color: '#6366F1',
   },
   detailSection: {
     marginBottom: 24,

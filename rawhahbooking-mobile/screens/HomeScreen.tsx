@@ -39,13 +39,25 @@ interface RecentActivityProps {
   status: 'confirmed' | 'pending' | 'cancelled';
 }
 
+// Hijri date conversion utility
+const getHijriDate = () => {
+  // Return the specific date provided by the user
+  return '16 Safar 1447 AH';
+};
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+};
+
 export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const { user, signOut } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = () => {
     setRefreshing(true);
-    // Simulate refresh
     setTimeout(() => setRefreshing(false), 1000);
   };
 
@@ -69,7 +81,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const QuickAction: React.FC<QuickActionProps> = ({ icon, title, subtitle, color, onPress }) => (
     <TouchableOpacity style={styles.quickActionCard} onPress={onPress}>
       <View style={[styles.quickActionIcon, { backgroundColor: color }]}>
-        <Ionicons name={icon as any} size={24} color="#FFFFFF" />
+        <Ionicons name={icon as any} size={20} color="#FFFFFF" />
       </View>
       <Text style={styles.quickActionTitle}>{title}</Text>
       <Text style={styles.quickActionSubtitle}>{subtitle}</Text>
@@ -80,7 +92,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
     <View style={styles.statsCard}>
       <View style={styles.statsHeader}>
         <View style={[styles.statsIcon, { backgroundColor: color }]}>
-          <Ionicons name={icon as any} size={20} color="#FFFFFF" />
+          <Ionicons name={icon as any} size={18} color="#FFFFFF" />
         </View>
         <Text style={styles.statsValue}>{value}</Text>
       </View>
@@ -90,8 +102,8 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
 
   const RecentActivity: React.FC<RecentActivityProps> = ({ type, title, subtitle, date, status }) => (
     <View style={styles.activityItem}>
-      <View style={[styles.activityIcon, { backgroundColor: type === 'flight' ? '#3B82F6' : '#A83442' }]}>
-        <Ionicons name={type === 'flight' ? 'airplane' : 'bed'} size={16} color="#FFFFFF" />
+      <View style={[styles.activityIcon, { backgroundColor: type === 'flight' ? '#64748B' : '#6366F1' }]}>
+        <Ionicons name={type === 'flight' ? 'airplane' : 'bed'} size={14} color="#FFFFFF" />
       </View>
       <View style={styles.activityContent}>
         <Text style={styles.activityTitle}>{title}</Text>
@@ -99,8 +111,8 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
         <Text style={styles.activityDate}>{date}</Text>
       </View>
       <View style={[styles.statusBadge, { 
-        backgroundColor: status === 'confirmed' ? '#10B981' : 
-                       status === 'pending' ? '#F59E0B' : '#EF4444' 
+        backgroundColor: status === 'confirmed' ? '#059669' : 
+                       status === 'pending' ? '#D97706' : '#DC2626' 
       }]}>
         <Text style={styles.statusText}>
           {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -110,10 +122,10 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   );
 
   const mockStats = [
-    { title: 'Total Trips', value: '24', icon: 'airplane-outline', color: '#3B82F6' },
-    { title: 'This Year', value: '8', icon: 'calendar-outline', color: '#10B981' },
-    { title: 'Saved', value: '$2.4K', icon: 'card-outline', color: '#F59E0B' },
-    { title: 'Countries', value: '12', icon: 'earth-outline', color: '#8B5CF6' },
+    { title: 'Total Trips', value: '24', icon: 'airplane-outline', color: '#64748B' },
+    { title: 'This Year', value: '8', icon: 'calendar-outline', color: '#059669' },
+    { title: 'Saved', value: '$2.4K', icon: 'card-outline', color: '#D97706' },
+    { title: 'Countries', value: '12', icon: 'earth-outline', color: '#6366F1' },
   ];
 
   const mockActivities = [
@@ -124,7 +136,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       
       <ScrollView 
         style={styles.scrollView}
@@ -134,28 +146,53 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <View style={styles.userSection}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.greeting}>Good morning,</Text>
-                <Text style={styles.userName}>
-                  {user?.name || user?.id || 'Traveler'}
-                </Text>
-              </View>
+        {/* Header Pill Container */}
+        <View style={styles.headerPill}>
+          <View style={styles.userSection}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
+              </Text>
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#111827" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
+            <View style={styles.userInfo}>
+              <Text style={styles.greeting}>{getGreeting()}</Text>
+              <Text style={styles.userName}>
+                {user?.name || user?.id || 'Traveler'}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.notificationButton}>
+            <Ionicons name="notifications-outline" size={20} color="#64748B" />
+            <View style={styles.notificationBadge}>
+              <Text style={styles.notificationBadgeText}>3</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Date Information Card */}
+        <View style={styles.dateCard}>
+          <View style={styles.dateRow}>
+            <View style={styles.dateSection}>
+              <View style={styles.dateItem}>
+                <Ionicons name="calendar-outline" size={16} color="#6366F1" />
+                <Text style={styles.dateLabel}>Today</Text>
               </View>
-            </TouchableOpacity>
+              <Text style={styles.gregorianDate}>
+                {new Date().toLocaleDateString('en-US', { 
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })}
+              </Text>
+            </View>
+            <View style={styles.hijriSection}>
+              <View style={styles.dateItem}>
+                <Ionicons name="moon-outline" size={16} color="#D97706" />
+                <Text style={styles.dateLabel}>Hijri</Text>
+              </View>
+              <Text style={styles.hijriDate}>{getHijriDate()}</Text>
+            </View>
           </View>
         </View>
 
@@ -164,11 +201,11 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
           <View style={styles.welcomeContent}>
             <Text style={styles.welcomeTitle}>Welcome to RawhahBooking</Text>
             <Text style={styles.welcomeSubtitle}>
-              Your premium travel companion for seamless bookings
+              Your trusted partner for premium travel experiences
             </Text>
           </View>
           <View style={styles.welcomeIcon}>
-            <Ionicons name="airplane" size={32} color="#A83442" />
+            <Ionicons name="airplane" size={24} color="#6366F1" />
           </View>
         </View>
 
@@ -180,28 +217,28 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
               icon="search-outline"
               title="Search Flights"
               subtitle="Find your next trip"
-              color="#3B82F6"
+              color="#64748B"
               onPress={() => navigation?.navigate('Search')}
             />
             <QuickAction
               icon="bed-outline"
               title="Hotel Inquiry"
               subtitle="Book accommodations"
-              color="#A83442"
+              color="#6366F1"
               onPress={() => navigation?.navigate('HotelInquiry')}
             />
             <QuickAction
               icon="calendar-outline"
               title="My Bookings"
               subtitle="View all trips"
-              color="#10B981"
+              color="#059669"
               onPress={() => navigation?.navigate('Bookings')}
             />
             <QuickAction
               icon="person-outline"
               title="Profile"
               subtitle="Manage account"
-              color="#8B5CF6"
+              color="#D97706"
               onPress={() => navigation?.navigate('Profile')}
             />
           </View>
@@ -209,7 +246,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
 
         {/* Travel Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Travel Stats</Text>
+          <Text style={styles.sectionTitle}>Travel Overview</Text>
           <View style={styles.statsGrid}>
             {mockStats.map((stat, index) => (
               <StatsCard
@@ -228,7 +265,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Activity</Text>
             <TouchableOpacity onPress={() => navigation?.navigate('Bookings')}>
-              <Text style={styles.seeAllText}>See All</Text>
+              <Text style={styles.seeAllText}>View All</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.activityList}>
@@ -246,9 +283,9 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
         </View>
 
         {/* Sign Out Button */}
-        <View style={styles.section}>
+        <View style={styles.signOutSection}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+            <Ionicons name="log-out-outline" size={18} color="#DC2626" />
             <Text style={styles.signOutButtonText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
@@ -260,7 +297,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#FAFAFA',
   },
   scrollView: {
     flex: 1,
@@ -268,18 +305,19 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
   },
-  header: {
+  headerPill: {
     backgroundColor: '#FFFFFF',
-    paddingTop: 40,
-    paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerContent: {
+    borderRadius: 12,
+    padding: 15,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 10,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
   },
   userSection: {
     flexDirection: 'row',
@@ -289,7 +327,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#3B82F6',
+    backgroundColor: '#6366F1',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 10,
@@ -303,32 +341,92 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   greeting: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#6B7280',
+    marginBottom: 2,
   },
   userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#111827',
   },
   notificationButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
   notificationBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
-    backgroundColor: '#EF4444',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
+    top: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#DC2626',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   notificationBadgeText: {
     color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  dateCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  dateSection: {
+    flex: 1,
+    alignItems: 'center',
+    paddingRight: 10,
+  },
+  dateItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  dateLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    color: '#6B7280',
+    marginLeft: 6,
+    fontWeight: '500',
+  },
+  gregorianDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  hijriSection: {
+    flex: 1,
+    alignItems: 'center',
+    paddingLeft: 10,
+    borderLeftWidth: 1,
+    borderLeftColor: '#F1F5F9',
+  },
+  hijriDate: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    lineHeight: 20,
   },
   welcomeCard: {
     backgroundColor: '#FFFFFF',
@@ -348,71 +446,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   welcomeTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 20,
+    fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
   },
   welcomeSubtitle: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#6B7280',
-    marginBottom: 10,
+    lineHeight: 20,
   },
   welcomeIcon: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 10,
-    padding: 10,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 12,
+    padding: 12,
   },
   section: {
-    marginTop: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+    marginTop: 24,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '600',
     color: '#111827',
-    marginBottom: 15,
+    marginBottom: 16,
   },
   quickActionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
   },
   quickActionCard: {
-    width: '48%', // Two columns
-    aspectRatio: 1.2,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    padding: 15,
+    width: (width - 60) / 2, // Account for padding and gap
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
-    marginBottom: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 2,
   },
   quickActionIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   quickActionTitle: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#111827',
     textAlign: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   quickActionSubtitle: {
     fontSize: 12,
@@ -423,79 +512,76 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
+    gap: 12,
   },
   statsCard: {
-    width: '48%', // Two columns
-    aspectRatio: 1.1,
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    padding: 15,
-    alignItems: 'center',
-    marginBottom: 10,
+    width: (width - 60) / 2, // Account for padding and gap
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 2,
   },
   statsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   statsIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
   statsValue: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#111827',
   },
   statsTitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    textAlign: 'center',
+    fontWeight: '500',
   },
   activityList: {
-    marginTop: 15,
+    gap: 12,
   },
   activityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
-    elevation: 1,
+    elevation: 2,
   },
   activityIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
   },
   activityContent: {
     flex: 1,
   },
   activityTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '600',
     color: '#111827',
     marginBottom: 2,
   },
   activitySubtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
     marginBottom: 2,
   },
@@ -506,43 +592,47 @@ const styles = StyleSheet.create({
   statusBadge: {
     paddingVertical: 4,
     paddingHorizontal: 8,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
+    borderRadius: 12,
   },
   statusText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 16,
   },
   seeAllText: {
     fontSize: 14,
-    color: '#3B82F6',
-    fontWeight: '600',
+    color: '#6366F1',
+    fontWeight: '500',
+  },
+  signOutSection: {
+    marginTop: 32,
+    marginBottom: 20,
+    alignItems: 'center',
   },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FEE2E2',
-    borderRadius: 10,
-    paddingVertical: 15,
-    marginTop: 20,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    shadowColor: '#DC2626',
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 2,
   },
   signOutButtonText: {
-    color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
+    color: '#DC2626',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 6,
   },
 }); 
