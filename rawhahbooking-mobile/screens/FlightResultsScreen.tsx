@@ -445,7 +445,12 @@ export const FlightResultsScreen: React.FC = () => {
 
       // Calculate total passengers
       // Use search params to get passenger count since offer doesn't have passengers
+<<<<<<< HEAD
       const totalPassengers = searchParams.passengers?.length || 1;
+=======
+      const totalPassengers = searchParams?.passengers ? 
+        (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1;
+>>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
 
       navigation.navigate('FlightCheckout', {
         flight: offer,
@@ -862,7 +867,11 @@ export const FlightResultsScreen: React.FC = () => {
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams?.from || 'N/A'}</Text>
               <Text style={styles.cityName}>Surabaya</Text>
+<<<<<<< HEAD
           </View>
+=======
+            </View>
+>>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
             
             <View style={styles.routeMiddle}>
               <View style={styles.routeLine} />
