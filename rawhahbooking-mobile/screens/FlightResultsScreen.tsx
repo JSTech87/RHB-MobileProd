@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,42 @@ import {
   StatusBar,
   Animated,
   Alert,
+  Modal,
+  TextInput,
+  Switch,
+  SafeAreaView,
 } from 'react-native';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 const { width, height } = Dimensions.get('window');
+
+// Enhanced interfaces
+interface SearchParams {
+  from: string;
+  to: string;
+  departureDate: string;
+  returnDate?: string;
+  passengers: {
+    adults: number;
+    children: number;
+    infants: number;
+  };
+  tripType: 'oneWay' | 'roundTrip';
+  cabinClass: 'Economy' | 'Premium Economy' | 'Business' | 'First';
+}
+
+interface SortFilterOptions {
+  sortBy: 'price' | 'duration' | 'departure' | 'arrival';
+  sortOrder: 'asc' | 'desc';
+  filters: {
+    maxPrice?: number;
+    airlines: string[];
+    stops: 'any' | 'nonstop' | 'oneStop';
+    departureTime: 'any' | 'morning' | 'afternoon' | 'evening';
+    duration: 'any' | 'short' | 'medium' | 'long';
+  };
+}
 
 interface FlightData {
   id: string;
@@ -157,8 +190,38 @@ const mockFlights: FlightData[] = [
   },
 ];
 
-export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+export const FlightResultsScreen: React.FC<{ 
+  navigation?: any;
+  route?: any;
+}> = ({ navigation, route }) => {
+  // Navigation hook
+  const nav = useNavigation();
+  
+  // Get search parameters from route or use defaults
+  const searchParams: SearchParams = route?.params?.searchParams || {
+    from: 'SBY',
+    to: 'DPS', 
+    departureDate: 'Dec 21, 2023',
+    passengers: { adults: 1, children: 0, infants: 0 },
+    tripType: 'oneWay',
+    cabinClass: 'Economy'
+  };
+
+  // State management
   const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
+  const [showSortFilter, setShowSortFilter] = useState(false);
+  const [filteredFlights, setFilteredFlights] = useState<FlightData[]>(mockFlights);
+  const [sortFilterOptions, setSortFilterOptions] = useState<SortFilterOptions>({
+    sortBy: 'price',
+    sortOrder: 'asc',
+    filters: {
+      airlines: [],
+      stops: 'any',
+      departureTime: 'any',
+      duration: 'any'
+    }
+  });
 
   const toggleCard = (flightId: string) => {
     const newFlippedCards = new Set(flippedCards);
@@ -170,13 +233,251 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
     setFlippedCards(newFlippedCards);
   };
 
-  // ADD THIS FUNCTION - Navigation handler for Book Now button
-  const handleBookNow = (flight: FlightData) => {
-    navigation?.navigate('FlightCheckout', {
-      flight,
-      passengerCount: 1,
+  // Sorting and filtering functions
+  const applyFiltersAndSort = () => {
+    let filtered = [...mockFlights];
+    const { filters, sortBy, sortOrder } = sortFilterOptions;
+
+    // Apply filters
+    if (filters.maxPrice) {
+      filtered = filtered.filter(flight => 
+        parseInt(flight.price.replace('$', '')) <= filters.maxPrice!
+      );
+    }
+
+    if (filters.airlines.length > 0) {
+      filtered = filtered.filter(flight => 
+        filters.airlines.includes(flight.airline.name)
+      );
+    }
+
+    if (filters.stops !== 'any') {
+      if (filters.stops === 'nonstop') {
+        filtered = filtered.filter(flight => flight.stops === 'Non-stop');
+      } else if (filters.stops === 'oneStop') {
+        filtered = filtered.filter(flight => flight.stops.includes('1 Stop'));
+      }
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (sortBy) {
+        case 'price':
+          aValue = parseInt(a.price.replace('$', ''));
+          bValue = parseInt(b.price.replace('$', ''));
+          break;
+        case 'duration':
+          aValue = parseInt(a.duration.replace(/[^\d]/g, ''));
+          bValue = parseInt(b.duration.replace(/[^\d]/g, ''));
+          break;
+        case 'departure':
+          aValue = new Date(`1970-01-01 ${a.departure.time}`);
+          bValue = new Date(`1970-01-01 ${b.departure.time}`);
+          break;
+        case 'arrival':
+          aValue = new Date(`1970-01-01 ${a.arrival.time}`);
+          bValue = new Date(`1970-01-01 ${b.arrival.time}`);
+          break;
+        default:
+          return 0;
+      }
+      
+      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
     });
+
+    setFilteredFlights(filtered);
   };
+
+  // Apply filters when options change
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [sortFilterOptions]);
+
+  // Enhanced Book Now handler
+  const handleBookNow = (flight: FlightData) => {
+    const flightDetails = {
+      id: flight.id,
+      airline: flight.airline.name,
+      flightNumber: flight.flightNumber,
+      departure: {
+        airport: flight.departure.code,
+        city: flight.departure.location,
+        time: flight.departure.time,
+        date: flight.departure.date,
+      },
+      arrival: {
+        airport: flight.arrival.code,
+        city: flight.arrival.location,
+        time: flight.arrival.time,
+        date: flight.arrival.date,
+      },
+      duration: flight.duration,
+      aircraft: flight.flightType,
+      class: flight.cabinClass as 'Economy' | 'Premium Economy' | 'Business' | 'First',
+      price: parseInt(flight.price.replace('$', '')),
+      currency: 'USD',
+    };
+
+    // Navigate to checkout with flight details
+    if (navigation) {
+      navigation.navigate('FlightCheckout', {
+        flightDetails,
+        searchParams,
+      });
+    } else {
+      // Fallback navigation
+      Alert.alert('Book Flight', `Selected flight: ${flight.flightNumber} for ${flight.price}`, [
+        { text: 'OK', onPress: () => console.log('Flight booking initiated') }
+      ]);
+    }
+  };
+
+  // Handle sort/filter modal
+  const handleSortFilter = () => {
+    setShowSortFilter(true);
+  };
+
+  const applySortFilter = () => {
+    setShowSortFilter(false);
+    // Filters are already applied via useEffect
+  };
+
+  // Sort & Filter Modal Component
+  const SortFilterModal = () => (
+    <Modal
+      visible={showSortFilter}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
+      <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.modalHeader}>
+          <TouchableOpacity onPress={() => setShowSortFilter(false)}>
+            <Text style={styles.modalCancel}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={styles.modalTitle}>Sort & Filter</Text>
+          <TouchableOpacity onPress={applySortFilter}>
+            <Text style={styles.modalSave}>Apply</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={styles.modalContent}>
+          {/* Sort Section */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterTitle}>Sort By</Text>
+            <View style={styles.sortOptions}>
+              {[
+                { key: 'price', label: 'Price' },
+                { key: 'duration', label: 'Duration' },
+                { key: 'departure', label: 'Departure Time' },
+                { key: 'arrival', label: 'Arrival Time' },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.sortOption,
+                    sortFilterOptions.sortBy === option.key && styles.sortOptionSelected
+                  ]}
+                  onPress={() => setSortFilterOptions(prev => ({ 
+                    ...prev, 
+                    sortBy: option.key as any 
+                  }))}
+                >
+                  <Text style={[
+                    styles.sortOptionText,
+                    sortFilterOptions.sortBy === option.key && styles.sortOptionTextSelected
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {sortFilterOptions.sortBy === option.key && (
+                    <TouchableOpacity
+                      onPress={() => setSortFilterOptions(prev => ({ 
+                        ...prev, 
+                        sortOrder: prev.sortOrder === 'asc' ? 'desc' : 'asc' 
+                      }))}
+                    >
+                      <Ionicons 
+                        name={sortFilterOptions.sortOrder === 'asc' ? 'arrow-up' : 'arrow-down'} 
+                        size={16} 
+                        color="#A83442" 
+                      />
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Filter Section */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterTitle}>Stops</Text>
+            <View style={styles.filterOptions}>
+              {[
+                { key: 'any', label: 'Any' },
+                { key: 'nonstop', label: 'Non-stop' },
+                { key: 'oneStop', label: '1 Stop' },
+              ].map((option) => (
+                <TouchableOpacity
+                  key={option.key}
+                  style={[
+                    styles.filterOption,
+                    sortFilterOptions.filters.stops === option.key && styles.filterOptionSelected
+                  ]}
+                  onPress={() => setSortFilterOptions(prev => ({ 
+                    ...prev, 
+                    filters: { ...prev.filters, stops: option.key as any }
+                  }))}
+                >
+                  <Text style={[
+                    styles.filterOptionText,
+                    sortFilterOptions.filters.stops === option.key && styles.filterOptionTextSelected
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Airlines Filter */}
+          <View style={styles.filterSection}>
+            <Text style={styles.filterTitle}>Airlines</Text>
+            <View style={styles.filterOptions}>
+              {Array.from(new Set(mockFlights.map(f => f.airline.name))).map((airline) => (
+                <TouchableOpacity
+                  key={airline}
+                  style={[
+                    styles.filterOption,
+                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterOptionSelected
+                  ]}
+                  onPress={() => setSortFilterOptions(prev => ({ 
+                    ...prev, 
+                    filters: { 
+                      ...prev.filters, 
+                      airlines: prev.filters.airlines.includes(airline)
+                        ? prev.filters.airlines.filter(a => a !== airline)
+                        : [...prev.filters.airlines, airline]
+                    }
+                  }))}
+                >
+                  <Text style={[
+                    styles.filterOptionText,
+                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterOptionTextSelected
+                  ]}>
+                    {airline}
+                  </Text>
+                  {sortFilterOptions.filters.airlines.includes(airline) && (
+                    <Ionicons name="checkmark" size={16} color="#A83442" />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </Modal>
+  );
 
   const FlightCard = ({ flight }: { flight: FlightData }) => {
     const isFlipped = flippedCards.has(flight.id);
@@ -375,9 +676,15 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => navigation?.goBack()}
+            onPress={() => {
+              if (navigation) {
+                navigation.goBack();
+              } else {
+                nav.goBack();
+              }
+            }}
           >
-            <Text style={styles.backButtonText}>←</Text>
+            <Ionicons name="arrow-back" size={20} color="#000000" />
           </TouchableOpacity>
           <Text style={styles.pageTitle}>Result Search</Text>
           {/* Removed the burger menu button */}
@@ -386,18 +693,30 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
 
         <View style={styles.routeInfo}>
           <View style={styles.routeLocation}>
-            <Text style={styles.airportCode}>SBY</Text>
+            <Text style={styles.airportCode}>{searchParams.from}</Text>
             <Text style={styles.airportName}>Surabaya, East Java</Text>
           </View>
           <View style={styles.routeArrow}>
             <Text style={styles.flightIconHeader}>→</Text>
-            <Text style={styles.routeDate}>Dec 21, 2023</Text>
+            <Text style={styles.routeDate}>{searchParams.departureDate}</Text>
           </View>
           <View style={styles.routeLocation}>
-            <Text style={styles.airportCode}>DPS</Text>
+            <Text style={styles.airportCode}>{searchParams.to}</Text>
             <Text style={styles.airportName}>Denpasar, Bali</Text>
           </View>
         </View>
+      </View>
+
+      {/* Results Summary */}
+      <View style={styles.resultsSummary}>
+        <Text style={styles.resultsText}>
+          {filteredFlights.length} flight{filteredFlights.length !== 1 ? 's' : ''} found
+        </Text>
+        <Text style={styles.passengersText}>
+          {searchParams.passengers.adults} Adult{searchParams.passengers.adults !== 1 ? 's' : ''}
+          {searchParams.passengers.children > 0 && `, ${searchParams.passengers.children} Child${searchParams.passengers.children !== 1 ? 'ren' : ''}`}
+          {searchParams.passengers.infants > 0 && `, ${searchParams.passengers.infants} Infant${searchParams.passengers.infants !== 1 ? 's' : ''}`}
+        </Text>
       </View>
 
       {/* Main Content */}
@@ -406,18 +725,30 @@ export const FlightResultsScreen: React.FC<{ navigation?: any }> = ({ navigation
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {mockFlights.map((flight) => (
-          <FlightCard key={flight.id} flight={flight} />
-        ))}
+        {filteredFlights.length > 0 ? (
+          filteredFlights.map((flight) => (
+            <FlightCard key={flight.id} flight={flight} />
+          ))
+        ) : (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="airplane-outline" size={48} color="#A83442" />
+            <Text style={styles.noResultsTitle}>No flights found</Text>
+            <Text style={styles.noResultsText}>
+              Try adjusting your filters or search criteria
+            </Text>
+          </View>
+        )}
         
         {/* Add some bottom padding for the floating button */}
         <View style={styles.bottomPadding} />
       </ScrollView>
 
       {/* Floating Sort & Filter Button */}
-      <TouchableOpacity style={styles.floatingSortFilter}>
+      <TouchableOpacity style={styles.floatingSortFilter} onPress={handleSortFilter}>
+        <Ionicons name="options-outline" size={16} color="#FFFFFF" />
         <Text style={styles.sortFilterText}>Sort & Filter</Text>
       </TouchableOpacity>
+      <SortFilterModal />
     </View>
   );
 };
@@ -864,6 +1195,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   sortFilterText: {
     color: '#FFFFFF',
@@ -899,5 +1233,141 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#000000',
     fontWeight: '500',
+  },
+  // Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 50, // Account for status bar
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  modalCancel: {
+    fontSize: 16,
+    color: '#A83442',
+    fontWeight: '600',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  modalSave: {
+    fontSize: 16,
+    color: '#A83442',
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+  },
+  filterSection: {
+    marginBottom: 20,
+  },
+  filterTitle: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  sortOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  sortOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  sortOptionSelected: {
+    backgroundColor: '#e9ecef',
+    borderColor: '#A83442',
+  },
+  sortOptionText: {
+    fontSize: 12,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  sortOptionTextSelected: {
+    color: '#A83442',
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  filterOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  filterOptionSelected: {
+    backgroundColor: '#e9ecef',
+    borderColor: '#A83442',
+  },
+  filterOptionText: {
+    fontSize: 12,
+    color: '#000000',
+    fontWeight: '500',
+  },
+  filterOptionTextSelected: {
+    color: '#A83442',
+  },
+  resultsSummary: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    alignItems: 'center',
+  },
+  resultsText: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  passengersText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 50,
+  },
+  noResultsTitle: {
+    fontSize: 18,
+    color: '#333333',
+    fontWeight: '600',
+    marginTop: 20,
+  },
+  noResultsText: {
+    fontSize: 14,
+    color: '#6c757d',
+    textAlign: 'center',
+    marginTop: 10,
+    paddingHorizontal: 20,
   },
 }); 
