@@ -151,7 +151,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
         <View style={styles.headerPill}>
           <View style={styles.logoSection}>
             <Image
-              source={require('../assets/rawhah-logo.png')}
+              source={require('../assets/Transparent Logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />
@@ -162,7 +162,6 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
                 </Text>
               </View>
               <View style={styles.userInfo}>
-                <Text style={styles.greeting}>{getGreeting()}</Text>
                 <Text style={styles.userName}>
                   {user?.name || user?.id || 'Traveler'}
                 </Text>
