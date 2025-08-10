@@ -12,6 +12,8 @@ import {
   Switch,
   Modal,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -132,6 +134,49 @@ export const FlightCheckoutScreen: React.FC<{
   preSelectedFamilyMembers = []
 }) => {
   
+  // Mock family members if none provided (for testing)
+  const mockFamilyMembers: FamilyMember[] = familyMembers.length > 0 ? familyMembers : [
+    {
+      id: '1',
+      name: 'Fatima Moses',
+      relationship: 'Spouse',
+      age: 32,
+      dateOfBirth: '1992-03-15',
+      passportStatus: 'valid',
+      passportNumber: 'A12345678',
+      passportExpiry: '2028-05-20',
+      visaStatus: 'valid',
+      visaExpiry: '2025-12-31',
+      specialNeeds: ['Halal meals', 'Aisle seat'],
+    },
+    {
+      id: '2',
+      name: 'Ahmed Moses',
+      relationship: 'Son',
+      age: 8,
+      dateOfBirth: '2016-07-10',
+      passportStatus: 'valid',
+      passportNumber: 'B87654321',
+      passportExpiry: '2027-01-15',
+      visaStatus: 'expiring',
+      visaExpiry: '2024-03-20',
+      specialNeeds: ['Child meal', 'Window seat'],
+    },
+    {
+      id: '3',
+      name: 'Aisha Moses',
+      relationship: 'Daughter',
+      age: 5,
+      dateOfBirth: '2019-11-22',
+      passportStatus: 'expiring',
+      passportNumber: 'C11223344',
+      passportExpiry: '2024-04-10',
+      visaStatus: 'valid',
+      visaExpiry: '2026-08-15',
+      specialNeeds: ['Child meal'],
+    },
+  ];
+
   // State Management
   const [currentStep, setCurrentStep] = useState(1);
   const [passengers, setPassengers] = useState<PassengerInfo[]>([]);
@@ -191,6 +236,10 @@ export const FlightCheckoutScreen: React.FC<{
 
   // Initialize with one adult passenger and pre-selected family members
   useEffect(() => {
+    console.log('FlightCheckoutScreen - familyMembers:', familyMembers);
+    console.log('FlightCheckoutScreen - userProfile:', userProfile);
+    console.log('FlightCheckoutScreen - preSelectedFamilyMembers:', preSelectedFamilyMembers);
+    
     if (passengers.length === 0) {
       const initialPassenger: PassengerInfo = {
         id: 'passenger-1',
@@ -216,7 +265,7 @@ export const FlightCheckoutScreen: React.FC<{
       // Add pre-selected family members if any
       if (preSelectedFamilyMembers.length > 0) {
         const preSelectedMembers: PassengerInfo[] = preSelectedFamilyMembers.map(memberId => {
-          const familyMember = familyMembers.find(m => m.id === memberId);
+          const familyMember = mockFamilyMembers.find(m => m.id === memberId);
           if (!familyMember) return null;
 
           const age = calculateAge(familyMember.dateOfBirth);
@@ -248,7 +297,7 @@ export const FlightCheckoutScreen: React.FC<{
 
       setPassengers(initialPassengers);
     }
-  }, [userProfile, preSelectedFamilyMembers, familyMembers]);
+  }, [userProfile, preSelectedFamilyMembers, mockFamilyMembers]);
 
   // Utility Functions
   const calculateAge = (dateOfBirth: string): number => {
@@ -297,7 +346,7 @@ export const FlightCheckoutScreen: React.FC<{
 
   const addFamilyMembersAsPassengers = () => {
     const newPassengers: PassengerInfo[] = selectedFamilyMembers.map(memberId => {
-      const familyMember = familyMembers.find(m => m.id === memberId);
+      const familyMember = mockFamilyMembers.find(m => m.id === memberId);
       if (!familyMember) return null;
 
       const age = calculateAge(familyMember.dateOfBirth);
@@ -336,7 +385,7 @@ export const FlightCheckoutScreen: React.FC<{
       .map(p => p.familyMemberId)
       .filter(Boolean) as string[];
     
-    const availableFamilyMembers = familyMembers.filter(
+    const availableFamilyMembers = mockFamilyMembers.filter(
       member => !alreadyAddedFamilyIds.includes(member.id)
     );
 
@@ -749,7 +798,7 @@ export const FlightCheckoutScreen: React.FC<{
       <Text style={styles.stepSubtitle}>Add all travelers for this booking</Text>
 
       {/* Quick Add Family Members */}
-      {familyMembers.length > 0 && (
+      {(familyMembers.length > 0 || true) && (
         <View style={styles.quickAddSection}>
           <TouchableOpacity 
             style={styles.familyQuickAdd}
@@ -759,7 +808,7 @@ export const FlightCheckoutScreen: React.FC<{
             <View style={styles.familyQuickAddText}>
               <Text style={styles.familyQuickAddTitle}>Add Family Members</Text>
               <Text style={styles.familyQuickAddSubtitle}>
-                {familyMembers.length} member(s) available
+                {mockFamilyMembers.length} member(s) available
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#A83442" />
@@ -829,6 +878,7 @@ export const FlightCheckoutScreen: React.FC<{
           value={contactInfo.email}
           onChangeText={(value) => setContactInfo(prev => ({ ...prev, email: value }))}
           placeholder="Enter email address"
+          placeholderTextColor="#9CA3AF"
           keyboardType="email-address"
           autoCapitalize="none"
         />
@@ -842,12 +892,14 @@ export const FlightCheckoutScreen: React.FC<{
             value={contactInfo.countryCode}
             onChangeText={(value) => setContactInfo(prev => ({ ...prev, countryCode: value }))}
             placeholder="+1"
+            placeholderTextColor="#9CA3AF"
           />
           <TextInput
             style={[styles.textInput, styles.phoneInput]}
             value={contactInfo.phone}
             onChangeText={(value) => setContactInfo(prev => ({ ...prev, phone: value }))}
             placeholder="Enter phone number"
+            placeholderTextColor="#9CA3AF"
             keyboardType="phone-pad"
           />
         </View>
@@ -860,6 +912,7 @@ export const FlightCheckoutScreen: React.FC<{
           value={contactInfo.emergencyContactName}
           onChangeText={(value) => setContactInfo(prev => ({ ...prev, emergencyContactName: value }))}
           placeholder="Enter emergency contact name"
+          placeholderTextColor="#9CA3AF"
         />
       </View>
 
@@ -870,6 +923,7 @@ export const FlightCheckoutScreen: React.FC<{
           value={contactInfo.emergencyContactPhone}
           onChangeText={(value) => setContactInfo(prev => ({ ...prev, emergencyContactPhone: value }))}
           placeholder="Enter emergency contact phone"
+          placeholderTextColor="#9CA3AF"
           keyboardType="phone-pad"
         />
       </View>
@@ -942,6 +996,7 @@ export const FlightCheckoutScreen: React.FC<{
               value={paymentInfo.cardholderName}
               onChangeText={(value) => setPaymentInfo(prev => ({ ...prev, cardholderName: value }))}
               placeholder="Enter cardholder name"
+              placeholderTextColor="#9CA3AF"
             />
           </View>
 
@@ -952,6 +1007,7 @@ export const FlightCheckoutScreen: React.FC<{
               value={paymentInfo.cardNumber}
               onChangeText={(value) => setPaymentInfo(prev => ({ ...prev, cardNumber: value }))}
               placeholder="1234 5678 9012 3456"
+              placeholderTextColor="#9CA3AF"
               keyboardType="numeric"
               maxLength={19}
             />
@@ -965,6 +1021,7 @@ export const FlightCheckoutScreen: React.FC<{
                 value={paymentInfo.expiryDate}
                 onChangeText={(value) => setPaymentInfo(prev => ({ ...prev, expiryDate: value }))}
                 placeholder="MM/YY"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
                 maxLength={5}
               />
@@ -976,6 +1033,7 @@ export const FlightCheckoutScreen: React.FC<{
                 value={paymentInfo.cvv}
                 onChangeText={(value) => setPaymentInfo(prev => ({ ...prev, cvv: value }))}
                 placeholder="123"
+                placeholderTextColor="#9CA3AF"
                 keyboardType="numeric"
                 maxLength={4}
                 secureTextEntry
@@ -1133,7 +1191,7 @@ export const FlightCheckoutScreen: React.FC<{
             Select family members to add to this booking
           </Text>
           
-          {familyMembers.map((member) => (
+          {mockFamilyMembers.map((member) => (
             <TouchableOpacity
               key={member.id}
               style={[
@@ -1229,211 +1287,228 @@ export const FlightCheckoutScreen: React.FC<{
             </TouchableOpacity>
           </View>
 
-          <ScrollView style={styles.modalContent}>
-            {/* Basic Info */}
-            <View style={styles.formSection}>
-              <Text style={styles.formSectionTitle}>Basic Information</Text>
-              
-              <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 0.3, marginRight: 12 }]}>
-                  <Text style={styles.inputLabel}>Title</Text>
-                  <View style={styles.pickerContainer}>
-                    {['Mr', 'Mrs', 'Ms', 'Dr', 'Prof'].map((title) => (
-                      <TouchableOpacity
-                        key={title}
-                        style={[
-                          styles.pickerOption,
-                          tempPassenger.title === title && styles.pickerOptionSelected
-                        ]}
-                        onPress={() => setTempPassenger(prev => ({ ...prev, title: title as any }))}
-                      >
-                        <Text style={[
-                          styles.pickerOptionText,
-                          tempPassenger.title === title && styles.pickerOptionTextSelected
-                        ]}>
-                          {title}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+          <KeyboardAvoidingView 
+            style={styles.keyboardAvoidingView}
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+          >
+            <ScrollView 
+              style={styles.modalContent}
+              contentContainerStyle={styles.modalContentContainer}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Basic Info */}
+              <View style={styles.formSection}>
+                <Text style={styles.formSectionTitle}>Basic Information</Text>
+                
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 0.3, marginRight: 12 }]}>
+                    <Text style={styles.inputLabel}>Title</Text>
+                    <View style={styles.pickerContainer}>
+                      {['Mr', 'Mrs', 'Ms', 'Dr', 'Prof'].map((title) => (
+                        <TouchableOpacity
+                          key={title}
+                          style={[
+                            styles.pickerOption,
+                            tempPassenger.title === title && styles.pickerOptionSelected
+                          ]}
+                          onPress={() => setTempPassenger(prev => ({ ...prev, title: title as any }))}
+                        >
+                          <Text style={[
+                            styles.pickerOptionText,
+                            tempPassenger.title === title && styles.pickerOptionTextSelected
+                          ]}>
+                            {title}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 0.7 }]}>
+                    <Text style={styles.inputLabel}>First Name *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={tempPassenger.firstName}
+                      onChangeText={(value) => setTempPassenger(prev => ({ ...prev, firstName: value }))}
+                      placeholder="Enter first name"
+                      placeholderTextColor="#9CA3AF"
+                    />
                   </View>
                 </View>
-                <View style={[styles.inputGroup, { flex: 0.7 }]}>
-                  <Text style={styles.inputLabel}>First Name *</Text>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Last Name *</Text>
                   <TextInput
                     style={styles.textInput}
-                    value={tempPassenger.firstName}
-                    onChangeText={(value) => setTempPassenger(prev => ({ ...prev, firstName: value }))}
-                    placeholder="Enter first name"
+                    value={tempPassenger.lastName}
+                    onChangeText={(value) => setTempPassenger(prev => ({ ...prev, lastName: value }))}
+                    placeholder="Enter last name"
+                    placeholderTextColor="#9CA3AF"
                   />
                 </View>
-              </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Last Name *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={tempPassenger.lastName}
-                  onChangeText={(value) => setTempPassenger(prev => ({ ...prev, lastName: value }))}
-                  placeholder="Enter last name"
-                />
-              </View>
-
-              <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-                  <Text style={styles.inputLabel}>Date of Birth *</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={tempPassenger.dateOfBirth}
-                    onChangeText={(value) => setTempPassenger(prev => ({ ...prev, dateOfBirth: value }))}
-                    placeholder="YYYY-MM-DD"
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Gender</Text>
-                  <View style={styles.genderContainer}>
-                    {['Male', 'Female'].map((gender) => (
-                      <TouchableOpacity
-                        key={gender}
-                        style={[
-                          styles.genderOption,
-                          tempPassenger.gender === gender && styles.genderOptionSelected
-                        ]}
-                        onPress={() => setTempPassenger(prev => ({ ...prev, gender: gender as any }))}
-                      >
-                        <Text style={[
-                          styles.genderOptionText,
-                          tempPassenger.gender === gender && styles.genderOptionTextSelected
-                        ]}>
-                          {gender}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                    <Text style={styles.inputLabel}>Date of Birth *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={tempPassenger.dateOfBirth}
+                      onChangeText={(value) => setTempPassenger(prev => ({ ...prev, dateOfBirth: value }))}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#9CA3AF"
+                    />
                   </View>
-                </View>
-              </View>
-            </View>
-
-            {/* Travel Documents */}
-            <View style={styles.formSection}>
-              <Text style={styles.formSectionTitle}>Travel Documents</Text>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Passport Number *</Text>
-                <TextInput
-                  style={styles.textInput}
-                  value={tempPassenger.passportNumber}
-                  onChangeText={(value) => setTempPassenger(prev => ({ ...prev, passportNumber: value }))}
-                  placeholder="Enter passport number"
-                />
-              </View>
-
-              <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-                  <Text style={styles.inputLabel}>Expiry Date *</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={tempPassenger.passportExpiry}
-                    onChangeText={(value) => setTempPassenger(prev => ({ ...prev, passportExpiry: value }))}
-                    placeholder="YYYY-MM-DD"
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Issue Country</Text>
-                  <TextInput
-                    style={styles.textInput}
-                    value={tempPassenger.passportIssueCountry}
-                    onChangeText={(value) => setTempPassenger(prev => ({ ...prev, passportIssueCountry: value }))}
-                    placeholder="Issue country"
-                  />
-                </View>
-              </View>
-            </View>
-
-            {/* Preferences */}
-            <View style={styles.formSection}>
-              <Text style={styles.formSectionTitle}>Travel Preferences</Text>
-              
-              <View style={styles.inputRow}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
-                  <Text style={styles.inputLabel}>Seat Preference</Text>
-                  <View style={styles.seatOptions}>
-                    {['Window', 'Aisle', 'Middle', 'Any'].map((seat) => (
-                      <TouchableOpacity
-                        key={seat}
-                        style={[
-                          styles.seatOption,
-                          tempPassenger.seatPreference === seat && styles.seatOptionSelected
-                        ]}
-                        onPress={() => setTempPassenger(prev => ({ ...prev, seatPreference: seat as any }))}
-                      >
-                        <Text style={[
-                          styles.seatOptionText,
-                          tempPassenger.seatPreference === seat && styles.seatOptionTextSelected
-                        ]}>
-                          {seat}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Meal Preference</Text>
-                  <View style={styles.mealOptions}>
-                    {['Standard', 'Halal', 'Vegetarian', 'Kosher', 'Gluten-Free'].map((meal) => (
-                      <TouchableOpacity
-                        key={meal}
-                        style={[
-                          styles.mealOption,
-                          tempPassenger.mealPreference === meal && styles.mealOptionSelected
-                        ]}
-                        onPress={() => setTempPassenger(prev => ({ ...prev, mealPreference: meal }))}
-                      >
-                        <Text style={[
-                          styles.mealOptionText,
-                          tempPassenger.mealPreference === meal && styles.mealOptionTextSelected
-                        ]}>
-                          {meal}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Gender</Text>
+                    <View style={styles.genderContainer}>
+                      {['Male', 'Female'].map((gender) => (
+                        <TouchableOpacity
+                          key={gender}
+                          style={[
+                            styles.genderOption,
+                            tempPassenger.gender === gender && styles.genderOptionSelected
+                          ]}
+                          onPress={() => setTempPassenger(prev => ({ ...prev, gender: gender as any }))}
+                        >
+                          <Text style={[
+                            styles.genderOptionText,
+                            tempPassenger.gender === gender && styles.genderOptionTextSelected
+                          ]}>
+                            {gender}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
                   </View>
                 </View>
               </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Special Requests</Text>
-                <View style={styles.specialRequestsOptions}>
-                  {['Extra legroom', 'Wheelchair assistance', 'Infant bassinet', 'Special assistance', 'Medical equipment'].map((request) => (
-                    <TouchableOpacity
-                      key={request}
-                      style={[
-                        styles.specialRequestOption,
-                        tempPassenger.specialRequests.includes(request) && styles.specialRequestOptionSelected
-                      ]}
-                      onPress={() => {
-                        setTempPassenger(prev => ({
-                          ...prev,
-                          specialRequests: prev.specialRequests.includes(request)
-                            ? prev.specialRequests.filter(r => r !== request)
-                            : [...prev.specialRequests, request]
-                        }));
-                      }}
-                    >
-                      <Text style={[
-                        styles.specialRequestOptionText,
-                        tempPassenger.specialRequests.includes(request) && styles.specialRequestOptionTextSelected
-                      ]}>
-                        {request}
-                      </Text>
-                      {tempPassenger.specialRequests.includes(request) && (
-                        <Ionicons name="checkmark" size={16} color="#A83442" />
-                      )}
-                    </TouchableOpacity>
-                  ))}
+              {/* Travel Documents */}
+              <View style={styles.formSection}>
+                <Text style={styles.formSectionTitle}>Travel Documents</Text>
+                
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Passport Number *</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={tempPassenger.passportNumber}
+                    onChangeText={(value) => setTempPassenger(prev => ({ ...prev, passportNumber: value }))}
+                    placeholder="Enter passport number"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                    <Text style={styles.inputLabel}>Expiry Date *</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={tempPassenger.passportExpiry}
+                      onChangeText={(value) => setTempPassenger(prev => ({ ...prev, passportExpiry: value }))}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Issue Country</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={tempPassenger.passportIssueCountry}
+                      onChangeText={(value) => setTempPassenger(prev => ({ ...prev, passportIssueCountry: value }))}
+                      placeholder="Issue country"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
-          </ScrollView>
+
+              {/* Preferences */}
+              <View style={styles.formSection}>
+                <Text style={styles.formSectionTitle}>Travel Preferences</Text>
+                
+                <View style={styles.inputRow}>
+                  <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
+                    <Text style={styles.inputLabel}>Seat Preference</Text>
+                    <View style={styles.seatOptions}>
+                      {['Window', 'Aisle', 'Middle', 'Any'].map((seat) => (
+                        <TouchableOpacity
+                          key={seat}
+                          style={[
+                            styles.seatOption,
+                            tempPassenger.seatPreference === seat && styles.seatOptionSelected
+                          ]}
+                          onPress={() => setTempPassenger(prev => ({ ...prev, seatPreference: seat as any }))}
+                        >
+                          <Text style={[
+                            styles.seatOptionText,
+                            tempPassenger.seatPreference === seat && styles.seatOptionTextSelected
+                          ]}>
+                            {seat}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.inputLabel}>Meal Preference</Text>
+                    <View style={styles.mealOptions}>
+                      {['Standard', 'Halal', 'Vegetarian', 'Kosher', 'Gluten-Free'].map((meal) => (
+                        <TouchableOpacity
+                          key={meal}
+                          style={[
+                            styles.mealOption,
+                            tempPassenger.mealPreference === meal && styles.mealOptionSelected
+                          ]}
+                          onPress={() => setTempPassenger(prev => ({ ...prev, mealPreference: meal }))}
+                        >
+                          <Text style={[
+                            styles.mealOptionText,
+                            tempPassenger.mealPreference === meal && styles.mealOptionTextSelected
+                          ]}>
+                            {meal}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Special Requests</Text>
+                  <View style={styles.specialRequestsOptions}>
+                    {['Extra legroom', 'Wheelchair assistance', 'Infant bassinet', 'Special assistance', 'Medical equipment'].map((request) => (
+                      <TouchableOpacity
+                        key={request}
+                        style={[
+                          styles.specialRequestOption,
+                          tempPassenger.specialRequests.includes(request) && styles.specialRequestOptionSelected
+                        ]}
+                        onPress={() => {
+                          setTempPassenger(prev => ({
+                            ...prev,
+                            specialRequests: prev.specialRequests.includes(request)
+                              ? prev.specialRequests.filter(r => r !== request)
+                              : [...prev.specialRequests, request]
+                          }));
+                        }}
+                      >
+                        <Text style={[
+                          styles.specialRequestOptionText,
+                          tempPassenger.specialRequests.includes(request) && styles.specialRequestOptionTextSelected
+                        ]}>
+                          {request}
+                        </Text>
+                        {tempPassenger.specialRequests.includes(request) && (
+                          <Ionicons name="checkmark" size={16} color="#A83442" />
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
     );
@@ -1466,7 +1541,14 @@ export const FlightCheckoutScreen: React.FC<{
       
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          console.log('Back button pressed, onBack function:', onBack);
+          if (onBack) {
+            onBack();
+          } else {
+            Alert.alert('Navigation', 'Back function not available');
+          }
+        }}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Flight Checkout</Text>
@@ -1479,9 +1561,17 @@ export const FlightCheckoutScreen: React.FC<{
       {/* Flight Summary */}
       {renderFlightSummary()}
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {renderCurrentStep()}
-      </ScrollView>
+      {/* Main Content */}
+      <View style={styles.mainContent}>
+        <ScrollView 
+          style={styles.scrollView} 
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
+          {renderCurrentStep()}
+        </ScrollView>
+      </View>
 
       {/* Navigation Buttons */}
       <View style={styles.navigationButtons}>
@@ -1934,6 +2024,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     color: '#111827',
+    minHeight: 48,
   },
   phoneInputContainer: {
     flexDirection: 'row',
@@ -2381,5 +2472,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  modalContentContainer: {
+    paddingBottom: 50,
+  },
+  mainContent: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    paddingBottom: 50,
   },
 }); 
