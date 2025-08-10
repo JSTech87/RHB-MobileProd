@@ -42,8 +42,40 @@ interface RecentActivityProps {
 
 // Hijri date conversion utility
 const getHijriDate = () => {
-  // Return the specific date provided by the user
-  return '16 Safar 1447 AH';
+  const today = new Date();
+  const hijriMonths = [
+    'Muharram', 'Safar', 'Rabi al-Awwal', 'Rabi al-Thani', 
+    'Jumada al-Awwal', 'Jumada al-Thani', 'Rajab', 'Shaban',
+    'Ramadan', 'Shawwal', 'Dhu al-Qidah', 'Dhu al-Hijjah'
+  ];
+  
+  // More accurate Hijri conversion (still approximate)
+  const hijriYear = Math.floor((today.getFullYear() - 622) * 1.030684) + 1;
+  const hijriMonth = hijriMonths[today.getMonth() % 12];
+  const hijriDay = today.getDate();
+  
+  return {
+    day: hijriDay,
+    month: hijriMonth,
+    year: hijriYear,
+    formatted: `${hijriDay} ${hijriMonth} ${hijriYear} AH`
+  };
+};
+
+const getGregorianDate = () => {
+  const today = new Date();
+  return {
+    weekday: today.toLocaleDateString('en-US', { weekday: 'long' }),
+    month: today.toLocaleDateString('en-US', { month: 'long' }),
+    day: today.getDate(),
+    year: today.getFullYear(),
+    formatted: today.toLocaleDateString('en-US', { 
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  };
 };
 
 const getGreeting = () => {
