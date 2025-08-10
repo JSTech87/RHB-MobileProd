@@ -289,7 +289,6 @@ export const FlightResultsScreen: React.FC = () => {
         console.warn('Supabase logging failed (continuing with direct Duffel search):', (e as any)?.message || e);
       }
       
-      const { default: DuffelApiService } = await import('../services/duffelApi');
       const duffelOfferRequest = {
         cabin_class: flightSearchRequest.cabin_class,
         passengers: [
@@ -312,8 +311,9 @@ export const FlightResultsScreen: React.FC = () => {
         return_offers: true,
       } as any;
       const duffelResponse = await DuffelApiService.searchOffers(duffelOfferRequest);
-      console.log('✅ Direct Duffel offers:', duffelResponse.data?.length || 0);
-      setOffers(duffelResponse.data || []);
+      const offers = duffelResponse?.data?.offers || [];
+      console.log('✅ Direct Duffel offers:', offers.length);
+      setOffers(offers);
        
       setLoading(false);
     } catch (error) {

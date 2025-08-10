@@ -112,9 +112,9 @@ async function apiRequest<T>(
 // Duffel API Service
 const DuffelApiService = {
   // Offer requests (creates and returns offers immediately when return_offers=true)
-  async searchOffers(request: DuffelOfferRequest): Promise<{ data: DuffelOffer[] }> {
+  async searchOffers(request: DuffelOfferRequest): Promise<{ data: { offers: DuffelOffer[] } }> {
     try {
-      const res = await apiRequest<{ data: DuffelOffer[] }>(`/air/offer_requests`, {
+      const res = await apiRequest<{ data: { offers: DuffelOffer[] } }>(`/air/offer_requests`, {
         method: 'POST',
         body: JSON.stringify({ data: { ...request, return_offers: true } }),
       });

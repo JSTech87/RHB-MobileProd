@@ -281,8 +281,8 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       } as any;
       
       const duffelResponse = await DuffelApiService.searchOffers(duffelOfferRequest);
-      
-      console.log('✅ Direct Duffel search offers:', duffelResponse.data?.length || 0);
+      const offers = duffelResponse?.data?.offers || [];
+      console.log('✅ Direct Duffel search offers:', offers.length);
       
       setIsLoading(false);
       Animated.timing(fadeAnim, {
@@ -293,7 +293,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       
       navigation?.navigate('FlightResults', {
         searchParams,
-        offers: duffelResponse.data || [],
+        offers,
       });
       
     } catch (error) {
