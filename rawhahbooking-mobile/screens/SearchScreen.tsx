@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,18 @@ import {
   TextInput,
   Modal,
   Platform,
+  SafeAreaView,
+  Alert,
+  Animated,
 } from 'react-native';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
 import FromToPicker from '../components/FromToPicker';
 import { AirportOption } from '../services/airportSearch';
 
 const { width, height } = Dimensions.get('window');
 
+// Enhanced interfaces for professional flight search
 interface PassengerCounts {
   adults: number;
   children: number;
@@ -24,40 +29,179 @@ interface PassengerCounts {
   infantsOnLap: number;
 }
 
+interface SearchFormData {
+  from: AirportOption | null;
+  to: AirportOption | null;
+  departureDate: Date;
+  returnDate: Date;
+  passengers: PassengerCounts;
+  cabinClass: 'Economy' | 'Premium Economy' | 'Business' | 'First';
+  tripType: 'oneWay' | 'roundTrip' | 'multiCity';
+}
+
+interface RecentSearch {
+  id: string;
+  from: string;
+  to: string;
+  date: string;
+  passengers: number;
+}
+
+interface PopularDestination {
+  id: string;
+  city: string;
+  country: string;
+  code: string;
+  price: string;
+  image: string;
+}
+
 export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const [selectedService, setSelectedService] = useState<'hotel' | 'flight'>('flight');
-  const [selectedTripType, setSelectedTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('oneWay');
+  const [selectedTripType, setSelectedTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
   const [fromAirport, setFromAirport] = useState<AirportOption | null>(null);
   const [toAirport, setToAirport] = useState<AirportOption | null>(null);
-  const [seatClass, setSeatClass] = useState('Business');
+  const [seatClass, setSeatClass] = useState<'Economy' | 'Premium Economy' | 'Business' | 'First'>('Economy');
   
-  // Date objects for calendar
-  const [selectedDepartureDate, setSelectedDepartureDate] = useState(new Date(2025, 7, 12)); // Aug 12, 2025
-  const [selectedReturnDate, setSelectedReturnDate] = useState(new Date(2025, 7, 19)); // Aug 19, 2025
-  const [currentMonth, setCurrentMonth] = useState(new Date(2025, 7, 1)); // August 2025
-  const [isSelectingDeparture, setIsSelectingDeparture] = useState(true);
+  // Enhanced date management
+  const [selectedDepartureDate, setSelectedDepartureDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // 7 days from now
+  const [selectedReturnDate, setSelectedReturnDate] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)); // 14 days from now
   
-  // Modal states
+  // Modal and UI states
   const [showPassengerModal, setShowPassengerModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showClassModal, setShowClassModal] = useState(false);
+  const [showRecentSearches, setShowRecentSearches] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
-  // Passenger counts
+  // Enhanced passenger management
   const [passengers, setPassengers] = useState<PassengerCounts>({
-    adults: 1,
+    adults: 2,
     children: 0,
     infantsInSeat: 0,
     infantsOnLap: 0,
   });
 
+  // Mock data for enhanced experience
+  const [recentSearches] = useState<RecentSearch[]>([
+    { id: '1', from: 'NYC', to: 'LAX', date: 'Dec 15', passengers: 2 },
+    { id: '2', from: 'JFK', to: 'DXB', date: 'Jan 10', passengers: 1 },
+    { id: '3', from: 'LHR', to: 'CDG', date: 'Nov 28', passengers: 4 },
+  ]);
+
+  const [popularDestinations] = useState<PopularDestination[]>([
+    { id: '1', city: 'Dubai', country: 'UAE', code: 'DXB', price: 'from $899', image: '🏙️' },
+    { id: '2', city: 'London', country: 'UK', code: 'LHR', price: 'from $1,299', image: '🏰' },
+    { id: '3', city: 'Tokyo', country: 'Japan', code: 'NRT', price: 'from $1,199', image: '🗾' },
+    { id: '4', city: 'Paris', country: 'France', code: 'CDG', price: 'from $1,099', image: '🗼' },
+  ]);
+
+  // Animation values
+  const [fadeAnim] = useState(new Animated.Value(1));
+  const [slideAnim] = useState(new Animated.Value(0));
+
+  // Start loading spinner animation
+  useEffect(() => {
+    if (isLoading) {
+      const spinAnimation = Animated.loop(
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      );
+      spinAnimation.start();
+      return () => spinAnimation.stop();
+    }
+  }, [isLoading, slideAnim]);
+
+  // Enhanced search functionality
   const handleSearch = () => {
-    // Navigate to FlightResults screen at the root level
-    navigation?.navigate('FlightResults');
+    // Validation
+    if (!fromAirport || !toAirport) {
+      Alert.alert('Missing Information', 'Please select departure and destination airports');
+      return;
+    }
+
+    if (fromAirport.iata === toAirport.iata) {
+      Alert.alert('Invalid Route', 'Departure and destination cannot be the same');
+      return;
+    }
+
+    if (selectedDepartureDate < new Date()) {
+      Alert.alert('Invalid Date', 'Departure date cannot be in the past');
+      return;
+    }
+
+    if (selectedTripType === 'roundTrip' && selectedReturnDate <= selectedDepartureDate) {
+      Alert.alert('Invalid Dates', 'Return date must be after departure date');
+      return;
+    }
+
+    // Set loading state with animation
+    setIsLoading(true);
+    Animated.timing(fadeAnim, {
+      toValue: 0.7,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    // Prepare search parameters
+    const searchParams = {
+      from: fromAirport.iata,
+      to: toAirport.iata,
+      departureDate: selectedDepartureDate.toISOString().split('T')[0],
+      returnDate: selectedTripType === 'roundTrip' ? selectedReturnDate.toISOString().split('T')[0] : null,
+      passengers,
+      cabinClass: seatClass,
+      tripType: selectedTripType,
+    };
+
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      // Navigate to results with search parameters
+      navigation?.navigate('FlightResults', { searchParams });
+    }, 2000);
   };
 
   const handleHotelInquiry = () => {
-    // Navigate to Hotel Inquiry Screen
     navigation?.navigate('HotelInquiry');
+  };
+
+  // Quick search from recent or popular destinations
+  const handleQuickSearch = (destination: PopularDestination) => {
+    setToAirport({
+      iata: destination.code,
+      name: destination.city,
+      city: destination.city,
+      country: destination.country,
+      source: 'local' as const,
+      type: 'airport' as const,
+    });
+  };
+
+  const handleRecentSearch = (recent: RecentSearch) => {
+    // This would typically set the full search data
+    Alert.alert('Quick Search', `Search from ${recent.from} to ${recent.to} on ${recent.date}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Search', onPress: () => handleSearch() },
+    ]);
+  };
+
+  const updatePassengerCount = (type: keyof PassengerCounts, increment: boolean) => {
+    setPassengers(prev => {
+      const newCount = increment ? prev[type] + 1 : Math.max(0, prev[type] - 1);
+      // Ensure at least 1 adult
+      if (type === 'adults' && newCount === 0) return prev;
+      return { ...prev, [type]: newCount };
+    });
   };
 
   const renderHotelForm = () => {
@@ -165,38 +309,6 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     }
     return '';
   };
-
-  const updatePassengerCount = (type: keyof PassengerCounts, increment: boolean) => {
-    setPassengers(prev => {
-      const newCount = increment ? prev[type] + 1 : Math.max(0, prev[type] - 1);
-      // Ensure at least 1 adult
-      if (type === 'adults' && newCount === 0) return prev;
-      return { ...prev, [type]: newCount };
-    });
-  };
-
-  const ServiceTab = ({ type, label }: { type: 'hotel' | 'flight', label: string }) => (
-    <TouchableOpacity
-      style={[styles.serviceTab, selectedService === type && styles.serviceTabActive]}
-      onPress={() => setSelectedService(type)}
-    >
-      <Text style={[styles.serviceTabText, selectedService === type && styles.serviceTabTextActive]}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
-
-  const TripTypeOption = ({ type, label }: { type: 'oneWay' | 'roundTrip' | 'multiCity', label: string }) => (
-    <TouchableOpacity
-      style={styles.tripType}
-      onPress={() => setSelectedTripType(type)}
-    >
-      <View style={[styles.radioButton, selectedTripType === type && styles.radioButtonSelected]}>
-        <View style={[styles.radioInner, selectedTripType === type && styles.radioInnerSelected]} />
-      </View>
-      <Text style={styles.tripTypeText}>{label}</Text>
-    </TouchableOpacity>
-  );
 
   const renderSearchForm = () => {
     if (selectedTripType === 'oneWay') {
@@ -368,72 +480,279 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#D6D5C9" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Status Bar Area */}
-        <View style={styles.statusBarArea} />
-
-        {/* Header Section */}
+      <Animated.View style={[styles.mainContainer, { opacity: fadeAnim }]}>
+        {/* Header */}
         <View style={styles.header}>
-          {/* Profile Greeting */}
-          <View style={styles.profileGreeting}>
+          <View style={styles.headerTop}>
             <View style={styles.profileSection}>
               <View style={styles.profileAvatar}>
                 <Text style={styles.profileAvatarText}>IM</Text>
               </View>
-              <View style={styles.greetingText}>
+              <View style={styles.greetingContainer}>
                 <Text style={styles.greeting}>Good morning,</Text>
                 <Text style={styles.username}>Irvan Moses</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.bellIcon}>
-              <Text style={styles.bellIconText}>🔔</Text>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#111827" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>3</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
           {/* Service Tabs */}
           <View style={styles.serviceTabs}>
-            <ServiceTab type="hotel" label="Hotel" />
-            <ServiceTab type="flight" label="Flight" />
-          </View>
-
-          {/* Trip Type Selection - Only show for flights */}
-          {selectedService === 'flight' && (
-            <View style={styles.tripTypes}>
-              <TripTypeOption type="oneWay" label="One way" />
-              <TripTypeOption type="roundTrip" label="Round Trip" />
-              <TripTypeOption type="multiCity" label="Multi City" />
-            </View>
-          )}
-        </View>
-
-        {/* Main Content */}
-        <View style={styles.mainContent}>
-          {/* Ticket Style Form */}
-          <View style={styles.ticketForm}>
-            {/* Ticket cutouts */}
-            <View style={[styles.cutout, styles.leftCutout]} />
-            <View style={[styles.cutout, styles.rightCutout]} />
-
-            {selectedService === 'hotel' ? renderHotelForm() : renderSearchForm()}
-
-            {/* Search Button */}
-            <TouchableOpacity 
-              style={styles.searchButton} 
-              onPress={selectedService === 'hotel' ? handleHotelInquiry : handleSearch}
+            <TouchableOpacity
+              style={[styles.serviceTab, selectedService === 'flight' && styles.serviceTabActive]}
+              onPress={() => setSelectedService('flight')}
             >
-              <Text style={styles.searchButtonText}>
-                {selectedService === 'hotel' 
-                  ? 'Start Hotel Inquiry' 
-                  : (selectedTripType === 'multiCity' ? 'Search Ticket' : 'Search')
-                }
+              <Ionicons 
+                name="airplane-outline" 
+                size={20} 
+                color={selectedService === 'flight' ? '#FFFFFF' : '#6B7280'} 
+              />
+              <Text style={[styles.serviceTabText, selectedService === 'flight' && styles.serviceTabTextActive]}>
+                Flights
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.serviceTab, selectedService === 'hotel' && styles.serviceTabActive]}
+              onPress={() => setSelectedService('hotel')}
+            >
+              <Ionicons 
+                name="bed-outline" 
+                size={20} 
+                color={selectedService === 'hotel' ? '#FFFFFF' : '#6B7280'} 
+              />
+              <Text style={[styles.serviceTabText, selectedService === 'hotel' && styles.serviceTabTextActive]}>
+                Hotels
               </Text>
             </TouchableOpacity>
           </View>
         </View>
-      </ScrollView>
+
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {selectedService === 'flight' ? (
+            <>
+              {/* Flight Search Form */}
+              <View style={styles.searchCard}>
+                {/* Trip Type Selection */}
+                <View style={styles.tripTypeContainer}>
+                  {[
+                    { key: 'roundTrip', label: 'Round Trip', icon: 'swap-horizontal-outline' },
+                    { key: 'oneWay', label: 'One Way', icon: 'arrow-forward-outline' },
+                    { key: 'multiCity', label: 'Multi City', icon: 'location-outline' },
+                  ].map((trip) => (
+                    <TouchableOpacity
+                      key={trip.key}
+                      style={[
+                        styles.tripTypeButton,
+                        selectedTripType === trip.key && styles.tripTypeButtonActive
+                      ]}
+                      onPress={() => setSelectedTripType(trip.key as any)}
+                    >
+                      <Ionicons 
+                        name={trip.icon as any} 
+                        size={18} 
+                        color={selectedTripType === trip.key ? '#A83442' : '#6B7280'} 
+                      />
+                      <Text style={[
+                        styles.tripTypeText,
+                        selectedTripType === trip.key && styles.tripTypeTextActive
+                      ]}>
+                        {trip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Route Selection */}
+                <View style={styles.routeContainer}>
+                  <FromToPicker
+                    mode="flight"
+                    onChange={({ from, to }) => {
+                      setFromAirport(from);
+                      setToAirport(to);
+                    }}
+                    onSwap={() => {
+                      const temp = fromAirport;
+                      setFromAirport(toAirport);
+                      setToAirport(temp);
+                    }}
+                  />
+                </View>
+
+                {/* Date Selection */}
+                <View style={styles.dateContainer}>
+                  <TouchableOpacity 
+                    style={styles.dateButton}
+                    onPress={() => setShowDateModal(true)}
+                  >
+                    <View style={styles.dateContent}>
+                      <View style={styles.dateSection}>
+                        <Ionicons name="calendar-outline" size={20} color="#A83442" />
+                        <View style={styles.dateInfo}>
+                          <Text style={styles.dateLabel}>Departure</Text>
+                          <Text style={styles.dateValue}>
+                            {selectedDepartureDate.toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {selectedTripType === 'roundTrip' && (
+                        <>
+                          <View style={styles.dateDivider}>
+                            <Ionicons name="arrow-forward" size={16} color="#6B7280" />
+                          </View>
+                          <View style={styles.dateSection}>
+                            <Ionicons name="calendar-outline" size={20} color="#A83442" />
+                            <View style={styles.dateInfo}>
+                              <Text style={styles.dateLabel}>Return</Text>
+                              <Text style={styles.dateValue}>
+                                {selectedReturnDate.toLocaleDateString('en-US', { 
+                                  weekday: 'short', 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </Text>
+                            </View>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Passengers and Class */}
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity 
+                    style={styles.passengerButton}
+                    onPress={() => setShowPassengerModal(true)}
+                  >
+                    <Ionicons name="people-outline" size={20} color="#A83442" />
+                    <View style={styles.passengerInfo}>
+                      <Text style={styles.passengerLabel}>Travelers</Text>
+                      <Text style={styles.passengerValue}>{getPassengerText()}</Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.classButton}
+                    onPress={() => setShowClassModal(true)}
+                  >
+                    <Ionicons name="airplane-outline" size={20} color="#A83442" />
+                    <View style={styles.classInfo}>
+                      <Text style={styles.classLabel}>Class</Text>
+                      <Text style={styles.classValue}>{seatClass}</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Search Button */}
+                <TouchableOpacity 
+                  style={[styles.searchButton, isLoading && styles.searchButtonLoading]} 
+                  onPress={handleSearch}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <Animated.View style={[
+                        styles.loadingSpinner, 
+                        { 
+                          transform: [{ 
+                            rotate: slideAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0deg', '360deg']
+                            })
+                          }] 
+                        }
+                      ]} />
+                      <Text style={styles.searchButtonText}>Searching...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Ionicons name="search" size={20} color="#FFFFFF" />
+                      <Text style={styles.searchButtonText}>Search Flights</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Recent Searches */}
+              {recentSearches.length > 0 && (
+                <View style={styles.recentContainer}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>Recent Searches</Text>
+                    <TouchableOpacity onPress={() => setShowRecentSearches(!showRecentSearches)}>
+                      <Ionicons 
+                        name={showRecentSearches ? "chevron-up" : "chevron-down"} 
+                        size={20} 
+                        color="#6B7280" 
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  
+                  {showRecentSearches && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <View style={styles.recentList}>
+                        {recentSearches.map((recent) => (
+                          <TouchableOpacity
+                            key={recent.id}
+                            style={styles.recentItem}
+                            onPress={() => handleRecentSearch(recent)}
+                          >
+                            <View style={styles.recentRoute}>
+                              <Text style={styles.recentFromTo}>{recent.from} → {recent.to}</Text>
+                              <Text style={styles.recentDate}>{recent.date}</Text>
+                            </View>
+                            <Text style={styles.recentPassengers}>{recent.passengers} travelers</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+                  )}
+                </View>
+              )}
+
+              {/* Popular Destinations */}
+              <View style={styles.popularContainer}>
+                <Text style={styles.sectionTitle}>Popular Destinations</Text>
+                <View style={styles.destinationGrid}>
+                  {popularDestinations.map((destination) => (
+                    <TouchableOpacity
+                      key={destination.id}
+                      style={styles.destinationCard}
+                      onPress={() => handleQuickSearch(destination)}
+                    >
+                      <Text style={styles.destinationEmoji}>{destination.image}</Text>
+                      <View style={styles.destinationInfo}>
+                        <Text style={styles.destinationCity}>{destination.city}</Text>
+                        <Text style={styles.destinationCountry}>{destination.country}</Text>
+                        <Text style={styles.destinationPrice}>{destination.price}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </>
+          ) : (
+            renderHotelForm()
+          )}
+        </ScrollView>
+      </Animated.View>
 
       {/* Passenger Selection Modal */}
       <Modal
@@ -558,7 +877,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                       key={classType}
                       style={[styles.classDropdownOption, seatClass === classType && styles.classDropdownOptionSelected]}
                       onPress={() => {
-                        setSeatClass(classType);
+                        setSeatClass(classType as 'Economy' | 'Premium Economy' | 'Business' | 'First');
                         setShowClassModal(false);
                       }}
                     >
@@ -639,40 +958,42 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
-    backgroundColor: '#D6D5C9',
+    backgroundColor: '#F8F9FA',
+  },
+  mainContainer: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
-  statusBarArea: {
-    height: 50,
-  },
-  header: {
-    paddingHorizontal: 20,
+  scrollContent: {
     paddingBottom: 20,
   },
-  profileGreeting: {
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    borderRadius: 25,
-    padding: 12,
+  
+  // Header Styles
+  header: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
   },
   profileSection: {
     flexDirection: 'row',
@@ -695,167 +1016,390 @@ const styles = StyleSheet.create({
   profileAvatarText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600', // Changed from '700' to semi-bold
+    fontWeight: '600',
   },
-  greetingText: {
+  greetingContainer: {
     flexDirection: 'column',
   },
   greeting: {
     fontSize: 12,
-    color: '#6c757d',
+    color: '#6B7280',
     marginBottom: 2,
   },
   username: {
     fontSize: 16,
-    fontWeight: '600', // Changed from '700' to semi-bold
-    color: '#000000',
+    fontWeight: '600',
+    color: '#111827',
   },
-  bellIcon: {
+  notificationButton: {
     width: 44,
     height: 44,
-    backgroundColor: '#000000',
     borderRadius: 22,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
+    position: 'relative',
   },
-  bellIconText: {
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadgeText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 10,
     fontWeight: '600',
   },
+  
+  // Service Tabs
   serviceTabs: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
   },
   serviceTab: {
     flex: 1,
-    padding: 16,
-    borderRadius: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    gap: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: '#E5E7EB',
   },
   serviceTabActive: {
     backgroundColor: '#A83442',
+    borderColor: '#A83442',
     shadowColor: '#A83442',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   serviceTabText: {
     fontSize: 16,
-    fontWeight: '600', // Changed from '700' to semi-bold
-    color: '#6c757d',
+    fontWeight: '600',
+    color: '#6B7280',
   },
   serviceTabTextActive: {
     color: '#FFFFFF',
   },
-  tripTypes: {
-    flexDirection: 'row',
-    gap: 20,
-    paddingHorizontal: 5,
-  },
-  tripType: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#dee2e6',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  radioButtonSelected: {
-    borderColor: '#A83442',
-  },
-  radioInner: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#A83442',
-    opacity: 0,
-  },
-  radioInnerSelected: {
-    opacity: 1,
-  },
-  tripTypeText: {
-    fontSize: 16,
-    fontWeight: '400', // Changed from '500' to normal
-    color: '#000000',
-  },
-  mainContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-  },
-  ticketForm: {
+  
+  // Search Card
+  searchCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
-    marginHorizontal: 12,
-    position: 'relative',
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,
     shadowRadius: 16,
     elevation: 8,
-    marginBottom: 20,
   },
-  cutout: {
-    position: 'absolute',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#D6D5C9',
-    top: '50%',
-    marginTop: -8,
-    zIndex: 2,
+  
+  // Trip Type Selection
+  tripTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 8,
   },
-  leftCutout: {
-    left: -8,
-  },
-  rightCutout: {
-    right: -8,
-  },
-  formSection: {
-    marginBottom: 8,
-    position: 'relative',
-  },
-  formLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginBottom: 8,
-    fontWeight: '500',
-  },
-  formInput: {
-    fontSize: 16,
-    fontWeight: '500', // Changed from '700' to medium
-    color: '#000000',
+  tripTypeButton: {
     flex: 1,
-    borderWidth: 0,
-    paddingVertical: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+  },
+  tripTypeButtonActive: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#A83442',
+  },
+  tripTypeText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  tripTypeTextActive: {
+    color: '#A83442',
+    fontWeight: '600',
+  },
+  
+  // Route and Date Selection
+  routeContainer: {
+    marginBottom: 24,
+  },
+  dateContainer: {
+    marginBottom: 24,
+  },
+  dateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minHeight: 64,
+  },
+  dateContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dateSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dateInfo: {
+    flexDirection: 'column',
+  },
+  dateLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  dateValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  dateDivider: {
+    marginHorizontal: 16,
+  },
+  
+  // Bottom Row (Passengers and Class)
+  bottomRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  passengerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minHeight: 64,
+  },
+  passengerInfo: {
+    flex: 1,
+  },
+  passengerLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  passengerValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  classButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minHeight: 64,
+  },
+  classInfo: {
+    flex: 1,
+  },
+  classLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  classValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  
+  // Search Button
+  searchButton: {
+    width: '100%',
+    backgroundColor: '#A83442',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  searchButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  searchButtonLoading: {
+    opacity: 0.7,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  loadingSpinner: {
+    width: 20,
+    height: 20,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    borderTopColor: 'transparent',
+    borderRadius: 10,
+  },
+  
+  // Sections
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  
+  // Recent Searches
+  recentContainer: {
+    marginBottom: 24,
+  },
+  recentList: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  recentItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minWidth: 120,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  recentRoute: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recentFromTo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  recentDate: {
+    fontSize: 12,
+    color: '#6B7280',
     marginTop: 4,
   },
-  airportCode: {
-    fontSize: 14,
-    color: '#6c757d',
+  recentPassengers: {
+    fontSize: 11,
+    color: '#6B7280',
     fontWeight: '500',
-    marginLeft: 8,
+  },
+  
+  // Popular Destinations
+  popularContainer: {
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  destinationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  destinationCard: {
+    width: (width - 64) / 2, // Account for padding and gap
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  destinationEmoji: {
+    fontSize: 32,
+    marginBottom: 12,
+  },
+  destinationInfo: {
+    alignItems: 'center',
+  },
+  destinationCity: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  destinationCountry: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  destinationPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#A83442',
+  },
+  
+  // Additional required styles
+  formSection: {
+    marginBottom: 16,
   },
   locationDivider: {
     height: 20,
@@ -874,6 +1418,80 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: '#dee2e6',
     borderStyle: 'dashed',
+  },
+  passengerCabinContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minHeight: 60,
+  },
+  passengerSection: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cabinSection: {
+    minWidth: 0,
+  },
+  cabinClassText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  addFlightButton: {
+    width: '100%',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    marginBottom: 24,
+  },
+  addFlightText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  
+  // New styles for the rest of the file
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minHeight: 60,
+  },
+  inputContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inputLabel: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  formInputText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  airportCode: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginLeft: 8,
   },
   swapButton: {
     position: 'absolute',
@@ -905,9 +1523,6 @@ const styles = StyleSheet.create({
   dateField: {
     flex: 1,
   },
-  bottomRow: {
-    marginBottom: 24,
-  },
   bottomField: {
     flex: 1,
     minWidth: 0,
@@ -916,82 +1531,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6c757d',
     marginLeft: 8,
-  },
-  searchButton: {
-    width: '100%',
-    backgroundColor: '#000000',
-    borderRadius: 25,
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  searchButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600', // Changed from '700' to semi-bold
-  },
-  addFlightButton: {
-    width: '100%',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 25,
-    paddingVertical: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-    marginBottom: 24,
-  },
-  addFlightText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '500', // Changed from '700' to medium
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-    minHeight: 60,
-  },
-  inputContent: {
-    flex: 1,
-    minWidth: 0,
-  },
-  inputLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginBottom: 4,
-    fontWeight: '500',
-  },
-  formInputText: {
-    fontSize: 16,
-    fontWeight: '500', // Changed from '700' to medium
-    color: '#000000',
-  },
-  dateRowContainer: {
-    marginBottom: 20,
-  },
-  durationBadge: {
-    backgroundColor: '#e9ecef',
-    borderRadius: 10,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    alignSelf: 'flex-start',
-    marginTop: -10,
-  },
-  durationText: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '500',
   },
   modalContainer: {
     flex: 1,
@@ -1028,11 +1567,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  passengerLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
   },
   passengerSubLabel: {
     fontSize: 12,
@@ -1096,37 +1630,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600', // Changed from '700' to semi-bold
-  },
-  passengerCabinContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-    minHeight: 60,
-  },
-  passengerSection: {
-    flex: 1,
-    minWidth: 0,
-  },
-  cabinSection: {
-    minWidth: 0,
-  },
-  cabinClassText: {
-    fontSize: 16,
-    fontWeight: '500', // Changed from '700' to medium
-    color: '#000000',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 20,
-    textAlign: 'center',
   },
   classDropdown: {
     backgroundColor: '#f8f9fa',
@@ -1202,131 +1705,21 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  dateSection: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  dateSectionActive: {
-    backgroundColor: '#A83442',
-    borderRadius: 25,
-    paddingVertical: 10,
-  },
-  dateSectionText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#6c757d',
-  },
-  dateSectionTextActive: {
-    color: '#FFFFFF',
-  },
-  singleDatePill: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  singleDateText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000000',
-  },
-  dateArrow: {
-    fontSize: 20,
-    color: '#6c757d',
-    marginHorizontal: 10,
-  },
-  dayCounter: {
-    backgroundColor: '#f8f9fa',
-    borderRadius: 25,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  dayCounterText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#000000',
-  },
-  calendarContainer: {
-    flex: 1,
-  },
-  monthSection: {
+  singleDateRowContainer: {
     marginBottom: 20,
   },
-  monthTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#000000',
-    marginBottom: 12,
-    textAlign: 'center',
+  durationBadge: {
+    backgroundColor: '#e9ecef',
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    alignSelf: 'flex-start',
+    marginTop: -10,
   },
-  weekHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 8,
-  },
-  weekHeaderText: {
+  durationText: {
     fontSize: 12,
     color: '#6c757d',
     fontWeight: '500',
-  },
-  calendarGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-  },
-  dayButton: {
-    width: (width - 40 - 16) / 7, // Adjust for padding and gap
-    aspectRatio: 1,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginVertical: 4,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-  },
-  dayText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  selectedDayText: {
-    color: '#FFFFFF',
-  },
-  departureDay: {
-    backgroundColor: '#A83442',
-    borderColor: '#A83442',
-  },
-  returnDay: {
-    backgroundColor: '#A83442',
-    borderColor: '#A83442',
-  },
-  rangeDay: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#dee2e6',
-  },
-  pastDay: {
-    backgroundColor: '#f8f9fa',
-    borderColor: '#dee2e6',
-    opacity: 0.5,
-  },
-  pastDayText: {
-    color: '#6c757d',
-  },
-  emptyDay: {
-    width: (width - 40 - 16) / 7,
-    aspectRatio: 1,
-  },
-  dateModalFooter: {
-    paddingBottom: 20,
-  },
-  singleDateRowContainer: {
-    marginBottom: 20,
   },
   modernDateModalContainer: {
     flex: 1,
