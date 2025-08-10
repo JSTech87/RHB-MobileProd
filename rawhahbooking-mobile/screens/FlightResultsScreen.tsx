@@ -35,6 +35,8 @@ interface SearchParams {
     adults: number;
     children: number;
     infants: number;
+    infantsInSeat?: number;
+    infantsOnLap?: number;
   };
   tripType: 'oneWay' | 'roundTrip';
   cabinClass: 'Economy' | 'Premium Economy' | 'Business' | 'First';
@@ -445,15 +447,15 @@ export const FlightResultsScreen: React.FC = () => {
 
       // Calculate total passengers
       // Use search params to get passenger count since offer doesn't have passengers
-<<<<<<< HEAD
-      const totalPassengers = searchParams.passengers?.length || 1;
-=======
-      const totalPassengers = searchParams?.passengers ? 
-        (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1;
-<<<<<<< HEAD
->>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
-=======
->>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
+      const totalPassengers = searchParams?.passengers
+        ? (
+            (searchParams.passengers.adults || 0) +
+            (searchParams.passengers.children || 0) +
+            (searchParams.passengers.infantsInSeat || 0) +
+            (searchParams.passengers.infantsOnLap || 0) +
+            (searchParams.passengers.infants || 0)
+          )
+        : 1;
 
       navigation.navigate('FlightCheckout', {
         flight: offer,
@@ -870,23 +872,15 @@ export const FlightResultsScreen: React.FC = () => {
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams?.from || 'N/A'}</Text>
               <Text style={styles.cityName}>Surabaya</Text>
-<<<<<<< HEAD
-<<<<<<< HEAD
-          </View>
-=======
             </View>
->>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
-=======
-            </View>
->>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
             
             <View style={styles.routeMiddle}>
               <View style={styles.routeLine} />
               <View style={styles.planeIconContainer}>
                 <Ionicons name="airplane" size={16} color="#A83442" />
-          </View>
+              </View>
               <View style={styles.routeLine} />
-          </View>
+            </View>
             
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams?.to || 'N/A'}</Text>
@@ -897,10 +891,17 @@ export const FlightResultsScreen: React.FC = () => {
           <View style={styles.tripInfo}>
             <Text style={styles.tripDate}>{searchParams?.departureDate || 'N/A'}</Text>
             <Text style={styles.passengerCount}>
-              {searchParams?.passengers ? 
-                (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1
-              } Passenger{searchParams?.passengers && 
-                (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) !== 1 ? 's' : ''}
+              {(() => {
+                const p = searchParams?.passengers;
+                if (!p) return 1;
+                const count = (p.adults || 0) + (p.children || 0) + (p.infantsInSeat || 0) + (p.infantsOnLap || 0) + (p.infants || 0);
+                return count || 1;
+              })()} Passenger{(() => {
+                const p = searchParams?.passengers;
+                if (!p) return '';
+                const count = (p.adults || 0) + (p.children || 0) + (p.infantsInSeat || 0) + (p.infantsOnLap || 0) + (p.infants || 0);
+                return count === 1 ? '' : 's';
+              })()}
             </Text>
           </View>
         </View>
