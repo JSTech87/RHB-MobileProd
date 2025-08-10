@@ -57,11 +57,11 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
   const [editingStayIndex, setEditingStayIndex] = useState(0);
   const [editingDateType, setEditingDateType] = useState<'checkIn' | 'checkOut'>('checkIn');
   const [formData, setFormData] = useState<HotelInquiryData>({
-    stays: [{
+      stays: [{
       destination: '',
       checkIn: '',
       checkOut: '',
-      rooms: 1,
+        rooms: 1,
     }],
     adults: 2,
     children: 0,
@@ -122,7 +122,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
           destination: '',
           checkIn: '',
           checkOut: '',
-          rooms: 1,
+        rooms: 1,
         }]
       }));
     } else {
@@ -247,7 +247,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       message += `Name: ${formData.groupDetails.organizerName}\n`;
       message += `Email: ${formData.groupDetails.organizerEmail}\n`;
       message += `Phone: ${formData.groupDetails.organizerPhone || 'Not provided'}\n\n`;
-    } else {
+      } else {
       message += `👥 Guests: ${formData.adults} adults`;
       if (formData.children > 0) {
         message += `, ${formData.children} children`;
@@ -273,7 +273,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     }
     
     message += `\n${formData.isGroupBooking ? '#GROUP_HOTEL_BUSINESS_INQUIRY' : '#HOTEL_BUSINESS_INQUIRY'}`;
-
+    
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
     
@@ -448,8 +448,8 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
                     <Ionicons name="add" size={18} color="#A83442" />
                   </TouchableOpacity>
                 </View>
-              </View>
-              
+          </View>
+
               <View style={styles.counterItem}>
                 <Text style={styles.counterLabel}>Children</Text>
                 <View style={styles.counter}>
@@ -512,18 +512,18 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
 
           {/* Group Booking Toggle */}
           <View style={styles.section}>
-            <TouchableOpacity 
-              style={styles.groupToggle}
+                <TouchableOpacity 
+                  style={styles.groupToggle}
               onPress={() => updateFormData('isGroupBooking', !formData.isGroupBooking)}
-            >
+                >
               <View style={[styles.checkbox, formData.isGroupBooking && styles.checkboxActive]}>
                 {formData.isGroupBooking && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
-              </View>
+                  </View>
               <View style={styles.groupToggleContent}>
-                <Text style={styles.groupToggleText}>This is a group booking</Text>
+                  <Text style={styles.groupToggleText}>This is a group booking</Text>
                 <Text style={styles.groupToggleSubtext}>For 10+ travelers or special events</Text>
               </View>
-            </TouchableOpacity>
+                </TouchableOpacity>
           </View>
 
           {/* Group Details Section */}

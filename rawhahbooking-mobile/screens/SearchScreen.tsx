@@ -111,61 +111,54 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     { id: '4', city: 'Paris', country: 'France', code: 'CDG', price: 'from $1,099', image: '🗼' },
   ]);
 
-  // Islamic Calendar Dates for 2026
+  // Islamic Calendar Dates for 2026 (Corrected based on 16 Safar 1447 AH being current)
   const islamicDates2026: IslamicDate[] = [
     {
       name: 'Islamic New Year',
-      hijriDate: '1 Muharram 1448',
-      gregorianDate: new Date(2026, 5, 25), // June 25, 2026
+      hijriDate: '1 Muharram 1447',
+      gregorianDate: new Date(2025, 6, 7), // July 7, 2025
       description: 'Start of the Islamic year',
-      isPast: false,
+      isPast: true,
     },
     {
       name: 'Ashura',
-      hijriDate: '10 Muharram 1448',
-      gregorianDate: new Date(2026, 6, 4), // July 4, 2026
+      hijriDate: '10 Muharram 1447',
+      gregorianDate: new Date(2025, 6, 16), // July 16, 2025
       description: 'Day of remembrance',
-      isPast: false,
+      isPast: true,
     },
     {
       name: 'Ramadan Begins',
-      hijriDate: '1 Ramadan 1448',
-      gregorianDate: new Date(2026, 1, 18), // February 18, 2026
+      hijriDate: '1 Ramadan 1447',
+      gregorianDate: new Date(2026, 1, 28), // February 28, 2026
       description: 'Holy month of fasting',
-      isPast: new Date() > new Date(2026, 1, 18),
-    },
-    {
-      name: 'Laylat al-Qadr',
-      hijriDate: '27 Ramadan 1448',
-      gregorianDate: new Date(2026, 2, 16), // March 16, 2026
-      description: 'Night of Power',
-      isPast: new Date() > new Date(2026, 2, 16),
+      isPast: false,
     },
     {
       name: 'Eid al-Fitr',
-      hijriDate: '1 Shawwal 1448',
-      gregorianDate: new Date(2026, 2, 20), // March 20, 2026
+      hijriDate: '1 Shawwal 1447',
+      gregorianDate: new Date(2026, 2, 30), // March 30, 2026
       description: 'Festival of Breaking the Fast',
-      isPast: new Date() > new Date(2026, 2, 20),
+      isPast: false,
     },
     {
       name: 'Hajj Season',
-      hijriDate: '8-13 Dhu al-Hijjah 1448',
-      gregorianDate: new Date(2026, 8, 14), // September 14, 2026
+      hijriDate: '8-13 Dhu al-Hijjah 1447',
+      gregorianDate: new Date(2026, 5, 24), // June 24, 2026
       description: 'Pilgrimage to Mecca',
       isPast: false,
     },
     {
       name: 'Day of Arafah',
-      hijriDate: '9 Dhu al-Hijjah 1448',
-      gregorianDate: new Date(2026, 8, 15), // September 15, 2026
+      hijriDate: '9 Dhu al-Hijjah 1447',
+      gregorianDate: new Date(2026, 5, 25), // June 25, 2026
       description: 'Most important day of Hajj',
       isPast: false,
     },
     {
       name: 'Eid al-Adha',
-      hijriDate: '10 Dhu al-Hijjah 1448',
-      gregorianDate: new Date(2026, 8, 16), // September 16, 2026
+      hijriDate: '10 Dhu al-Hijjah 1447',
+      gregorianDate: new Date(2026, 5, 26), // June 26, 2026
       description: 'Festival of Sacrifice',
       isPast: false,
     },
@@ -582,20 +575,15 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             {/* Logo */}
             <View style={styles.logoContainer}>
               <Image
-                source={require('../assets/Transparent Logo.png')}
+                source={require('../assets/Original Logo Symbol.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
-              <Text style={styles.brandText}>RawhahBooking</Text>
-            </View>
-            
-            {/* Notification Button */}
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#6B7280" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>2</Text>
+              <View style={styles.brandTextContainer}>
+                <Text style={styles.brandTextBlack}>Rawhah</Text>
+                <Text style={styles.brandTextRed}>Booking</Text>
               </View>
-            </TouchableOpacity>
+            </View>
           </View>
 
           {/* Service Tabs */}
@@ -810,17 +798,13 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                 <Text style={styles.calendarTitle}>Notable Islamic Dates 2026</Text>
               </View>
               
-              <ScrollView 
-                horizontal 
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.calendarScrollContent}
-              >
+              <View style={styles.calendarList}>
                 {islamicDates2026.map((date, index) => (
                   <TouchableOpacity
                     key={index}
                     style={[
-                      styles.calendarCard,
-                      date.isPast && styles.calendarCardPast
+                      styles.calendarListItem,
+                      date.isPast && styles.calendarListItemPast
                     ]}
                     onPress={() => {
                       if (!date.isPast) {
@@ -830,44 +814,45 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                       }
                     }}
                   >
-                    <View style={styles.calendarCardHeader}>
+                    <View style={styles.calendarItemLeft}>
                       <Text style={[
                         styles.calendarEventName,
                         date.isPast && styles.calendarTextPast
                       ]}>
                         {date.name}
                       </Text>
-                      {date.isPast && (
-                        <Ionicons name="checkmark-circle" size={16} color="#9CA3AF" />
-                      )}
-                    </View>
-                    <Text style={[
-                      styles.calendarHijriDate,
-                      date.isPast && styles.calendarTextPast
-                    ]}>
-                      {date.hijriDate}
-                    </Text>
-                    <Text style={[
-                      styles.calendarGregorianDate,
-                      date.isPast && styles.calendarTextPast
-                    ]}>
-                      {date.gregorianDate.toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </Text>
-                    {date.description && (
                       <Text style={[
                         styles.calendarDescription,
                         date.isPast && styles.calendarTextPast
                       ]}>
                         {date.description}
                       </Text>
-                    )}
+                    </View>
+                    
+                    <View style={styles.calendarItemRight}>
+                      <Text style={[
+                        styles.calendarHijriDate,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.hijriDate}
+                      </Text>
+                      <Text style={[
+                        styles.calendarGregorianDate,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.gregorianDate.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                      {date.isPast && (
+                        <Ionicons name="checkmark-circle" size={16} color="#9CA3AF" style={styles.checkIcon} />
+                      )}
+                    </View>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
+              </View>
             </View>
           )}
         </ScrollView>
@@ -1171,8 +1156,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    width: 40,
-    height: 40,
+    width: 50,
+    height: 50,
     marginRight: 8,
   },
   logoText: {
@@ -1181,7 +1166,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   brandText: {
-    fontSize: 16,
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#A83442',
+  },
+  brandTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandTextBlack: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  brandTextRed: {
+    fontSize: 24,
     fontWeight: '600',
     color: '#A83442',
   },
@@ -2300,25 +2299,60 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   calendarEventName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#111827',
+    marginBottom: 2,
   },
   calendarTextPast: {
     color: '#9CA3AF',
   },
   calendarHijriDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
-    marginBottom: 4,
+    marginBottom: 2,
+    textAlign: 'right',
   },
   calendarGregorianDate: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6B7280',
+    textAlign: 'right',
   },
   calendarDescription: {
     fontSize: 12,
     color: '#6B7280',
-    marginTop: 4,
+    lineHeight: 16,
+  },
+  calendarList: {
+    gap: 8,
+  },
+  calendarListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  calendarListItemPast: {
+    opacity: 0.6,
+  },
+  calendarItemLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  calendarItemRight: {
+    alignItems: 'flex-end',
+    minWidth: 100,
+  },
+  checkIcon: {
+    marginLeft: 10,
   },
 }); 

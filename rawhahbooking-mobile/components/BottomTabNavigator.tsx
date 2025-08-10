@@ -27,8 +27,8 @@ const SearchIcon = ({ focused }: { focused: boolean }) => (
 );
 
 const BookingsIcon = ({ focused }: { focused: boolean }) => (
-  <MaterialIcons 
-    name="event" 
+  <Ionicons 
+    name="briefcase" 
     size={24} 
     color={focused ? '#A83442' : '#6c757d'} 
   />

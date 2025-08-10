@@ -10,6 +10,8 @@ import {
   Dimensions,
   RefreshControl,
   Modal,
+  Share,
+  Alert,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
@@ -183,11 +185,79 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'flight': return '#64748B';
-      case 'hotel': return '#6366F1';
+      case 'flight': return '#3B82F6';
+      case 'hotel': return '#10B981';
       case 'inquiry': return '#D97706';
       default: return '#64748B';
     }
+  };
+
+  // Share booking function
+  const shareBooking = async (booking: BookingItem) => {
+    try {
+      const shareContent = formatBookingForShare(booking);
+      const result = await Share.share({
+        message: shareContent,
+        title: `${booking.title} - Booking Details`,
+      });
+
+      if (result.action === Share.sharedAction) {
+        if (result.activityType) {
+          // Shared with specific activity type
+        } else {
+          // Shared successfully
+        }
+      } else if (result.action === Share.dismissedAction) {
+        // Share dismissed
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Unable to share booking details');
+    }
+  };
+
+  // Format booking details for sharing
+  const formatBookingForShare = (booking: BookingItem) => {
+    let shareText = `🎫 ${booking.title}\n`;
+    shareText += `📅 ${booking.date}\n`;
+    shareText += `📍 ${booking.subtitle}\n`;
+    
+    if (booking.price) {
+      shareText += `💰 ${booking.price}\n`;
+    }
+    
+    shareText += `📊 Status: ${booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}\n`;
+    
+    if (booking.metadata.bookingReference) {
+      shareText += `🔖 Reference: ${booking.metadata.bookingReference}\n`;
+    }
+    
+    if (booking.metadata.passengers) {
+      shareText += `👥 Passengers: ${booking.metadata.passengers}\n`;
+    }
+    
+    if (booking.metadata.rooms) {
+      shareText += `🏨 Rooms: ${booking.metadata.rooms}\n`;
+    }
+    
+    if (booking.metadata.duration) {
+      shareText += `⏱️ Duration: ${booking.metadata.duration}\n`;
+    }
+    
+    if (booking.metadata.airline) {
+      shareText += `✈️ Airline: ${booking.metadata.airline}\n`;
+    }
+    
+    if (booking.metadata.hotelName) {
+      shareText += `🏨 Hotel: ${booking.metadata.hotelName}\n`;
+    }
+    
+    if (booking.metadata.groupBooking && booking.metadata.totalTravelers) {
+      shareText += `👨‍👩‍👧‍👦 Group Booking: ${booking.metadata.totalTravelers} travelers\n`;
+    }
+    
+    shareText += `\n📱 Shared via RawhahBooking`;
+    
+    return shareText;
   };
 
   const BookingCard: React.FC<{ booking: BookingItem }> = ({ booking }) => (
@@ -207,14 +277,25 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
           <Text style={styles.bookingSubtitle}>{booking.subtitle}</Text>
           <Text style={styles.bookingDate}>{booking.date}</Text>
         </View>
-        <View style={styles.bookingMeta}>
-          {booking.price && (
-            <Text style={styles.bookingPrice}>{booking.price}</Text>
-          )}
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
-            <Text style={styles.statusText}>
-              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
-            </Text>
+        <View style={styles.bookingActions}>
+          <TouchableOpacity 
+            style={styles.shareButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              shareBooking(booking);
+            }}
+          >
+            <Ionicons name="share-outline" size={20} color="#6B7280" />
+          </TouchableOpacity>
+          <View style={styles.bookingMeta}>
+            {booking.price && (
+              <Text style={styles.bookingPrice}>{booking.price}</Text>
+            )}
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
+              <Text style={styles.statusText}>
+                {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -271,7 +352,12 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
               <Text style={styles.modalCancel}>Close</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Booking Details</Text>
-            <View style={styles.headerSpacer} />
+            <TouchableOpacity 
+              style={styles.modalShareButton}
+              onPress={() => shareBooking(selectedBooking)}
+            >
+              <Ionicons name="share-outline" size={20} color="#A83442" />
+            </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.modalContent}>
@@ -598,6 +684,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#94A3B8',
   },
+  bookingActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  shareButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#EBF4FF',
+  },
   bookingMeta: {
     alignItems: 'flex-end',
   },
@@ -674,6 +770,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
+  },
+  modalShareButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
   },
   headerSpacer: {
     width: 60,

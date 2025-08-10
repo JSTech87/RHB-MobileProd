@@ -179,27 +179,34 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
+        {/* Logo Section */}
+        <View style={styles.logoSection}>
+          <Image
+            source={require('../assets/rawhah-adaptive-icon.png')}
+            style={styles.topLogo}
+            resizeMode="contain"
+          />
+          <View style={styles.brandTextContainer}>
+            <Text style={styles.brandText}>Rawhah</Text>
+            <Text style={styles.brandTextRed}>Booking</Text>
+          </View>
+        </View>
+
         {/* Professional Header */}
         <View style={styles.professionalHeader}>
           <View style={styles.headerContent}>
-            {/* Brand Section */}
-            <View style={styles.brandSection}>
-              <Image
-                source={require('../assets/Transparent Logo.png')}
-                style={styles.brandLogo}
-                resizeMode="contain"
-              />
-              <View style={styles.brandInfo}>
-                <Text style={styles.brandName}>RawhahBooking</Text>
-                <Text style={styles.brandTagline}>Travel Solutions</Text>
-              </View>
+            {/* Welcome Section */}
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeMessage}>
+                Welcome back, {user?.name || user?.id || 'Traveler'}
+              </Text>
+              <Text style={styles.welcomeSubtext}>
+                Let's plan your next journey
+              </Text>
             </View>
             
             {/* User Actions */}
             <View style={styles.userActions}>
-              <TouchableOpacity style={styles.actionButton}>
-                <Ionicons name="search-outline" size={22} color="#64748B" />
-              </TouchableOpacity>
               <TouchableOpacity style={styles.actionButton}>
                 <Ionicons name="notifications-outline" size={22} color="#64748B" />
                 <View style={styles.notificationDot}>
@@ -230,16 +237,6 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
               </Text>
             </View>
           </View>
-        </View>
-
-        {/* Welcome Section */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeMessage}>
-            Welcome back, {user?.name || user?.id || 'Traveler'}
-          </Text>
-          <Text style={styles.welcomeSubtext}>
-            Let's plan your next journey
-          </Text>
         </View>
 
         {/* Quick Actions */}
@@ -314,14 +311,6 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
             ))}
           </View>
         </View>
-
-        {/* Sign Out Button */}
-        <View style={styles.signOutSection}>
-          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-            <Ionicons name="log-out-outline" size={18} color="#DC2626" />
-            <Text style={styles.signOutButtonText}>Sign Out</Text>
-          </TouchableOpacity>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -337,6 +326,30 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 24,
+  },
+  logoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+    paddingTop: 10,
+  },
+  topLogo: {
+    width: 50,
+    height: 50,
+    marginRight: 10,
+  },
+  brandTextContainer: {
+    flexDirection: 'row',
+  },
+  brandText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+  brandTextRed: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#A83442',
   },
   professionalHeader: {
     backgroundColor: '#FFFFFF',
@@ -357,26 +370,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 12,
   },
-  brandSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  welcomeSection: {
+    flex: 1,
+    paddingRight: 16,
   },
-  brandLogo: {
-    width: 48,
-    height: 48,
-    marginRight: 12,
-  },
-  brandInfo: {
-    flexDirection: 'column',
-  },
-  brandName: {
+  welcomeMessage: {
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
+    marginBottom: 2,
   },
-  brandTagline: {
-    fontSize: 12,
+  welcomeSubtext: {
+    fontSize: 13,
     color: '#6B7280',
+    lineHeight: 18,
   },
   userActions: {
     flexDirection: 'row',
@@ -445,28 +452,6 @@ const styles = StyleSheet.create({
     width: 1,
     height: '100%',
     backgroundColor: '#F1F5F9',
-  },
-  welcomeSection: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  welcomeMessage: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  welcomeSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
   },
   section: {
     marginTop: 24,
@@ -611,30 +596,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#6366F1',
     fontWeight: '500',
-  },
-  signOutSection: {
-    marginTop: 32,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  signOutButtonText: {
-    color: '#DC2626',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 6,
   },
 }); 
