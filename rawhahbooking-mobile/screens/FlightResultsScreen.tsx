@@ -259,51 +259,55 @@ export const FlightResultsScreen: React.FC = () => {
   const performInitialSearch = async () => {
     try {
       setLoading(true);
-      console.log('📡 Performing initial flight search with params:', searchParams);
+      console.log('📡 Performing initial Supabase flight search with params:', searchParams);
       
-      // Create Duffel API request format
-      const duffelRequest = {
-        slices: [
-          {
-            origin: searchParams.from,
-            destination: searchParams.to,
-            departure_date: searchParams.departureDate,
-          }
-        ],
-        passengers: [
-          // Add adults
-          ...Array(searchParams.passengers?.adults || 1).fill({ type: 'adult' }),
-          // Add children  
-          ...Array(searchParams.passengers?.children || 0).fill({ type: 'child' }),
-          // Add infants
-          ...Array(searchParams.passengers?.infants || 0).fill({ type: 'infant_without_seat' }),
-        ],
-        cabin_class: (searchParams.cabinClass || 'Economy').toLowerCase().replace(' ', '_'),
+      // Import BackendApiService to use Supabase Edge Functions
+      const { BackendApiService } = await import('../services/backendApi');
+      
+      // Create flight search request format for Supabase Edge Function
+      const flightSearchRequest = {
+        origin: searchParams.from,
+        destination: searchParams.to,
+        departure_date: searchParams.departureDate,
+        return_date: searchParams.tripType === 'roundTrip' ? searchParams.returnDate : undefined,
+        passengers: {
+          adults: searchParams.passengers?.adults || 1,
+          children: searchParams.passengers?.children || 0,
+          infants: searchParams.passengers?.infants || 0,
+        },
+        cabin_class: searchParams.cabinClass?.toLowerCase().replace(' ', '_') || 'economy',
+        trip_type: searchParams.tripType || 'oneWay',
+        user_id: 'anonymous_user', // Add user_id as required by Edge Function
       };
       
-      // Add return slice for round trip
-      if (searchParams.tripType === 'roundTrip' && searchParams.returnDate) {
-        duffelRequest.slices.push({
-          origin: searchParams.to,
-          destination: searchParams.from,
-          departure_date: searchParams.returnDate,
-        });
-      }
+      console.log('🚀 Supabase Edge Function Request:', JSON.stringify(flightSearchRequest, null, 2));
       
-      console.log('🚀 Duffel API Request:', JSON.stringify(duffelRequest, null, 2));
+      // Search for offers via Supabase Edge Functions
+      const response = await BackendApiService.searchFlights(flightSearchRequest as any);
       
-      // Search for offers
-      const response = await DuffelApiService.searchOffers(duffelRequest);
+      console.log('✅ Flight search successful:', response.offers?.length || 0, 'offers found');
       
-      console.log('✅ Flight search successful:', response.data?.length || 0, 'offers found');
+      setOffers(response.offers || []);
       
-      setOffers(response.data || []);
-      
-    } catch (error) {
-      console.error('❌ Initial flight search failed:', error);
-      Alert.alert('Search Error', 'Unable to load flight offers. Please try refreshing.');
-    } finally {
       setLoading(false);
+    } catch (error) {
+      console.error('❌ Supabase flight search failed:', error);
+      setLoading(false);
+      
+      Alert.alert(
+        'Search Error', 
+        'Unable to search for flights via Supabase. Please try again.',
+        [
+          {
+            text: 'Retry',
+            onPress: () => performInitialSearch(),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
     }
   };
 
@@ -519,9 +523,12 @@ export const FlightResultsScreen: React.FC = () => {
     try {
       setLoading(true);
       
-      // Re-fetch offers with same search parameters
-      const response = await DuffelApiService.searchOffers(searchParams);
-      let newOffers = response.data;
+      // Import BackendApiService to use Supabase Edge Functions
+      const { BackendApiService } = await import('../services/backendApi');
+      
+      // Re-fetch offers with same search parameters via Supabase
+      const response = await BackendApiService.searchFlights(searchParams as any);
+      let newOffers = response.offers;
 
       // Note: Markup rules applied on backend for security
 
@@ -535,8 +542,8 @@ export const FlightResultsScreen: React.FC = () => {
       }, 30); // Cache for 30 minutes
 
     } catch (error) {
-      console.error('Error refreshing offers:', error);
-      Alert.alert('Error', 'Unable to refresh flight offers. Please try again.');
+      console.error('Error refreshing offers via Supabase:', error);
+      Alert.alert('Error', 'Unable to refresh flight offers via Supabase. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -652,34 +659,42 @@ export const FlightResultsScreen: React.FC = () => {
           <View style={styles.filterSection}>
             <Text style={styles.filterTitle}>Airlines</Text>
             <View style={styles.filterOptions}>
-              {Array.from(new Set(offers.flatMap(f => f.slices.flatMap(s => s.segments.map(seg => seg.operating_carrier.iata_code))))).map((airline) => (
+              {offers && Array.isArray(offers) && offers.length > 0 ? 
+                Array.from(new Set(offers.flatMap(f => 
+                  f.slices && Array.isArray(f.slices) ? 
+                    f.slices.flatMap(s => 
+                      s.segments && Array.isArray(s.segments) ? 
+                        s.segments.map(seg => seg.operating_carrier?.iata_code).filter(Boolean)
+                        : []
+                    ) 
+                    : []
+                ))).map((airline) => (
                 <TouchableOpacity
                   key={airline}
                   style={[
-                    styles.filterOption,
-                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterOptionSelected
+                    styles.filterChip,
+                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterChipSelected
                   ]}
-                  onPress={() => setSortFilterOptions(prev => ({ 
-                    ...prev, 
-                    filters: { 
-                      ...prev.filters, 
-                      airlines: prev.filters.airlines.includes(airline)
-                        ? prev.filters.airlines.filter(a => a !== airline)
-                        : [...prev.filters.airlines, airline]
-                    }
-                  }))}
+                  onPress={() => {
+                    const newAirlines = sortFilterOptions.filters.airlines.includes(airline)
+                      ? sortFilterOptions.filters.airlines.filter(a => a !== airline)
+                      : [...sortFilterOptions.filters.airlines, airline];
+                    setSortFilterOptions(prev => ({
+                      ...prev,
+                      filters: { ...prev.filters, airlines: newAirlines }
+                    }));
+                  }}
                 >
                   <Text style={[
-                    styles.filterOptionText,
-                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterOptionTextSelected
+                    styles.filterChipText,
+                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterChipTextSelected
                   ]}>
                     {airline}
                   </Text>
-                  {sortFilterOptions.filters.airlines.includes(airline) && (
-                    <Ionicons name="checkmark" size={16} color="#A83442" />
-                  )}
                 </TouchableOpacity>
-              ))}
+              )) : (
+                <Text style={styles.noDataText}>No airlines available</Text>
+              )}
             </View>
           </View>
         </ScrollView>
@@ -1717,5 +1732,41 @@ const styles = StyleSheet.create({
   filterOptionTextSelected: {
     color: '#A83442',
     fontWeight: '600',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 8,
+  },
+  filterChipText: {
+    fontSize: 13,
+    color: '#111827',
+    fontWeight: '500',
+  },
+  filterChipSelected: {
+    backgroundColor: '#FEF2F2',
+    borderColor: '#A83442',
+    borderWidth: 2,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  filterChipTextSelected: {
+    color: '#A83442',
+    fontWeight: '600',
+  },
+  noDataText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 10,
   },
 }); 

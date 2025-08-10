@@ -226,46 +226,33 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
   const performFlightSearch = async (searchParams: any) => {
     try {
-      // Import DuffelApiService dynamically to avoid circular dependencies
-      const { default: DuffelApiService } = await import('../services/duffelApi');
+      // Import BackendApiService to use Supabase Edge Functions
+      const { BackendApiService } = await import('../services/backendApi');
       
-      console.log('📡 Calling Duffel API...');
+      console.log('📡 Calling Supabase Edge Functions...');
       
-      // Create Duffel API request format
-      const duffelRequest = {
-        slices: [
-          {
-            origin: searchParams.from,
-            destination: searchParams.to,
-            departure_date: searchParams.departureDate,
-          }
-        ],
-        passengers: [
-          // Add adults
-          ...Array(searchParams.passengers.adults).fill({ type: 'adult' }),
-          // Add children
-          ...Array(searchParams.passengers.children).fill({ type: 'child' }),
-          // Add infants
-          ...Array(searchParams.passengers.infants).fill({ type: 'infant_without_seat' }),
-        ],
+      // Create flight search request format for Supabase Edge Function
+      const flightSearchRequest = {
+        origin: searchParams.from,
+        destination: searchParams.to,
+        departure_date: searchParams.departureDate,
+        return_date: searchParams.tripType === 'roundTrip' ? searchParams.returnDate : undefined,
+        passengers: {
+          adults: searchParams.passengers.adults,
+          children: searchParams.passengers.children,
+          infants: searchParams.passengers.infants,
+        },
         cabin_class: searchParams.cabinClass.toLowerCase().replace(' ', '_'),
+        trip_type: searchParams.tripType,
+        user_id: 'anonymous_user', // Add user_id as required by Edge Function
       };
       
-      // Add return slice for round trip
-      if (searchParams.tripType === 'roundTrip' && searchParams.returnDate) {
-        duffelRequest.slices.push({
-          origin: searchParams.to,
-          destination: searchParams.from,
-          departure_date: searchParams.returnDate,
-        });
-      }
+      console.log('🚀 Supabase Edge Function Request:', JSON.stringify(flightSearchRequest, null, 2));
       
-      console.log('🚀 Duffel API Request:', JSON.stringify(duffelRequest, null, 2));
+      // Search for offers via Supabase Edge Functions
+      const response = await BackendApiService.searchFlights(flightSearchRequest as any);
       
-      // Search for offers
-      const response = await DuffelApiService.searchOffers(duffelRequest);
-      
-      console.log('✅ Flight search successful:', response.data?.length || 0, 'offers found');
+      console.log('✅ Flight search successful:', response.offers?.length || 0, 'offers found');
       
       setIsLoading(false);
       Animated.timing(fadeAnim, {
@@ -277,11 +264,11 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       // Navigate to results with search parameters
       navigation?.navigate('FlightResults', { 
         searchParams, 
-        offers: response.data || [] 
+        offers: response.offers || [] 
       });
       
     } catch (error) {
-      console.error('❌ Flight search failed:', error);
+      console.error('❌ Supabase flight search failed:', error);
       setIsLoading(false);
       
       Animated.timing(fadeAnim, {
@@ -292,7 +279,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       
       Alert.alert(
         'Search Error', 
-        'Unable to search for flights. Please try again or check your internet connection.',
+        'Unable to search for flights via Supabase. Please try again or check your internet connection.',
         [
           {
             text: 'Retry',
