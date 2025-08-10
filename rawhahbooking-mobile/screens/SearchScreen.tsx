@@ -652,7 +652,14 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                         </>
                       )}
                     </View>
-                    <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                    <View style={styles.dateMetaInfo}>
+                      <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                      {selectedTripType === 'roundTrip' && (
+                        <Text style={styles.dayCount}>
+                          {calculateDaysBetween(selectedDepartureDate, selectedReturnDate)} days
+                        </Text>
+                      )}
+                    </View>
                   </TouchableOpacity>
                 </View>
 
@@ -1216,6 +1223,16 @@ const styles = StyleSheet.create({
   },
   dateDivider: {
     marginHorizontal: 16,
+  },
+  dateMetaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  dayCount: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   
   // Bottom Row (Passengers and Class)

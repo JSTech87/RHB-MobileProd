@@ -472,6 +472,14 @@ Destination: ${formData.stays.map(stay => `${stay.destination} (${stay.checkIn} 
                 {isSubmitting ? 'Submitting...' : 'Submit Inquiry'}
               </Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.whatsappButton}
+              onPress={handleWhatsApp}
+            >
+              <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+              <Text style={styles.whatsappButtonText}>WhatsApp Business Inquiry</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -819,6 +827,25 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
   },
   submitButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  whatsappButton: {
+    backgroundColor: '#25D366',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    shadowColor: '#25D366',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  whatsappButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
