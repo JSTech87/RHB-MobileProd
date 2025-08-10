@@ -7,33 +7,26 @@ import {
   StyleSheet,
   StatusBar,
   Image,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-
-const { width, height } = Dimensions.get('window');
+import { Ionicons } from '@expo/vector-icons';
 
 export const LoginScreen: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [username, setUsername] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleAuth = () => {
-    // Authentication logic will be implemented later
     console.log('Auth action:', isSignUp ? 'Sign Up' : 'Sign In');
-    console.log('Email:', email);
-    console.log('Password:', password);
-    if (isSignUp) {
-      console.log('First Name:', firstName);
-      console.log('Last Name:', lastName);
-    }
+    console.log('Form data:', { email, password, firstName, lastName, username, phoneNumber });
   };
 
   return (
@@ -44,73 +37,67 @@ export const LoginScreen: React.FC = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Image
-              source={require('../assets/rawhah-adaptive-icon.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            <View style={styles.brandContainer}>
-              <Text style={styles.brandTextBlack}>Rawhah</Text>
-              <Text style={styles.brandTextRed}>Booking</Text>
-            </View>
-          </View>
-
-          {/* Welcome Section */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeTitle}>
-              {isSignUp ? 'Create Your Account' : 'Welcome Back'}
-            </Text>
-            <Text style={styles.welcomeSubtitle}>
-              {isSignUp 
-                ? 'Join thousands of travelers who trust us with their journey'
-                : 'Sign in to continue your travel planning'
-              }
-            </Text>
-          </View>
-
           {/* Auth Card */}
           <View style={styles.authCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.iconContainer}>
-                <Ionicons 
-                  name={isSignUp ? "person-add-outline" : "log-in-outline"} 
-                  size={32} 
-                  color="#A83442" 
-                />
-              </View>
-              <Text style={styles.cardTitle}>
-                {isSignUp ? 'Create Account' : 'Sign In'}
-              </Text>
-              <Text style={styles.cardSubtitle}>
-                {isSignUp 
-                  ? 'Fill in your details to get started'
-                  : 'Enter your credentials to continue'
-                }
-              </Text>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/rawhah-adaptive-icon.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
             </View>
 
+            {/* Title */}
+            <Text style={styles.title}>
+              {isSignUp ? 'Create your account' : 'Sign in to RawhahBooking'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {isSignUp 
+                ? 'Welcome! Please fill in the details to get started.'
+                : 'Welcome back! Please sign in to continue'
+              }
+            </Text>
+
+            {/* Social Login Buttons */}
+            <View style={styles.socialContainer}>
+              <TouchableOpacity style={styles.socialButton}>
+                <Ionicons name="logo-apple" size={20} color="#000000" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.socialButton}>
+                <Text style={styles.googleIcon}>G</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Divider */}
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>or</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            {/* Form Fields */}
             <View style={styles.formContainer}>
               {isSignUp && (
                 <>
+                  {/* Name Row */}
                   <View style={styles.nameRow}>
-                    <View style={[styles.inputContainer, styles.halfWidth]}>
-                      <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                    <View style={styles.nameField}>
+                      <Text style={styles.fieldLabel}>First name</Text>
                       <TextInput
                         style={styles.input}
-                        placeholder="First Name"
+                        placeholder="First name"
                         value={firstName}
                         onChangeText={setFirstName}
                         autoCapitalize="words"
                         placeholderTextColor="#9CA3AF"
                       />
                     </View>
-                    <View style={[styles.inputContainer, styles.halfWidth]}>
-                      <Ionicons name="person-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+                    <View style={styles.nameField}>
+                      <Text style={styles.fieldLabel}>Last name</Text>
                       <TextInput
                         style={styles.input}
-                        placeholder="Last Name"
+                        placeholder="Last name"
                         value={lastName}
                         onChangeText={setLastName}
                         autoCapitalize="words"
@@ -118,82 +105,101 @@ export const LoginScreen: React.FC = () => {
                       />
                     </View>
                   </View>
+
+                  {/* Username */}
+                  <View style={styles.fieldContainer}>
+                    <Text style={styles.fieldLabel}>Username</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter username"
+                      value={username}
+                      onChangeText={setUsername}
+                      autoCapitalize="none"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
                 </>
               )}
 
-              <View style={styles.inputContainer}>
-                <Ionicons name="mail-outline" size={20} color="#6B7280" style={styles.inputIcon} />
+              {/* Email */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>
+                  {isSignUp ? 'Email address' : 'Email address or username'}
+                </Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="Email Address"
+                  placeholder={isSignUp ? 'Enter your email address' : 'Enter email or username'}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
                   autoCapitalize="none"
-                  autoComplete="email"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
 
-              <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#6B7280" style={styles.inputIcon} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  autoComplete="password"
-                  placeholderTextColor="#9CA3AF"
-                />
-                <TouchableOpacity
-                  style={styles.passwordToggle}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Ionicons 
-                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
-                    size={20} 
-                    color="#6B7280" 
-                  />
-                </TouchableOpacity>
-              </View>
-
-              {!isSignUp && (
-                <TouchableOpacity style={styles.forgotPassword}>
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-                </TouchableOpacity>
+              {/* Phone Number - Only for Sign Up */}
+              {isSignUp && (
+                <View style={styles.fieldContainer}>
+                  <View style={styles.phoneHeader}>
+                    <Text style={styles.fieldLabel}>Phone number</Text>
+                    <Text style={styles.optionalLabel}>Optional</Text>
+                  </View>
+                  <View style={styles.phoneInput}>
+                    <View style={styles.countryCode}>
+                      <Text style={styles.countryCodeText}>SA</Text>
+                      <Ionicons name="chevron-down" size={16} color="#6B7280" />
+                    </View>
+                    <Text style={styles.phonePrefix}>+966</Text>
+                    <TextInput
+                      style={styles.phoneNumberInput}
+                      placeholder="Enter your phone number"
+                      value={phoneNumber}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                      placeholderTextColor="#9CA3AF"
+                    />
+                  </View>
+                </View>
               )}
 
-              <TouchableOpacity
-                style={styles.authButton}
-                onPress={handleAuth}
-              >
-                <Text style={styles.authButtonText}>
-                  {isSignUp ? 'Create Account' : 'Sign In'}
-                </Text>
-                <Ionicons 
-                  name={isSignUp ? "person-add-outline" : "arrow-forward-outline"} 
-                  size={20} 
-                  color="#FFFFFF" 
-                />
-              </TouchableOpacity>
-
-              <View style={styles.divider}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
+              {/* Password */}
+              <View style={styles.fieldContainer}>
+                <Text style={styles.fieldLabel}>Password</Text>
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!showPassword}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordToggle}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Ionicons 
+                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color="#6B7280" 
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
-              <TouchableOpacity style={styles.socialButton}>
-                <Ionicons name="logo-google" size={20} color="#EA4335" />
-                <Text style={styles.socialButtonText}>Continue with Google</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.socialButton}>
-                <Ionicons name="logo-apple" size={20} color="#000000" />
-                <Text style={styles.socialButtonText}>Continue with Apple</Text>
-              </TouchableOpacity>
+              {/* Use phone toggle - Only for Sign In */}
+              {!isSignUp && (
+                <TouchableOpacity style={styles.usePhoneButton}>
+                  <Text style={styles.usePhoneText}>Use phone</Text>
+                </TouchableOpacity>
+              )}
             </View>
+
+            {/* Continue Button */}
+            <TouchableOpacity style={styles.continueButton} onPress={handleAuth}>
+              <Text style={styles.continueButtonText}>Continue</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
 
           {/* Switch Auth Mode */}
@@ -202,25 +208,12 @@ export const LoginScreen: React.FC = () => {
             onPress={() => setIsSignUp(!isSignUp)}
           >
             <Text style={styles.switchText}>
-              {isSignUp 
-                ? 'Already have an account? ' 
-                : "Don't have an account? "
-              }
-            </Text>
-            <Text style={styles.switchTextBold}>
-              {isSignUp ? 'Sign In' : 'Sign Up'}
+              {isSignUp ? "Already have an account? " : "Don't have an account? "}
+              <Text style={styles.switchTextBold}>
+                {isSignUp ? 'Sign in' : 'Sign up'}
+              </Text>
             </Text>
           </TouchableOpacity>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              By continuing, you agree to our{' '}
-              <Text style={styles.footerLink}>Terms of Service</Text>
-              {' '}and{' '}
-              <Text style={styles.footerLink}>Privacy Policy</Text>
-            </Text>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -228,10 +221,9 @@ export const LoginScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  // Main Layout
   container: {
     flex: 1,
-    backgroundColor: '#D6D5C9', // Beige background
+    backgroundColor: '#D6D5C9',
   },
   keyboardView: {
     flex: 1,
@@ -240,52 +232,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 24,
     paddingVertical: 20,
-  },
-  
-  // Header Section
-  header: {
-    alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 30,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
-  },
-  brandContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  brandTextBlack: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#000000',
-  },
-  brandTextRed: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#A83442',
-  },
-  
-  // Welcome Section
-  welcomeSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  welcomeTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#111827',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  welcomeSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 20,
   },
   
   // Auth Card
@@ -299,119 +245,53 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 8,
     marginBottom: 24,
-  },
-  cardHeader: {
     alignItems: 'center',
-    marginBottom: 24,
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FEE2E2',
-    alignItems: 'center',
-    justifyContent: 'center',
+  logoContainer: {
+    width: 100,
+    height: 100,
     marginBottom: 16,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '600',
+  logo: {
+    width: '100%',
+    height: '100%',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#111827',
+    textAlign: 'center',
     marginBottom: 8,
   },
-  cardSubtitle: {
-    fontSize: 14,
+  subtitle: {
+    fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 24,
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
-  
-  // Form Elements
-  formContainer: {
-    gap: 16,
-  },
-  nameRow: {
+  socialContainer: {
     flexDirection: 'row',
-    gap: 12,
+    justifyContent: 'space-around',
+    width: '100%',
+    marginBottom: 24,
   },
-  halfWidth: {
-    flex: 1,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  socialButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
     borderColor: '#E5E7EB',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    minHeight: 56,
   },
-  inputIcon: {
-    marginRight: 12,
+  googleIcon: {
+    fontSize: 24,
+    color: '#EA4335',
+    fontWeight: 'bold',
   },
-  input: {
-    flex: 1,
-    fontSize: 16,
-    color: '#111827',
-    paddingVertical: 4,
-  },
-  passwordToggle: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: -8,
-    marginBottom: 8,
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: '#A83442',
-    fontWeight: '500',
-  },
-  
-  // Buttons
-  authButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#A83442',
-    borderRadius: 12,
-    paddingVertical: 16,
-    marginTop: 8,
-    shadowColor: '#A83442',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-    gap: 8,
-  },
-  authButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-    shadowOpacity: 0.1,
-  },
-  authButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginTop: 8,
-  },
-  secondaryButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  
-  // Social Buttons
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -428,25 +308,135 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontWeight: '500',
   },
-  socialButton: {
+  formContainer: {
+    width: '100%',
+    gap: 16,
+  },
+  fieldContainer: {
+    width: '100%',
+  },
+  nameRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingVertical: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    marginBottom: 12,
     gap: 12,
   },
-  socialButtonText: {
+  nameField: {
+    flex: 1,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56,
+    fontSize: 16,
+    color: '#111827',
+  },
+  phoneHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  optionalLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  phoneInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56,
+  },
+  countryCode: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  countryCodeText: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  phonePrefix: {
     fontSize: 16,
     color: '#374151',
     fontWeight: '500',
+    marginHorizontal: 8,
+  },
+  phoneNumberInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 4,
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    minHeight: 56,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 4,
+  },
+  passwordToggle: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  usePhoneButton: {
+    alignSelf: 'center',
+    marginTop: 16,
+  },
+  usePhoneText: {
+    fontSize: 14,
+    color: '#A83442',
+    fontWeight: '500',
+  },
+  continueButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#A83442',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginTop: 8,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+    gap: 8,
+  },
+  continueButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   
-  // Switch Auth Mode
+  // Switch & Footer
   switchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -463,8 +453,6 @@ const styles = StyleSheet.create({
     color: '#A83442',
     fontWeight: '600',
   },
-  
-  // Footer
   footer: {
     alignItems: 'center',
     paddingHorizontal: 20,
