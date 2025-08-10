@@ -215,10 +215,16 @@ export const FlightResultsScreen: React.FC = () => {
   const navigation = useNavigation<FlightResultsScreenNavigationProp>();
   const route = useRoute<FlightResultsScreenRouteProp>();
   
-  const { searchParams, offers: initialOffers } = route.params;
+  const { searchParams, offers: initialOffers = [] } = route.params || {};
   
-  const [offers, setOffers] = useState<DuffelOffer[]>(initialOffers);
-  const [filteredOffers, setFilteredOffers] = useState<DuffelOffer[]>(initialOffers);
+  // Safety check for searchParams
+  if (!searchParams) {
+    console.error('FlightResultsScreen: Missing searchParams');
+    // Navigate back or show error
+  }
+  
+  const [offers, setOffers] = useState<DuffelOffer[]>(initialOffers || []);
+  const [filteredOffers, setFilteredOffers] = useState<DuffelOffer[]>(initialOffers || []);
   const [loading, setLoading] = useState(false);
   const [showSortFilter, setShowSortFilter] = useState(false);
   const [markupRules, setMarkupRules] = useState<any[]>([]); // Changed to any[] as MarkupRule is removed
@@ -257,6 +263,12 @@ export const FlightResultsScreen: React.FC = () => {
   };
 
   const applyFiltersAndSort = () => {
+    // Safety check: ensure offers is defined and is an array
+    if (!offers || !Array.isArray(offers) || offers.length === 0) {
+      setFilteredOffers([]);
+      return;
+    }
+
     let filtered = [...offers];
 
     // Apply price filter
@@ -268,8 +280,9 @@ export const FlightResultsScreen: React.FC = () => {
 
     // Apply duration filter
     filtered = filtered.filter(offer => {
+      if (!offer.slices || !Array.isArray(offer.slices)) return false;
       const totalDuration = offer.slices.reduce((total, slice) => {
-        const duration = parseDuration(slice.duration);
+        const duration = slice.duration ? parseDuration(slice.duration) : 0;
         return total + duration;
       }, 0);
       const maxDuration = sortFilterOptions.filters.duration === 'any' ? 24 * 60 : 
@@ -279,11 +292,11 @@ export const FlightResultsScreen: React.FC = () => {
     });
 
     // Apply airline filter
-    if (sortFilterOptions.filters.airlines.length > 0) {
+    if (sortFilterOptions.filters.airlines && sortFilterOptions.filters.airlines.length > 0) {
       filtered = filtered.filter(offer =>
-        offer.slices.some(slice =>
-          slice.segments.some(segment =>
-            sortFilterOptions.filters.airlines.includes(segment.operating_carrier.iata_code)
+        offer.slices && offer.slices.some(slice =>
+          slice.segments && slice.segments.some(segment =>
+            segment.operating_carrier && sortFilterOptions.filters.airlines.includes(segment.operating_carrier.iata_code)
           )
         )
       );
@@ -292,7 +305,10 @@ export const FlightResultsScreen: React.FC = () => {
     // Apply stops filter
     if (sortFilterOptions.filters.stops !== 'any') {
       filtered = filtered.filter(offer => {
-        const maxStops = Math.max(...offer.slices.map(slice => slice.segments.length - 1));
+        if (!offer.slices || !Array.isArray(offer.slices)) return false;
+        const maxStops = Math.max(...offer.slices.map(slice => 
+          slice.segments && Array.isArray(slice.segments) ? slice.segments.length - 1 : 0
+        ));
         switch (sortFilterOptions.filters.stops) {
           case 'nonstop':
             return maxStops === 0;
@@ -307,6 +323,7 @@ export const FlightResultsScreen: React.FC = () => {
     // Apply time filters
     if (sortFilterOptions.filters.departureTime !== 'any') {
       filtered = filtered.filter(offer => {
+        if (!offer.slices || !offer.slices[0] || !offer.slices[0].departing_at) return false;
         const departureTime = new Date(offer.slices[0].departing_at).getHours();
         return matchesTimeFilter(departureTime, sortFilterOptions.filters.departureTime);
       });
@@ -314,7 +331,10 @@ export const FlightResultsScreen: React.FC = () => {
 
     if (sortFilterOptions.filters.arrivalTime !== 'any') {
       filtered = filtered.filter(offer => {
-        const arrivalTime = new Date(offer.slices[offer.slices.length - 1].arriving_at).getHours();
+        if (!offer.slices || offer.slices.length === 0) return false;
+        const lastSlice = offer.slices[offer.slices.length - 1];
+        if (!lastSlice || !lastSlice.arriving_at) return false;
+        const arrivalTime = new Date(lastSlice.arriving_at).getHours();
         return matchesTimeFilter(arrivalTime, sortFilterOptions.filters.arrivalTime);
       });
     }
@@ -325,20 +345,30 @@ export const FlightResultsScreen: React.FC = () => {
       
       switch (sortFilterOptions.sortBy) {
         case 'price':
-          comparison = parseFloat(a.total_amount) - parseFloat(b.total_amount);
+          comparison = parseFloat(a.total_amount || '0') - parseFloat(b.total_amount || '0');
           break;
         case 'duration':
-          const aDuration = a.slices.reduce((total, slice) => total + parseDuration(slice.duration), 0);
-          const bDuration = b.slices.reduce((total, slice) => total + parseDuration(slice.duration), 0);
+          const aDuration = (a.slices || []).reduce((total, slice) => 
+            total + parseDuration(slice.duration || ''), 0);
+          const bDuration = (b.slices || []).reduce((total, slice) => 
+            total + parseDuration(slice.duration || ''), 0);
           comparison = aDuration - bDuration;
           break;
         case 'departure':
-          comparison = new Date(a.slices[0].departing_at).getTime() - new Date(b.slices[0].departing_at).getTime();
+          const aDepTime = a.slices && a.slices[0] && a.slices[0].departing_at ? 
+            new Date(a.slices[0].departing_at).getTime() : 0;
+          const bDepTime = b.slices && b.slices[0] && b.slices[0].departing_at ? 
+            new Date(b.slices[0].departing_at).getTime() : 0;
+          comparison = aDepTime - bDepTime;
           break;
         case 'arrival':
-          const aArrival = new Date(a.slices[a.slices.length - 1].arriving_at);
-          const bArrival = new Date(b.slices[b.slices.length - 1].arriving_at);
-          comparison = aArrival.getTime() - bArrival.getTime();
+          const aLastSlice = a.slices && a.slices.length > 0 ? a.slices[a.slices.length - 1] : null;
+          const bLastSlice = b.slices && b.slices.length > 0 ? b.slices[b.slices.length - 1] : null;
+          const aArrTime = aLastSlice && aLastSlice.arriving_at ? 
+            new Date(aLastSlice.arriving_at).getTime() : 0;
+          const bArrTime = bLastSlice && bLastSlice.arriving_at ? 
+            new Date(bLastSlice.arriving_at).getTime() : 0;
+          comparison = aArrTime - bArrTime;
           break;
       }
       
@@ -830,9 +860,9 @@ export const FlightResultsScreen: React.FC = () => {
         <View style={styles.routeContainer}>
         <View style={styles.routeInfo}>
             <View style={styles.routeEndpoint}>
-              <Text style={styles.airportCode}>{searchParams.from}</Text>
+              <Text style={styles.airportCode}>{searchParams?.from || 'N/A'}</Text>
               <Text style={styles.cityName}>Surabaya</Text>
-          </View>
+            </View>
             
             <View style={styles.routeMiddle}>
               <View style={styles.routeLine} />
@@ -843,15 +873,18 @@ export const FlightResultsScreen: React.FC = () => {
           </View>
             
             <View style={styles.routeEndpoint}>
-              <Text style={styles.airportCode}>{searchParams.to}</Text>
+              <Text style={styles.airportCode}>{searchParams?.to || 'N/A'}</Text>
               <Text style={styles.cityName}>Denpasar</Text>
             </View>
           </View>
           
           <View style={styles.tripInfo}>
-            <Text style={styles.tripDate}>{searchParams.departureDate}</Text>
+            <Text style={styles.tripDate}>{searchParams?.departureDate || 'N/A'}</Text>
             <Text style={styles.passengerCount}>
-              {searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants} Passenger{(searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) !== 1 ? 's' : ''}
+              {searchParams?.passengers ? 
+                (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1
+              } Passenger{searchParams?.passengers && 
+                (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) !== 1 ? 's' : ''}
             </Text>
           </View>
         </View>
