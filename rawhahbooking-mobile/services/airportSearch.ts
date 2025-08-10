@@ -92,9 +92,9 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
     }
     abortController = new AbortController();
 
-    // For now, fetch a reasonable number of airports and filter locally
-    // This provides a good balance between performance and coverage
-    const params = new URLSearchParams({ limit: '2000' }); // Increased to include major international airports
+    // For comprehensive coverage including major airports like London (LHR, LGW, etc.)
+    // which are on later pages, we need to fetch more airports
+    const params = new URLSearchParams({ limit: '5000' }); // Fetch enough to include airports up to 'S' codes
     const url = `${DUFFEL_API_BASE}/air/airports?${params}`;
      
     const response = await fetch(url, {
@@ -116,7 +116,7 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
       iata: airport.iata_code,
       name: airport.name,
       city: airport.city_name || airport.name,
-      region: airport.region,
+      region: undefined, // Duffel API doesn't provide region field
       country: airport.iata_country_code || 'Unknown',
       lat: airport.latitude,
       lon: airport.longitude,
@@ -137,7 +137,12 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
       const iataMatch = ['lhr', 'lgw', 'stn', 'ltn', 'lcy'].includes(normalizeText(airport.iata));
       return nameMatch || cityMatch || iataMatch;
     });
-    console.log('London airports found in dataset:', londonAirports.length, londonAirports.map((a: AirportOption) => `${a.iata}: ${a.name}`));
+    if (londonAirports.length > 0) {
+      console.log(`✅ Found ${londonAirports.length} London airports in dataset:`);
+      londonAirports.forEach((a: AirportOption) => console.log(`  ${a.iata}: ${a.name} (${a.city})`));
+    } else {
+      console.log('❌ No London airports found in dataset - may need to increase limit');
+    }
 
     // Filter airports based on the search query
     const normalizedQuery = normalizeText(query);
