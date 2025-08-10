@@ -510,7 +510,7 @@ export const FlightResultsScreen: React.FC<{
                 <View style={styles.flightType}>
                   <Text style={styles.flightTypeText}>{flight.flightType}</Text>
                 </View>
-                <Text style={styles.flightNumberText}>{flight.flightNumber}</Text>
+                <Text style={styles.flightNumber}>{flight.flightNumber}</Text>
                 <Text style={styles.cabinClassText}>{flight.cabinClass}</Text>
               </View>
             </View>
@@ -668,12 +668,12 @@ export const FlightResultsScreen: React.FC<{
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#D6D5C9" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerContent}>
+        <View style={styles.headerTop}>
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => {
@@ -684,39 +684,55 @@ export const FlightResultsScreen: React.FC<{
               }
             }}
           >
-            <Ionicons name="arrow-back" size={20} color="#000000" />
+            <Ionicons name="arrow-back" size={24} color="#111827" />
           </TouchableOpacity>
-          <Text style={styles.pageTitle}>Result Search</Text>
-          {/* Removed the burger menu button */}
-          <View style={styles.spacer} />
+          <Text style={styles.headerTitle}>Flight Results</Text>
+          <TouchableOpacity style={styles.headerAction} onPress={handleSortFilter}>
+            <Ionicons name="options-outline" size={24} color="#111827" />
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.routeInfo}>
-          <View style={styles.routeLocation}>
-            <Text style={styles.airportCode}>{searchParams.from}</Text>
-            <Text style={styles.airportName}>Surabaya, East Java</Text>
+        {/* Route Information */}
+        <View style={styles.routeContainer}>
+          <View style={styles.routeInfo}>
+            <View style={styles.routeEndpoint}>
+              <Text style={styles.airportCode}>{searchParams.from}</Text>
+              <Text style={styles.cityName}>Surabaya</Text>
+            </View>
+            
+            <View style={styles.routeMiddle}>
+              <View style={styles.routeLine} />
+              <View style={styles.planeIconContainer}>
+                <Ionicons name="airplane" size={16} color="#A83442" />
+              </View>
+              <View style={styles.routeLine} />
+            </View>
+            
+            <View style={styles.routeEndpoint}>
+              <Text style={styles.airportCode}>{searchParams.to}</Text>
+              <Text style={styles.cityName}>Denpasar</Text>
+            </View>
           </View>
-          <View style={styles.routeArrow}>
-            <Text style={styles.flightIconHeader}>→</Text>
-            <Text style={styles.routeDate}>{searchParams.departureDate}</Text>
-          </View>
-          <View style={styles.routeLocation}>
-            <Text style={styles.airportCode}>{searchParams.to}</Text>
-            <Text style={styles.airportName}>Denpasar, Bali</Text>
+          
+          <View style={styles.tripInfo}>
+            <Text style={styles.tripDate}>{searchParams.departureDate}</Text>
+            <Text style={styles.passengerCount}>
+              {searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants} Passenger{(searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) !== 1 ? 's' : ''}
+            </Text>
           </View>
         </View>
-      </View>
 
-      {/* Results Summary */}
-      <View style={styles.resultsSummary}>
-        <Text style={styles.resultsText}>
-          {filteredFlights.length} flight{filteredFlights.length !== 1 ? 's' : ''} found
-        </Text>
-        <Text style={styles.passengersText}>
-          {searchParams.passengers.adults} Adult{searchParams.passengers.adults !== 1 ? 's' : ''}
-          {searchParams.passengers.children > 0 && `, ${searchParams.passengers.children} Child${searchParams.passengers.children !== 1 ? 'ren' : ''}`}
-          {searchParams.passengers.infants > 0 && `, ${searchParams.passengers.infants} Infant${searchParams.passengers.infants !== 1 ? 's' : ''}`}
-        </Text>
+        {/* Results Summary */}
+        <View style={styles.resultsSummary}>
+          <Text style={styles.resultsCount}>
+            {filteredFlights.length} flight{filteredFlights.length !== 1 ? 's' : ''} available
+          </Text>
+          <TouchableOpacity style={styles.sortIndicator} onPress={handleSortFilter}>
+            <Text style={styles.sortText}>
+              Sorted by {sortFilterOptions.sortBy} {sortFilterOptions.sortOrder === 'asc' ? '↑' : '↓'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Content */}
@@ -731,10 +747,10 @@ export const FlightResultsScreen: React.FC<{
           ))
         ) : (
           <View style={styles.noResultsContainer}>
-            <Ionicons name="airplane-outline" size={48} color="#A83442" />
+            <Ionicons name="airplane-outline" size={64} color="#A83442" />
             <Text style={styles.noResultsTitle}>No flights found</Text>
             <Text style={styles.noResultsText}>
-              Try adjusting your filters or search criteria
+              Try adjusting your filters or search criteria to find more options
             </Text>
           </View>
         )}
@@ -749,277 +765,338 @@ export const FlightResultsScreen: React.FC<{
         <Text style={styles.sortFilterText}>Sort & Filter</Text>
       </TouchableOpacity>
       <SortFilterModal />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
-    backgroundColor: '#D6D5C9',
+    backgroundColor: '#F8F9FA',
   },
+  
+  // Header Styles
   header: {
-    backgroundColor: '#D6D5C9',
-    paddingTop: 50, // Account for status bar
-    paddingBottom: 15,
+    backgroundColor: '#FFFFFF',
     paddingHorizontal: 20,
+    paddingVertical: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  headerContent: {
+  headerTop: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 15,
+    alignItems: 'center',
+    marginBottom: 20,
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backButtonText: {
-    color: '#000000',
+  headerTitle: {
     fontSize: 20,
-    fontWeight: '600', // Changed from 'bold' to semi-bold
-  },
-  pageTitle: {
-    fontSize: 20,
-    fontWeight: '600', // Changed from '700' to semi-bold
-    color: '#000000',
-    textAlign: 'center',
+    fontWeight: '600',
+    color: '#111827',
     flex: 1,
+    textAlign: 'center',
   },
-  spacer: {
+  headerAction: {
     width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  // Route Information
+  routeContainer: {
+    marginBottom: 20,
   },
   routeInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 15,
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  routeLocation: {
+  routeEndpoint: {
     alignItems: 'center',
   },
   airportCode: {
-    color: '#000000',
-    fontSize: 28,
-    fontWeight: '700', // Keep bold for airport codes as they're key identifiers
-    marginBottom: 2,
-  },
-  airportName: {
-    color: '#333333',
-    fontSize: 12,
-    fontWeight: '400', // Added normal weight
-    opacity: 0.8,
-  },
-  routeArrow: {
-    alignItems: 'center',
-    gap: 5,
-  },
-  flightIconHeader: {
-    color: '#A83442',
     fontSize: 24,
-    transform: [{ rotate: '0deg' }],
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
   },
-  routeDate: {
-    color: '#333333',
+  cityName: {
     fontSize: 12,
-    opacity: 0.7,
+    fontWeight: '500',
+    color: '#6B7280',
   },
+  routeMiddle: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 20,
+    position: 'relative',
+  },
+  routeLine: {
+    width: '100%',
+    height: 2,
+    backgroundColor: '#E5E7EB',
+  },
+  planeIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'absolute',
+    top: '50%',
+    marginTop: -16,
+    zIndex: 1,
+    borderWidth: 2,
+    borderColor: '#A83442',
+  },
+  tripInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  tripDate: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  passengerCount: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  
+  // Results Summary
+  resultsSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  resultsCount: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  sortIndicator: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  sortText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#A83442',
+  },
+  
+  // Main Content
   mainContent: {
     flex: 1,
-    backgroundColor: '#D6D5C9',
+    backgroundColor: '#F8F9FA',
   },
   scrollContent: {
-    paddingTop: 15,
+    paddingTop: 20,
+    paddingHorizontal: 20,
   },
+  
+  // Flight Cards
   cardContainer: {
-    marginHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderRadius: 12,
+    shadowRadius: 8,
+    elevation: 4,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   flightCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     position: 'relative',
   },
   flightCardDetailed: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     position: 'relative',
   },
+  
+  // Card Decorative Elements
   cutout: {
     position: 'absolute',
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#D6D5C9',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#F8F9FA',
     top: '50%',
-    marginTop: -6,
+    marginTop: -8,
     zIndex: 2,
   },
   leftCutout: {
-    left: -6,
+    left: -8,
   },
   rightCutout: {
-    right: -6,
+    right: -8,
   },
+  
+  // Airline Header
   airlineHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   airlineInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   airlineLogo: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   airlineLogoText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '600', // Changed from '700' to semi-bold
+    fontWeight: '600',
   },
   airlineText: {
     flexDirection: 'column',
   },
   airlineLabel: {
     fontSize: 10,
-    color: '#6c757d',
-    fontWeight: '400', // Added normal weight
-    marginBottom: 1,
+    color: '#9CA3AF',
+    fontWeight: '500',
+    marginBottom: 2,
   },
   airlineName: {
-    fontSize: 14,
-    fontWeight: '500', // Changed from '700' to medium
-    color: '#000000',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
   },
-  flightNumber: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '400', // Changed from '500' to normal
-  },
-  flightNumberText: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '400', // Changed from '500' to normal
-    marginTop: 4,
-  },
-  cabinClassText: {
-    fontSize: 10,
-    color: '#6c757d',
-    fontWeight: '400', // Changed from '500' to normal
-  },
+  
+  // Flight Type Badge
   flightTypeContainer: {
     alignItems: 'center',
   },
   flightType: {
-    backgroundColor: 'rgba(168, 52, 66, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    backgroundColor: '#FEF2F2',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FECACA',
   },
   flightTypeText: {
     color: '#A83442',
-    fontSize: 10,
-    fontWeight: '500', // Changed from '600' to medium
+    fontSize: 11,
+    fontWeight: '600',
   },
+  flightNumber: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  flightNumberText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  cabinClassText: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  
+  // Flight Route in Cards
   flightRoute: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  routeEndpoint: {
-    flex: 1,
-    alignItems: 'center',
+    marginBottom: 20,
   },
   routeTime: {
-    fontSize: 18,
-    fontWeight: '600', // Changed from '700' to semi-bold
-    color: '#000000',
-    marginBottom: 2,
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 4,
   },
   routeCode: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
-    marginBottom: 1,
+    color: '#111827',
+    marginBottom: 2,
   },
   routeLocationName: {
-    fontSize: 10,
-    color: '#6c757d',
+    fontSize: 11,
+    color: '#6B7280',
     textAlign: 'center',
-  },
-  routeMiddle: {
-    flex: 1,
-    alignItems: 'center',
-    marginHorizontal: 16,
-    position: 'relative',
-  },
-  routeLine: {
-    width: '100%',
-    height: 1,
-    backgroundColor: '#e9ecef',
-    borderStyle: 'dashed',
-    borderWidth: 1,
-    borderColor: '#e9ecef',
-    marginVertical: 4,
+    fontWeight: '500',
   },
   routePlaneIcon: {
     position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#000000',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#A83442',
     alignItems: 'center',
     justifyContent: 'center',
     top: '50%',
-    marginTop: -10,
+    marginTop: -12,
   },
   planeIcon: {
     color: '#FFFFFF',
     fontSize: 12,
     transform: [{ rotate: '90deg' }],
   },
+  
+  // Bottom Row
   bottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 12,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#F3F4F6',
   },
   durationContainer: {
     alignItems: 'flex-start',
   },
   duration: {
-    fontSize: 12,
-    color: '#6c757d',
+    fontSize: 13,
+    color: '#6B7280',
     fontWeight: '500',
   },
   flightDate: {
-    fontSize: 10,
-    color: '#6c757d',
+    fontSize: 11,
+    color: '#9CA3AF',
     fontWeight: '500',
     marginTop: 2,
   },
@@ -1027,47 +1104,51 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   priceAmount: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#A83442',
-    marginBottom: 1,
+    marginBottom: 2,
   },
   pricePer: {
-    fontSize: 10,
-    color: '#6c757d',
+    fontSize: 11,
+    color: '#6B7280',
     fontWeight: '500',
   },
+  
+  // Action Buttons
   viewDetailsButton: {
-    backgroundColor: '#2ecc71',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 6,
+    backgroundColor: '#10B981',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 12,
   },
   viewDetailsText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
   },
+  
+  // Detailed Card View
   detailHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   closeButton: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   closeButtonText: {
-    color: '#000000',
-    fontSize: 20,
-    fontWeight: 'bold',
+    color: '#111827',
+    fontSize: 18,
+    fontWeight: '600',
   },
   detailsSection: {
     flex: 1,
@@ -1076,24 +1157,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   routePoint: {
     alignItems: 'center',
     flex: 1,
   },
   terminalInfo: {
-    fontSize: 10,
-    color: '#6c757d',
-    marginBottom: 1,
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 2,
   },
   gateInfo: {
-    fontSize: 10,
-    color: '#6c757d',
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
   },
   dateInfo: {
-    fontSize: 10,
-    color: '#6c757d',
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
     marginTop: 2,
   },
   routeMiddleDetailed: {
@@ -1103,118 +1187,52 @@ const styles = StyleSheet.create({
   },
   durationText: {
     fontSize: 12,
-    color: '#6c757d',
+    color: '#6B7280',
     fontWeight: '500',
     marginBottom: 4,
   },
   stopsText: {
-    fontSize: 10,
-    color: '#6c757d',
+    fontSize: 11,
+    color: '#6B7280',
     fontWeight: '500',
     marginTop: 4,
   },
+  
+  // Flight Info
   flightInfo: {
-    marginBottom: 16,
-    paddingTop: 16,
+    marginBottom: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#F3F4F6',
   },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   infoLabel: {
-    fontSize: 12,
-    color: '#6c757d',
+    fontSize: 13,
+    color: '#6B7280',
     fontWeight: '500',
   },
   infoValue: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#000000',
+    color: '#111827',
   },
-  bookingSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
-  },
-  priceSection: {
-    alignItems: 'flex-start',
-  },
-  totalLabel: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  totalPrice: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#A83442',
-  },
-  perPax: {
-    fontSize: 10,
-    color: '#6c757d',
-    fontWeight: '500',
-  },
-  bookButton: {
-    backgroundColor: '#A83442',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bookButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bottomPadding: {
-    height: 100,
-  },
-  floatingSortFilter: {
-    position: 'absolute',
-    bottom: 30,
-    left: '50%',
-    marginLeft: -60,
-    backgroundColor: '#A83442',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 25,
-    shadowColor: '#A83442',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  sortFilterText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  
+  // Amenities
   amenitiesSection: {
-    marginTop: 16,
-    paddingTop: 16,
+    marginTop: 20,
+    paddingTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: '#F3F4F6',
   },
   amenitiesTitle: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '500',
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+    marginBottom: 12,
   },
   amenitiesList: {
     flexDirection: 'column',
@@ -1222,42 +1240,141 @@ const styles = StyleSheet.create({
   amenityItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   amenityBullet: {
-    fontSize: 10,
-    color: '#6c757d',
-    marginRight: 4,
+    fontSize: 12,
+    color: '#A83442',
+    marginRight: 8,
   },
   amenityText: {
-    fontSize: 12,
-    color: '#000000',
+    fontSize: 13,
+    color: '#111827',
     fontWeight: '500',
   },
+  
+  // Booking Section
+  bookingSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 20,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  priceSection: {
+    alignItems: 'flex-start',
+  },
+  totalLabel: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  totalPrice: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#A83442',
+  },
+  perPax: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  bookButton: {
+    backgroundColor: '#A83442',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  bookButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  
+  // No Results
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  noResultsTitle: {
+    fontSize: 20,
+    color: '#111827',
+    fontWeight: '600',
+    marginTop: 20,
+  },
+  noResultsText: {
+    fontSize: 15,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginTop: 12,
+    paddingHorizontal: 40,
+    lineHeight: 22,
+  },
+  
+  // Floating Button
+  bottomPadding: {
+    height: 100,
+  },
+  floatingSortFilter: {
+    position: 'absolute',
+    bottom: 30,
+    left: '50%',
+    marginLeft: -75,
+    backgroundColor: '#A83442',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 25,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sortFilterText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  
   // Modal Styles
   modalContainer: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    paddingTop: 50, // Account for status bar
+    backgroundColor: '#F8F9FA',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: '#E5E7EB',
   },
   modalCancel: {
     fontSize: 16,
-    color: '#A83442',
-    fontWeight: '600',
+    color: '#6B7280',
+    fontWeight: '500',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#000000',
+    color: '#111827',
   },
   modalSave: {
     fontSize: 16,
@@ -1267,107 +1384,75 @@ const styles = StyleSheet.create({
   modalContent: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 15,
+    paddingTop: 20,
   },
+  
+  // Filter Sections
   filterSection: {
-    marginBottom: 20,
+    marginBottom: 32,
   },
   filterTitle: {
-    fontSize: 14,
-    color: '#6c757d',
-    fontWeight: '500',
-    marginBottom: 8,
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '600',
+    marginBottom: 16,
   },
   sortOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
   sortOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    gap: 8,
   },
   sortOptionSelected: {
-    backgroundColor: '#e9ecef',
+    backgroundColor: '#FEF2F2',
     borderColor: '#A83442',
   },
   sortOptionText: {
-    fontSize: 12,
-    color: '#000000',
+    fontSize: 14,
+    color: '#111827',
     fontWeight: '500',
   },
   sortOptionTextSelected: {
     color: '#A83442',
+    fontWeight: '600',
   },
   filterOptions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 12,
   },
   filterOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#e9ecef',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    gap: 8,
   },
   filterOptionSelected: {
-    backgroundColor: '#e9ecef',
+    backgroundColor: '#FEF2F2',
     borderColor: '#A83442',
   },
   filterOptionText: {
-    fontSize: 12,
-    color: '#000000',
+    fontSize: 14,
+    color: '#111827',
     fontWeight: '500',
   },
   filterOptionTextSelected: {
     color: '#A83442',
-  },
-  resultsSummary: {
-    backgroundColor: '#FFFFFF',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    alignItems: 'center',
-  },
-  resultsText: {
-    fontSize: 14,
-    color: '#6c757d',
-    fontWeight: '500',
-  },
-  passengersText: {
-    fontSize: 12,
-    color: '#6c757d',
-    fontWeight: '400',
-    marginTop: 2,
-  },
-  noResultsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 50,
-  },
-  noResultsTitle: {
-    fontSize: 18,
-    color: '#333333',
     fontWeight: '600',
-    marginTop: 20,
-  },
-  noResultsText: {
-    fontSize: 14,
-    color: '#6c757d',
-    textAlign: 'center',
-    marginTop: 10,
-    paddingHorizontal: 20,
   },
 }); 
