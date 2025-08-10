@@ -455,7 +455,8 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
           {/* Add Flight Button */}
           <TouchableOpacity style={styles.addFlightButton}>
-            <Text style={styles.addFlightText}>+ Add Another Flight</Text>
+            <Ionicons name="add-circle-outline" size={20} color="#A83442" />
+            <Text style={styles.addFlightText}>Add Another Flight</Text>
           </TouchableOpacity>
 
           {/* Bottom Row */}
@@ -486,24 +487,6 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       <Animated.View style={[styles.mainContainer, { opacity: fadeAnim }]}>
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerTop}>
-            <View style={styles.profileSection}>
-              <View style={styles.profileAvatar}>
-                <Text style={styles.profileAvatarText}>IM</Text>
-              </View>
-              <View style={styles.greetingContainer}>
-                <Text style={styles.greeting}>Good morning,</Text>
-                <Text style={styles.username}>Irvan Moses</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#111827" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
           {/* Service Tabs */}
           <View style={styles.serviceTabs}>
             <TouchableOpacity
@@ -661,6 +644,14 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                   </TouchableOpacity>
                 </View>
 
+                {/* Add Flight Button for Multi-City */}
+                {selectedTripType === 'multiCity' && (
+                  <TouchableOpacity style={styles.addFlightButton}>
+                    <Ionicons name="add-circle-outline" size={20} color="#A83442" />
+                    <Text style={styles.addFlightText}>Add Another Flight</Text>
+                  </TouchableOpacity>
+                )}
+
                 {/* Search Button */}
                 <TouchableOpacity 
                   style={[styles.searchButton, isLoading && styles.searchButtonLoading]} 
@@ -690,63 +681,6 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                   )}
                 </TouchableOpacity>
               </View>
-
-              {/* Recent Searches */}
-              {recentSearches.length > 0 && (
-                <View style={styles.recentContainer}>
-                  <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>Recent Searches</Text>
-                    <TouchableOpacity onPress={() => setShowRecentSearches(!showRecentSearches)}>
-                      <Ionicons 
-                        name={showRecentSearches ? "chevron-up" : "chevron-down"} 
-                        size={20} 
-                        color="#6B7280" 
-                      />
-                    </TouchableOpacity>
-                  </View>
-                  
-                  {showRecentSearches && (
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                      <View style={styles.recentList}>
-                        {recentSearches.map((recent) => (
-                          <TouchableOpacity
-                            key={recent.id}
-                            style={styles.recentItem}
-                            onPress={() => handleRecentSearch(recent)}
-                          >
-                            <View style={styles.recentRoute}>
-                              <Text style={styles.recentFromTo}>{recent.from} → {recent.to}</Text>
-                              <Text style={styles.recentDate}>{recent.date}</Text>
-                            </View>
-                            <Text style={styles.recentPassengers}>{recent.passengers} travelers</Text>
-                          </TouchableOpacity>
-                        ))}
-                      </View>
-                    </ScrollView>
-                  )}
-                </View>
-              )}
-
-              {/* Popular Destinations */}
-              <View style={styles.popularContainer}>
-                <Text style={styles.sectionTitle}>Popular Destinations</Text>
-                <View style={styles.destinationGrid}>
-                  {popularDestinations.map((destination) => (
-                    <TouchableOpacity
-                      key={destination.id}
-                      style={styles.destinationCard}
-                      onPress={() => handleQuickSearch(destination)}
-                    >
-                      <Text style={styles.destinationEmoji}>{destination.image}</Text>
-                      <View style={styles.destinationInfo}>
-                        <Text style={styles.destinationCity}>{destination.city}</Text>
-                        <Text style={styles.destinationCountry}>{destination.country}</Text>
-                        <Text style={styles.destinationPrice}>{destination.price}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
             </>
           ) : (
             renderHotelForm()
@@ -765,7 +699,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <TouchableOpacity onPress={() => setShowPassengerModal(false)}>
               <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Travelers and Cabin class</Text>
+            <Text style={styles.modalTitle}>Travelers</Text>
             <View style={styles.headerSpacer} />
           </View>
 
@@ -859,37 +793,6 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
               </View>
             </View>
 
-            {/* Cabin Class */}
-            <View style={styles.cabinClassSection}>
-              <Text style={styles.sectionTitle}>Cabin class</Text>
-              <TouchableOpacity 
-                style={styles.cabinClassSelector}
-                onPress={() => setShowClassModal(true)}
-              >
-                <Text style={styles.cabinClassValue}>{seatClass}</Text>
-                <Text style={styles.dropdownArrow}>▼</Text>
-              </TouchableOpacity>
-              
-              {showClassModal && (
-                <View style={styles.classDropdown}>
-                  {['Economy', 'Premium Economy', 'Business', 'First Class'].map((classType) => (
-                    <TouchableOpacity
-                      key={classType}
-                      style={[styles.classDropdownOption, seatClass === classType && styles.classDropdownOptionSelected]}
-                      onPress={() => {
-                        setSeatClass(classType as 'Economy' | 'Premium Economy' | 'Business' | 'First');
-                        setShowClassModal(false);
-                      }}
-                    >
-                      <Text style={[styles.classDropdownText, seatClass === classType && styles.classDropdownTextSelected]}>
-                        {classType}
-                      </Text>
-                      {seatClass === classType && <Text style={styles.checkmark}>✓</Text>}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -958,6 +861,90 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
           </View>
         </View>
       </Modal>
+      
+      {/* Class Selection Modal */}
+      <Modal
+        visible={showClassModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowClassModal(false)}>
+              <Text style={styles.closeButton}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Cabin Class</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.classOptions}>
+              {[
+                { 
+                  key: 'Economy', 
+                  label: 'Economy', 
+                  description: 'Standard seating and service',
+                  icon: 'airplane-outline' 
+                },
+                { 
+                  key: 'Premium Economy', 
+                  label: 'Premium Economy', 
+                  description: 'Extra legroom and enhanced service',
+                  icon: 'airplane' 
+                },
+                { 
+                  key: 'Business', 
+                  label: 'Business', 
+                  description: 'Lie-flat seats and premium dining',
+                  icon: 'business-outline' 
+                },
+                { 
+                  key: 'First', 
+                  label: 'First Class', 
+                  description: 'Ultimate luxury and privacy',
+                  icon: 'diamond-outline' 
+                },
+              ].map((classOption) => (
+                <TouchableOpacity
+                  key={classOption.key}
+                  style={[
+                    styles.classOption,
+                    seatClass === classOption.key && styles.classOptionSelected
+                  ]}
+                  onPress={() => {
+                    setSeatClass(classOption.key as 'Economy' | 'Premium Economy' | 'Business' | 'First');
+                    setShowClassModal(false);
+                  }}
+                >
+                  <View style={styles.classOptionContent}>
+                    <View style={styles.classOptionLeft}>
+                      <Ionicons 
+                        name={classOption.icon as any} 
+                        size={24} 
+                        color={seatClass === classOption.key ? '#A83442' : '#6B7280'} 
+                      />
+                      <View style={styles.classOptionText}>
+                        <Text style={[
+                          styles.classOptionLabel,
+                          seatClass === classOption.key && styles.classOptionLabelSelected
+                        ]}>
+                          {classOption.label}
+                        </Text>
+                        <Text style={styles.classOptionDescription}>
+                          {classOption.description}
+                        </Text>
+                      </View>
+                    </View>
+                    {seatClass === classOption.key && (
+                      <Ionicons name="checkmark-circle" size={24} color="#A83442" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -993,7 +980,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
   },
   profileSection: {
     flexDirection: 'row',
@@ -1446,18 +1432,20 @@ const styles = StyleSheet.create({
   addFlightButton: {
     width: '100%',
     backgroundColor: '#f8f9fa',
-    borderRadius: 25,
+    borderRadius: 16,
     paddingVertical: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#dee2e6',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
     marginBottom: 24,
   },
   addFlightText: {
-    color: '#000000',
+    color: '#A83442',
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   
   // New styles for the rest of the file
@@ -1964,5 +1952,47 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#6c757d',
     textAlign: 'left', // Left aligned as specified
+  },
+  classOptions: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  classOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  classOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  classOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  classOptionText: {
+    flexDirection: 'column',
+  },
+  classOptionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  classOptionLabelSelected: {
+    color: '#A83442',
+  },
+  classOptionDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  classOptionSelected: {
+    backgroundColor: '#f8f9fa',
   },
 }); 

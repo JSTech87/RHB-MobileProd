@@ -255,7 +255,7 @@ export const FlightCheckoutScreen: React.FC<{
       const initialPassenger: PassengerInfo = {
         id: 'passenger-1',
         type: 'adult',
-        title: 'Mr',
+    title: 'Mr',
         firstName: userProfile?.firstName || 'Irvan',
         lastName: userProfile?.lastName || 'Moses',
         dateOfBirth: userProfile?.dateOfBirth || '1990-05-15',
@@ -499,10 +499,10 @@ export const FlightCheckoutScreen: React.FC<{
       
       if (permissionResult.granted === false) {
         Alert.alert('Permission Required', 'Permission to access camera roll is required!');
-        return;
-      }
+      return;
+    }
 
-      Alert.alert(
+    Alert.alert(
         'Add Photo',
         'Choose an option',
         [
@@ -752,7 +752,7 @@ export const FlightCheckoutScreen: React.FC<{
               <Text style={styles.familyText}>Family Member</Text>
             </View>
           )}
-        </View>
+      </View>
 
         <View style={styles.passengerActions}>
           <TouchableOpacity 
@@ -893,7 +893,7 @@ export const FlightCheckoutScreen: React.FC<{
           keyboardType="email-address"
           autoCapitalize="none"
         />
-      </View>
+            </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Phone Number *</Text>
@@ -935,7 +935,7 @@ export const FlightCheckoutScreen: React.FC<{
           onChangeText={(value) => setContactInfo(prev => ({ ...prev, emergencyContactPhone: value }))}
           placeholder="Enter emergency contact phone"
           placeholderTextColor="#9CA3AF"
-          keyboardType="phone-pad"
+              keyboardType="phone-pad"
         />
       </View>
 
@@ -1194,8 +1194,8 @@ export const FlightCheckoutScreen: React.FC<{
             ]}>
               Add ({selectedFamilyMembers.length})
             </Text>
-          </TouchableOpacity>
-        </View>
+        </TouchableOpacity>
+      </View>
 
         <ScrollView style={styles.modalContent}>
           <Text style={styles.modalSubtitle}>
@@ -1222,7 +1222,7 @@ export const FlightCheckoutScreen: React.FC<{
                   <Text style={styles.familyMemberInitials}>
                     {member.name.split(' ').map(n => n[0]).join('')}
                   </Text>
-                </View>
+    </View>
                 <View style={styles.familyMemberDetails}>
                   <Text style={styles.familyMemberName}>{member.name}</Text>
                   <Text style={styles.familyMemberRelation}>
@@ -1296,7 +1296,7 @@ export const FlightCheckoutScreen: React.FC<{
             <TouchableOpacity onPress={handleSave}>
               <Text style={styles.modalSave}>Save</Text>
             </TouchableOpacity>
-          </View>
+  </View>
 
           <KeyboardAvoidingView 
             style={styles.keyboardAvoidingView}
@@ -1338,14 +1338,14 @@ export const FlightCheckoutScreen: React.FC<{
                   </View>
                   <View style={[styles.inputGroup, { flex: 0.7 }]}>
                     <Text style={styles.inputLabel}>First Name *</Text>
-                    <TextInput
+    <TextInput
                       style={styles.textInput}
                       value={tempPassenger.firstName}
                       onChangeText={(value) => setTempPassenger(prev => ({ ...prev, firstName: value }))}
                       placeholder="Enter first name"
                       placeholderTextColor="#9CA3AF"
-                    />
-                  </View>
+    />
+  </View>
                 </View>
 
                 <View style={styles.inputGroup}>
@@ -1374,9 +1374,9 @@ export const FlightCheckoutScreen: React.FC<{
                     <Text style={styles.inputLabel}>Gender</Text>
                     <View style={styles.genderContainer}>
                       {['Male', 'Female'].map((gender) => (
-                        <TouchableOpacity
+  <TouchableOpacity
                           key={gender}
-                          style={[
+    style={[
                             styles.genderOption,
                             tempPassenger.gender === gender && styles.genderOptionSelected
                           ]}
@@ -1388,7 +1388,7 @@ export const FlightCheckoutScreen: React.FC<{
                           ]}>
                             {gender}
                           </Text>
-                        </TouchableOpacity>
+  </TouchableOpacity>
                       ))}
                     </View>
                   </View>
@@ -1408,7 +1408,7 @@ export const FlightCheckoutScreen: React.FC<{
                     placeholder="Enter passport number"
                     placeholderTextColor="#9CA3AF"
                   />
-                </View>
+    </View>
 
                 <View style={styles.inputRow}>
                   <View style={[styles.inputGroup, { flex: 1, marginRight: 12 }]}>
@@ -1420,7 +1420,7 @@ export const FlightCheckoutScreen: React.FC<{
                       placeholder="YYYY-MM-DD"
                       placeholderTextColor="#9CA3AF"
                     />
-                  </View>
+    </View>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
                     <Text style={styles.inputLabel}>Issue Country</Text>
                     <TextInput
@@ -1443,7 +1443,7 @@ export const FlightCheckoutScreen: React.FC<{
                     <Text style={styles.inputLabel}>Seat Preference</Text>
                     <View style={styles.seatOptions}>
                       {['Window', 'Aisle', 'Middle', 'Any'].map((seat) => (
-                        <TouchableOpacity
+  <TouchableOpacity
                           key={seat}
                           style={[
                             styles.seatOption,
@@ -1456,10 +1456,10 @@ export const FlightCheckoutScreen: React.FC<{
                             tempPassenger.seatPreference === seat && styles.seatOptionTextSelected
                           ]}>
                             {seat}
-                          </Text>
+    </Text>
                         </TouchableOpacity>
                       ))}
-                    </View>
+    </View>
                   </View>
                   <View style={[styles.inputGroup, { flex: 1 }]}>
                     <Text style={styles.inputLabel}>Meal Preference</Text>
@@ -1479,7 +1479,7 @@ export const FlightCheckoutScreen: React.FC<{
                           ]}>
                             {meal}
                           </Text>
-                        </TouchableOpacity>
+  </TouchableOpacity>
                       ))}
                     </View>
                   </View>
@@ -1568,7 +1568,7 @@ export const FlightCheckoutScreen: React.FC<{
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Flight Checkout</Text>
         <Text style={styles.stepLabel}>{getStepTitle()}</Text>
-      </View>
+  </View>
 
       {/* Step Indicator */}
       {renderStepIndicator()}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,323 +8,154 @@ import {
   Alert,
   Linking,
   Platform,
-  KeyboardAvoidingView,
   StatusBar,
+  SafeAreaView,
+  Dimensions,
+  TextInput,
+  Modal,
 } from 'react-native';
-import { useForm, Controller, useFieldArray } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Typography } from '../constants/Typography';
-import { multiStayHotelInquirySchema, MultiStayHotelInquiryFormData } from '../utils/validation';
-import { debouncedSaveDraft, draftStorage } from '../utils/storage';
-import { apiService, whatsAppService } from '../services/api';
+import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 
-// Form components
-import StayCard, { StayData } from '../components/hotel/StayCard';
-import GuestCount from '../components/form/GuestCount';
-import ContactForm from '../components/form/ContactForm';
-import GroupSection from '../components/form/GroupSection';
-import SpecialRequestsInput from '../components/form/SpecialRequestsInput';
+const { width, height } = Dimensions.get('window');
 
 interface HotelInquiryScreenProps {
   navigation?: any;
 }
 
+interface HotelInquiryData {
+  destination: string;
+  checkIn: string;
+  checkOut: string;
+  rooms: number;
+  adults: number;
+  children: number;
+  hotelPreference: 'any' | '3star' | '4star' | '5star';
+  fullName: string;
+  email: string;
+  phone: string;
+  specialRequests: string;
+}
+
 export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showGroupSection, setShowGroupSection] = useState(false);
-
-  // Form setup with react-hook-form
-  const {
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    formState: { errors, isValid },
-    reset,
-  } = useForm<MultiStayHotelInquiryFormData>({
-    resolver: zodResolver(multiStayHotelInquirySchema),
-    defaultValues: {
-      stays: [{
-        destination: { city: '' },
-        dates: { checkIn: '', checkOut: '' },
-        rooms: 1,
-        hotelChoice: { type: 'preferences' },
-        notes: '',
-      }],
-      travelers: { adults: 2, children: 0 },
-      contact: { fullName: '', email: '', phone: '' },
-      groupBooking: false,
-      tripRequests: '',
-    },
-    mode: 'onChange',
+  const [showPreferenceModal, setShowPreferenceModal] = useState(false);
+  const [formData, setFormData] = useState<HotelInquiryData>({
+    destination: '',
+    checkIn: '',
+    checkOut: '',
+    rooms: 1,
+    adults: 2,
+    children: 0,
+    hotelPreference: 'any',
+    fullName: '',
+    email: '',
+    phone: '',
+    specialRequests: '',
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'stays',
-  });
-
-  // Watch form values for draft saving
-  const watchedValues = watch();
-
-  // Load draft on mount
-  useEffect(() => {
-    loadDraft();
-  }, []);
-
-  // Auto-save draft when form changes
-  useEffect(() => {
-    if (watchedValues.stays?.[0]?.destination?.city || watchedValues.contact?.fullName) {
-      // Convert to compatible format for draft saving
-      const draftData = {
-        destination: watchedValues.stays[0]?.destination || { city: '' },
-        dates: watchedValues.stays[0]?.dates || { checkIn: '', checkOut: '' },
-        rooms: watchedValues.stays[0]?.rooms || 1,
-        guests: watchedValues.travelers,
-        contact: watchedValues.contact,
-        groupBooking: watchedValues.groupBooking,
-        group: watchedValues.group,
-        specialRequests: watchedValues.tripRequests,
-      };
-      debouncedSaveDraft(draftData);
-    }
-  }, [watchedValues]);
-
-  // Watch group booking toggle
-  useEffect(() => {
-    setShowGroupSection(watchedValues.groupBooking || false);
-  }, [watchedValues.groupBooking]);
-
-  const loadDraft = async () => {
-    try {
-      const draft = await draftStorage.loadDraft();
-      if (draft) {
-        Alert.alert(
-          'Draft Found',
-          'Would you like to restore your previous hotel inquiry?',
-          [
-            { text: 'Start Fresh', style: 'cancel' },
-            {
-              text: 'Restore',
-              onPress: () => {
-                // Convert old format to new multi-stay format
-                const multiStayData: MultiStayHotelInquiryFormData = {
-                  stays: [{
-                    destination: draft.destination || { city: '' },
-                    dates: draft.dates || { checkIn: '', checkOut: '' },
-                    rooms: draft.rooms || 1,
-                    hotelChoice: { type: 'preferences' },
-                    notes: draft.specialRequests || '',
-                  }],
-                  travelers: draft.guests || { adults: 2, children: 0 },
-                  contact: draft.contact || { fullName: '', email: '', phone: '' },
-                  groupBooking: draft.groupBooking || false,
-                  group: draft.group,
-                  tripRequests: draft.specialRequests || '',
-                };
-                reset(multiStayData);
-              },
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      console.error('Error loading draft:', error);
-    }
+  const updateFormData = (field: keyof HotelInquiryData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const addStay = () => {
-    if (fields.length < 6) {
-      append({
-        destination: { city: '' },
-        dates: { checkIn: '', checkOut: '' },
-        rooms: 1,
-        hotelChoice: { type: 'preferences' },
-        notes: '',
-      });
-    }
+  const incrementValue = (field: 'rooms' | 'adults' | 'children') => {
+    setFormData(prev => ({ 
+      ...prev, 
+      [field]: field === 'adults' ? Math.min(prev[field] + 1, 10) : 
+               field === 'children' ? Math.min(prev[field] + 1, 8) :
+               Math.min(prev[field] + 1, 5)
+    }));
   };
 
-  const duplicateStay = (index: number) => {
-    if (fields.length < 6) {
-      const stayToDuplicate = watchedValues.stays[index];
-      append({
-        ...stayToDuplicate,
-        destination: { city: '' }, // Clear destination for new stay
-      });
-    }
+  const decrementValue = (field: 'rooms' | 'adults' | 'children') => {
+    setFormData(prev => ({ 
+      ...prev, 
+      [field]: field === 'adults' ? Math.max(prev[field] - 1, 1) : 
+               Math.max(prev[field] - 1, 0)
+    }));
   };
 
-  const removeStay = (index: number) => {
-    if (fields.length > 1) {
-      remove(index);
+  const validateForm = (): boolean => {
+    if (!formData.destination.trim()) {
+      Alert.alert('Missing Information', 'Please enter your destination');
+      return false;
     }
+    if (!formData.checkIn || !formData.checkOut) {
+      Alert.alert('Missing Information', 'Please select check-in and check-out dates');
+      return false;
+    }
+    if (!formData.fullName.trim()) {
+      Alert.alert('Missing Information', 'Please enter your full name');
+      return false;
+    }
+    if (!formData.email.trim()) {
+      Alert.alert('Missing Information', 'Please enter your email address');
+      return false;
+    }
+    if (!formData.phone.trim()) {
+      Alert.alert('Missing Information', 'Please enter your phone number');
+      return false;
+    }
+    return true;
   };
 
-  const onSubmit = async (data: MultiStayHotelInquiryFormData) => {
+  const handleSubmit = async () => {
+    if (!validateForm()) return;
+
     setIsSubmitting(true);
-    
     try {
-      console.log('Submitting multi-stay hotel inquiry:', data);
-      
-      // Convert to single-stay format for backward compatibility
-      const singleStayData = {
-        destination: data.stays[0].destination,
-        dates: data.stays[0].dates,
-        rooms: data.stays[0].rooms,
-        guests: data.travelers,
-        contact: data.contact,
-        groupBooking: data.groupBooking,
-        group: data.group,
-        specialRequests: data.tripRequests,
-      };
-      
-      const response = await apiService.submitHotelInquiry(singleStayData);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       Alert.alert(
-        'Inquiry Submitted',
-        `Your hotel inquiry has been received! Reference ID: ${response.id}`,
+        'Inquiry Submitted!',
+        'Thank you for your hotel inquiry. We will get back to you within 24 hours with available options and pricing.',
         [
           {
             text: 'OK',
-            onPress: () => {
-              // Clear draft and reset form
-              draftStorage.clearDraft();
-              reset();
-              navigation?.goBack();
-            },
+            onPress: () => navigation?.goBack(),
           },
         ]
       );
-      
-      // Analytics event
-      console.log('multi_stay_hotel_inquiry_submitted', { id: response.id, stays: data.stays.length });
-      
     } catch (error) {
-      console.error('Submission error:', error);
-      Alert.alert(
-        'Submission Error',
-        'There was an error submitting your inquiry. Please try again or contact us via WhatsApp.',
-        [
-          { text: 'OK', style: 'default' },
-          { text: 'WhatsApp', onPress: () => handleWhatsAppPress(data) },
-        ]
-      );
+      Alert.alert('Error', 'Failed to submit inquiry. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleWhatsAppPress = async (data?: MultiStayHotelInquiryFormData) => {
-    try {
-      // Use current form data if not provided
-      const formData = data || watchedValues as MultiStayHotelInquiryFormData;
-      
-      // Basic validation for WhatsApp
-      if (!formData.stays?.[0]?.destination?.city || !formData.contact?.fullName) {
-        Alert.alert(
-          'Incomplete Information',
-          'Please fill in at least one destination and your name before contacting us via WhatsApp.'
-        );
-        return;
-      }
+  const handleWhatsApp = () => {
+    if (!validateForm()) return;
 
-      const whatsappUrl = formatMultiStayWhatsAppMessage(formData);
-      
-      if (!whatsappUrl) {
-        Alert.alert(
-          'WhatsApp Not Available',
-          'WhatsApp contact is not configured. Please submit the form instead.'
-        );
-        return;
-      }
+    const message = `Hotel Inquiry:
+Destination: ${formData.destination}
+Check-in: ${formData.checkIn}
+Check-out: ${formData.checkOut}
+Rooms: ${formData.rooms}
+Guests: ${formData.adults} adults, ${formData.children} children
+Preference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star')}`}
+Contact: ${formData.fullName}
+Email: ${formData.email}
+Phone: ${formData.phone}
+${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : ''}`;
 
-      const canOpen = await Linking.canOpenURL(whatsappUrl);
-      
-      if (canOpen) {
-        await Linking.openURL(whatsappUrl);
-        console.log('multi_stay_hotel_inquiry_whatsapp_clicked');
-      } else {
-        Alert.alert(
-          'WhatsApp Not Installed',
-          'WhatsApp is not installed on your device. Please submit the form instead.'
-        );
-      }
-    } catch (error) {
-      console.error('WhatsApp error:', error);
-      Alert.alert(
-        'Error',
-        'Could not open WhatsApp. Please submit the form instead.'
-      );
-    }
-  };
-
-  const formatMultiStayWhatsAppMessage = (data: MultiStayHotelInquiryFormData): string => {
-    const wabaNumber = process.env.EXPO_PUBLIC_WABA_NUMBER;
-    if (!wabaNumber) return '';
-
-    const { stays, travelers, contact, groupBooking, group, tripRequests } = data;
-    
-    let message = `Hotel inquiry (multi-stay)\n`;
-    message += `Traveler: ${contact.fullName}\n`;
-    message += `Email: ${contact.email}\n`;
-    message += `Phone: ${contact.phone}\n`;
-    message += `Guests: ${travelers.adults} adult${travelers.adults > 1 ? 's' : ''}`;
-    if (travelers.children > 0) {
-      message += `, ${travelers.children} child${travelers.children > 1 ? 'ren' : ''}`;
-    }
-    message += `\n\n`;
-    
-    stays.forEach((stay, index) => {
-      message += `Stay ${index + 1}:\n`;
-      message += `- Destination: ${stay.destination.city}${stay.destination.country ? `, ${stay.destination.country}` : ''}\n`;
-      message += `- Dates: ${stay.dates.checkIn} → ${stay.dates.checkOut}\n`;
-      message += `- Rooms: ${stay.rooms}\n`;
-      
-      if (stay.hotelChoice.type === 'specific') {
-        message += `- Hotel: ${stay.hotelChoice.hotelName}\n`;
-      } else {
-        message += `- Preferences: `;
-        const prefs = [];
-        if (stay.hotelChoice.rating) prefs.push(`${stay.hotelChoice.rating}★`);
-        if (stay.hotelChoice.budget?.min || stay.hotelChoice.budget?.max) {
-          prefs.push(`$${stay.hotelChoice.budget.min || 0}-${stay.hotelChoice.budget.max || '∞'}`);
-        }
-        if (stay.hotelChoice.mealPlan) prefs.push(stay.hotelChoice.mealPlan);
-        if (stay.hotelChoice.facilities?.length) prefs.push(stay.hotelChoice.facilities.join(', '));
-        message += prefs.length > 0 ? prefs.join(', ') : 'Any hotel';
-        message += `\n`;
-      }
-      
-      if (stay.notes) {
-        message += `- Notes: ${stay.notes}\n`;
-      }
-      message += `\n`;
-    });
-    
-    if (groupBooking && group) {
-      message += `Group: Yes, total ${group.totalTravelers}\n`;
-      if (group.roomingPreference) {
-        message += `Rooming: ${group.roomingPreference}\n`;
-      }
-    }
-    
-    if (tripRequests) {
-      message += `Trip notes: ${tripRequests}\n`;
-    }
-    
-    message += `#HOTEL_INQUIRY_MULTI`;
-    
     const encodedMessage = encodeURIComponent(message);
-    return `https://wa.me/${wabaNumber}?text=${encodedMessage}`;
+    const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
+    
+    Linking.openURL(whatsappUrl).catch(() => {
+      Alert.alert('Error', 'Could not open WhatsApp');
+    });
   };
+
+  const hotelPreferences = [
+    { key: 'any', label: 'Any Hotel', description: 'Best available options', icon: 'business-outline' },
+    { key: '3star', label: '3 Star Hotels', description: 'Comfortable accommodation', icon: 'star-outline' },
+    { key: '4star', label: '4 Star Hotels', description: 'Superior comfort & service', icon: 'star-half-outline' },
+    { key: '5star', label: '5 Star Hotels', description: 'Luxury accommodation', icon: 'star' },
+  ];
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="#D6D5C9" />
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
       
       {/* Header */}
       <View style={styles.header}>
@@ -332,9 +163,9 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
           style={styles.backButton}
           onPress={() => navigation?.goBack()}
         >
-          <Text style={styles.backButtonText}>←</Text>
+          <Ionicons name="arrow-back" size={24} color="#111827" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Multi-Stay Hotel Inquiry</Text>
+        <Text style={styles.headerTitle}>Hotel Inquiry</Text>
         <View style={styles.headerSpacer} />
       </View>
 
@@ -344,168 +175,289 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Main Form Card */}
-        <View style={styles.formCard}>
-          <View style={styles.formHeader}>
-            <Text style={styles.formTitle}>Multi-Stay Hotel Booking</Text>
-            <Text style={styles.formSubtitle}>
-              Plan your entire trip with multiple destinations and hotels in one inquiry
+        {/* Main Card */}
+        <View style={styles.mainCard}>
+          {/* Header Section */}
+          <View style={styles.cardHeader}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="bed" size={32} color="#A83442" />
+            </View>
+            <Text style={styles.cardTitle}>Professional Hotel Accommodations</Text>
+            <Text style={styles.cardSubtitle}>
+              Tell us your preferences and we'll find the perfect hotel for your stay
             </Text>
           </View>
 
-          {/* Stays Section */}
+          {/* Destination */}
           <View style={styles.section}>
-            <View style={styles.staysHeader}>
-              <Text style={styles.sectionLabel}>Your Stays ({fields.length}/6)</Text>
-              {fields.length < 6 && (
-                <TouchableOpacity style={styles.addButton} onPress={addStay}>
-                  <Text style={styles.addButtonText}>+ Add Stay</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            {fields.map((field, index) => (
-              <Controller
-                key={field.id}
-                control={control}
-                name={`stays.${index}`}
-                render={({ field: { value, onChange } }) => (
-                  <StayCard
-                    index={index}
-                    stay={value}
-                    onUpdate={onChange}
-                    onDuplicate={() => duplicateStay(index)}
-                    onRemove={() => removeStay(index)}
-                    canRemove={fields.length > 1}
-                    errors={errors.stays?.[index]}
-                  />
-                )}
+            <Text style={styles.sectionTitle}>Destination</Text>
+            <View style={styles.inputContainer}>
+              <Ionicons name="location-outline" size={20} color="#A83442" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Where would you like to stay?"
+                placeholderTextColor="#9CA3AF"
+                value={formData.destination}
+                onChangeText={(value) => updateFormData('destination', value)}
               />
-            ))}
+            </View>
           </View>
 
-          {/* Global Travelers Section */}
+          {/* Dates */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Travelers (for all stays)</Text>
-            <Controller
-              control={control}
-              name="travelers"
-              render={({ field: { onChange, value } }) => (
-                <GuestCount
-                  value={value}
-                  onValueChange={onChange}
-                  error={errors.travelers?.adults?.message || errors.travelers?.childAges?.message}
+            <Text style={styles.sectionTitle}>Stay Dates</Text>
+            <View style={styles.dateRow}>
+              <View style={styles.dateContainer}>
+                <Text style={styles.dateLabel}>Check-in</Text>
+                <TouchableOpacity style={styles.dateButton}>
+                  <Ionicons name="calendar-outline" size={18} color="#A83442" />
+                  <Text style={styles.dateText}>
+                    {formData.checkIn || 'Select date'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.dateContainer}>
+                <Text style={styles.dateLabel}>Check-out</Text>
+                <TouchableOpacity style={styles.dateButton}>
+                  <Ionicons name="calendar-outline" size={18} color="#A83442" />
+                  <Text style={styles.dateText}>
+                    {formData.checkOut || 'Select date'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Rooms & Guests */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Rooms & Guests</Text>
+            <View style={styles.counterRow}>
+              <View style={styles.counterItem}>
+                <Text style={styles.counterLabel}>Rooms</Text>
+                <View style={styles.counter}>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => decrementValue('rooms')}
+                  >
+                    <Ionicons name="remove" size={18} color="#A83442" />
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{formData.rooms}</Text>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => incrementValue('rooms')}
+                  >
+                    <Ionicons name="add" size={18} color="#A83442" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.counterItem}>
+                <Text style={styles.counterLabel}>Adults</Text>
+                <View style={styles.counter}>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => decrementValue('adults')}
+                  >
+                    <Ionicons name="remove" size={18} color="#A83442" />
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{formData.adults}</Text>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => incrementValue('adults')}
+                  >
+                    <Ionicons name="add" size={18} color="#A83442" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <View style={styles.counterItem}>
+                <Text style={styles.counterLabel}>Children</Text>
+                <View style={styles.counter}>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => decrementValue('children')}
+                  >
+                    <Ionicons name="remove" size={18} color="#A83442" />
+                  </TouchableOpacity>
+                  <Text style={styles.counterValue}>{formData.children}</Text>
+                  <TouchableOpacity 
+                    style={styles.counterButton}
+                    onPress={() => incrementValue('children')}
+                  >
+                    <Ionicons name="add" size={18} color="#A83442" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </View>
+
+          {/* Hotel Preference */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Hotel Preference</Text>
+            <TouchableOpacity 
+              style={styles.preferenceButton}
+              onPress={() => setShowPreferenceModal(true)}
+            >
+              <View style={styles.preferenceContent}>
+                <Ionicons 
+                  name={hotelPreferences.find(p => p.key === formData.hotelPreference)?.icon as any || 'business-outline'} 
+                  size={20} 
+                  color="#A83442" 
                 />
-              )}
-            />
+                <Text style={styles.preferenceText}>
+                  {hotelPreferences.find(p => p.key === formData.hotelPreference)?.label || 'Any Hotel'}
+                </Text>
+              </View>
+              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+            </TouchableOpacity>
           </View>
 
           {/* Contact Information */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Contact Information</Text>
-            <Controller
-              control={control}
-              name="contact"
-              render={({ field: { onChange, value } }) => (
-                <ContactForm
-                  value={value}
-                  onValueChange={onChange}
-                  errors={{
-                    fullName: errors.contact?.fullName?.message,
-                    email: errors.contact?.email?.message,
-                    phone: errors.contact?.phone?.message,
-                  }}
-                />
-              )}
-            />
-          </View>
-
-          {/* Group Booking Toggle */}
-          <View style={styles.section}>
-            <Controller
-              control={control}
-              name="groupBooking"
-              render={({ field: { onChange, value } }) => (
-                <TouchableOpacity 
-                  style={styles.groupToggle}
-                  onPress={() => onChange(!value)}
-                >
-                  <View style={[styles.checkbox, value && styles.checkboxActive]}>
-                    {value && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={styles.groupToggleText}>This is a group booking</Text>
-                </TouchableOpacity>
-              )}
-            />
-          </View>
-
-          {/* Group Section */}
-          {showGroupSection && (
-            <View style={styles.section}>
-              <Controller
-                control={control}
-                name="group"
-                render={({ field: { onChange, value } }) => (
-                  <GroupSection
-                    value={value}
-                    onValueChange={onChange}
-                    contactInfo={watchedValues.contact}
-                    errors={{
-                      totalTravelers: errors.group?.totalTravelers?.message,
-                      subGroups: errors.group?.subGroups?.message,
-                    }}
-                  />
-                )}
+            <Text style={styles.sectionTitle}>Contact Information</Text>
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="person-outline" size={20} color="#A83442" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Full Name"
+                placeholderTextColor="#9CA3AF"
+                value={formData.fullName}
+                onChangeText={(value) => updateFormData('fullName', value)}
               />
             </View>
-          )}
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#A83442" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Email Address"
+                placeholderTextColor="#9CA3AF"
+                value={formData.email}
+                onChangeText={(value) => updateFormData('email', value)}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Ionicons name="call-outline" size={20} color="#A83442" />
+              <TextInput
+                style={styles.textInput}
+                placeholder="Phone Number"
+                placeholderTextColor="#9CA3AF"
+                value={formData.phone}
+                onChangeText={(value) => updateFormData('phone', value)}
+                keyboardType="phone-pad"
+              />
+            </View>
+          </View>
 
-          {/* Trip-wide Special Requests */}
+          {/* Special Requests */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>Trip-wide Special Requests</Text>
-            <Controller
-              control={control}
-              name="tripRequests"
-              render={({ field: { onChange, value } }) => (
-                <SpecialRequestsInput
-                  value={value || ''}
-                  onValueChange={onChange}
-                />
-              )}
-            />
+            <Text style={styles.sectionTitle}>Special Requests (Optional)</Text>
+            <View style={styles.textAreaContainer}>
+              <TextInput
+                style={styles.textArea}
+                placeholder="Any special requirements or preferences..."
+                placeholderTextColor="#9CA3AF"
+                value={formData.specialRequests}
+                onChangeText={(value) => updateFormData('specialRequests', value)}
+                multiline
+                numberOfLines={4}
+                textAlignVertical="top"
+              />
+            </View>
           </View>
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={[styles.submitButton, (!isValid || isSubmitting) && styles.submitButtonDisabled]}
-              onPress={handleSubmit(onSubmit)}
-              disabled={!isValid || isSubmitting}
+              style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
+              onPress={handleSubmit}
+              disabled={isSubmitting}
             >
+              <Ionicons name="send" size={20} color="#FFFFFF" />
               <Text style={styles.submitButtonText}>
-                {isSubmitting ? 'Submitting...' : 'Submit Multi-Stay Inquiry'}
+                {isSubmitting ? 'Submitting...' : 'Submit Inquiry'}
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.whatsappButton}
-              onPress={() => handleWhatsAppPress()}
+              onPress={handleWhatsApp}
             >
-              <Text style={styles.whatsappButtonText}>Chat on WhatsApp Business</Text>
+              <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+              <Text style={styles.whatsappButtonText}>WhatsApp Inquiry</Text>
             </TouchableOpacity>
           </View>
         </View>
-
-        <View style={styles.bottomPadding} />
       </ScrollView>
-    </KeyboardAvoidingView>
+
+      {/* Hotel Preference Modal */}
+      <Modal
+        visible={showPreferenceModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowPreferenceModal(false)}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Hotel Preference</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {hotelPreferences.map((preference) => (
+              <TouchableOpacity
+                key={preference.key}
+                style={[
+                  styles.preferenceOption,
+                  formData.hotelPreference === preference.key && styles.preferenceOptionSelected
+                ]}
+                onPress={() => {
+                  updateFormData('hotelPreference', preference.key);
+                  setShowPreferenceModal(false);
+                }}
+              >
+                <View style={styles.preferenceOptionContent}>
+                  <View style={styles.preferenceOptionLeft}>
+                    <Ionicons 
+                      name={preference.icon as any} 
+                      size={24} 
+                      color={formData.hotelPreference === preference.key ? '#A83442' : '#6B7280'} 
+                    />
+                    <View style={styles.preferenceOptionText}>
+                      <Text style={[
+                        styles.preferenceOptionLabel,
+                        formData.hotelPreference === preference.key && styles.preferenceOptionLabelSelected
+                      ]}>
+                        {preference.label}
+                      </Text>
+                      <Text style={styles.preferenceOptionDescription}>
+                        {preference.description}
+                      </Text>
+                    </View>
+                  </View>
+                  {formData.hotelPreference === preference.key && (
+                    <Ionicons name="checkmark-circle" size={24} color="#A83442" />
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#D6D5C9',
+    backgroundColor: '#F8F9FA',
   },
   header: {
     flexDirection: 'row',
@@ -514,7 +466,7 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     paddingBottom: 20,
     paddingHorizontal: 20,
-    backgroundColor: '#D6D5C9',
+    backgroundColor: '#F8F9FA',
   },
   backButton: {
     width: 40,
@@ -524,13 +476,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  backButtonText: {
-    ...Typography.styles.headerMedium,
-    color: '#000000',
-  },
   headerTitle: {
-    ...Typography.styles.headerMedium,
-    color: '#000000',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
     flex: 1,
     textAlign: 'center',
   },
@@ -543,7 +492,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
   },
-  formCard: {
+  mainCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 24,
@@ -554,18 +503,25 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 6,
   },
-  formHeader: {
+  cardHeader: {
     alignItems: 'center',
     marginBottom: 32,
   },
-  formTitle: {
-    ...Typography.styles.headerLarge,
+  iconContainer: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 20,
+    padding: 10,
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 24,
+    fontWeight: '700',
     color: '#000000',
     textAlign: 'center',
     marginBottom: 8,
   },
-  formSubtitle: {
-    ...Typography.styles.bodySmall,
+  cardSubtitle: {
+    fontSize: 14,
     color: '#6c757d',
     textAlign: 'center',
     lineHeight: 20,
@@ -573,56 +529,151 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 24,
   },
-  sectionLabel: {
-    ...Typography.styles.label,
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
     color: '#000000',
     marginBottom: 8,
-    fontWeight: '500',
   },
-  staysHeader: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#111827',
+    paddingVertical: 0,
+  },
+  dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  addButton: {
-    backgroundColor: '#A83442',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  dateContainer: {
+    flex: 1,
+    marginHorizontal: 5,
   },
-  addButtonText: {
-    ...Typography.styles.caption,
-    color: '#FFFFFF',
-    fontWeight: '600',
+  dateLabel: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginBottom: 4,
   },
-  groupToggle: {
+  dateButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
   },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: '#dee2e6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  checkboxActive: {
-    backgroundColor: '#A83442',
-    borderColor: '#A83442',
-  },
-  checkmark: {
-    color: '#FFFFFF',
+  dateText: {
     fontSize: 16,
-    fontWeight: '600',
+    color: '#111827',
+    marginLeft: 10,
   },
-  groupToggleText: {
-    ...Typography.styles.bodyMedium,
-    color: '#000000',
+  counterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+  },
+  counterItem: {
+    alignItems: 'center',
+  },
+  counterLabel: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginBottom: 4,
+  },
+  counter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+  },
+  counterButton: {
+    padding: 5,
+  },
+  counterValue: {
+    fontSize: 16,
+    color: '#111827',
+    marginHorizontal: 15,
+  },
+  preferenceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    marginBottom: 12,
+  },
+  preferenceContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  preferenceText: {
+    fontSize: 16,
+    color: '#111827',
+    marginLeft: 10,
+  },
+  preferenceOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  preferenceOptionSelected: {
+    backgroundColor: '#FEE2E2',
+    borderBottomColor: '#FEE2E2',
+  },
+  preferenceOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  preferenceOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  preferenceOptionText: {
+    flex: 1,
+  },
+  preferenceOptionLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  preferenceOptionLabelSelected: {
+    color: '#A83442',
+  },
+  preferenceOptionDescription: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 2,
+  },
+  textAreaContainer: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+  },
+  textArea: {
+    fontSize: 16,
+    color: '#111827',
+    minHeight: 80,
+    textAlignVertical: 'top',
   },
   actionButtons: {
     gap: 12,
@@ -633,6 +684,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     shadowColor: '#A83442',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -644,14 +697,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
   },
   submitButtonText: {
-    ...Typography.styles.buttonMedium,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
+    marginLeft: 8,
   },
   whatsappButton: {
     backgroundColor: '#25D366',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
     shadowColor: '#25D366',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -659,11 +716,39 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   whatsappButtonText: {
-    ...Typography.styles.buttonMedium,
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
+    marginLeft: 8,
   },
-  bottomPadding: {
-    height: 40,
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  modalCancel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#A83442',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  modalContent: {
+    flex: 1,
   },
 });
 
