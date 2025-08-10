@@ -14,6 +14,7 @@ import {
   Alert,
   Animated,
   Linking,
+  Image,
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
@@ -504,11 +505,31 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+      <StatusBar barStyle="dark-content" backgroundColor="#D6D5C9" />
       
       <Animated.View style={[styles.mainContainer, { opacity: fadeAnim }]}>
         {/* Header */}
         <View style={styles.header}>
+          <View style={styles.headerTop}>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/rawhah-logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              <Text style={styles.brandText}>RawhahBooking</Text>
+            </View>
+            
+            {/* Notification Button */}
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#6B7280" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>2</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
           {/* Service Tabs */}
           <View style={styles.serviceTabs}>
             <TouchableOpacity
@@ -984,7 +1005,7 @@ const styles = StyleSheet.create({
   // Main Layout
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#D6D5C9',
   },
   mainContainer: {
     flex: 1,
@@ -998,19 +1019,34 @@ const styles = StyleSheet.create({
   
   // Header Styles
   header: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 40,
+    height: 40,
+    marginRight: 8,
+  },
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  brandText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#A83442',
   },
   profileSection: {
     flexDirection: 'row',

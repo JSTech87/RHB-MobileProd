@@ -8,7 +8,8 @@ import {
   ScrollView,
   StatusBar,
   Dimensions,
-  RefreshControl
+  RefreshControl,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
@@ -148,17 +149,24 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
       >
         {/* Header Pill Container */}
         <View style={styles.headerPill}>
-          <View style={styles.userSection}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </View>
-            <View style={styles.userInfo}>
-              <Text style={styles.greeting}>{getGreeting()}</Text>
-              <Text style={styles.userName}>
-                {user?.name || user?.id || 'Traveler'}
-              </Text>
+          <View style={styles.logoSection}>
+            <Image
+              source={require('../assets/rawhah-logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <View style={styles.userSection}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.greeting}>{getGreeting()}</Text>
+                <Text style={styles.userName}>
+                  {user?.name || user?.id || 'Traveler'}
+                </Text>
+              </View>
             </View>
           </View>
           <TouchableOpacity style={styles.notificationButton}>
@@ -318,6 +326,16 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
+  },
+  logoSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  logo: {
+    width: 30,
+    height: 30,
+    marginRight: 10,
   },
   userSection: {
     flexDirection: 'row',

@@ -64,7 +64,7 @@ export const BottomTabNavigator: React.FC = () => {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FAFAFA',
+          backgroundColor: '#F8F9FA',
           borderTopColor: 'rgba(255, 255, 255, 0.3)',
           borderTopWidth: 1,
           paddingTop: 15,
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#D6D5C9',
     paddingHorizontal: 24,
   },
   placeholderTitle: {

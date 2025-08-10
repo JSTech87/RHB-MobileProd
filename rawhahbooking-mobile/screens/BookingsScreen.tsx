@@ -369,7 +369,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8F9FA" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
       
       {/* Header */}
       <View style={styles.header}>
