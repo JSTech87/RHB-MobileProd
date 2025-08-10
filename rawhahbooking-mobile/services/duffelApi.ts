@@ -112,13 +112,15 @@ async function apiRequest<T>(
 // Duffel API Service
 const DuffelApiService = {
   // Offer requests (creates and returns offers immediately when return_offers=true)
-  async searchOffers(request: DuffelOfferRequest): Promise<{ data: { offers: DuffelOffer[] } }> {
+  async searchOffers(request: DuffelOfferRequest): Promise<{ data: DuffelOffer[] }> {
     try {
-      const res = await apiRequest<{ data: { offers: DuffelOffer[] } }>(`/air/offer_requests`, {
+      // Duffel v2 returns shape: { data: { id, slices, offers: [ ... ] } }
+      const res = await apiRequest<any>(`/air/offer_requests`, {
         method: 'POST',
         body: JSON.stringify({ data: { ...request, return_offers: true } }),
       });
-      return res;
+      const offers: DuffelOffer[] = res?.data?.offers ?? [];
+      return { data: offers };
     } catch (error) {
       console.error('Error searching offers:', error);
       Alert.alert('Search Error', 'Unable to search for flights. Please try again.');
