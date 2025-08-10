@@ -11,6 +11,7 @@ import { BottomTabNavigator } from './components/BottomTabNavigator';
 import { FlightResultsScreen } from './screens/FlightResultsScreen';
 import { FlightCheckoutScreen } from './screens/FlightCheckoutScreen';
 import { HotelInquiryScreen } from './screens/HotelInquiryScreen';
+import { BookingsScreen } from './screens/BookingsScreen';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
 
 // Keep the splash screen visible while we fetch resources
@@ -87,6 +88,14 @@ function AppContent() {
             options={{
               presentation: 'card',
               cardStyle: { backgroundColor: '#D6D5C9' }
+            }}
+          />
+          <Stack.Screen 
+            name="Bookings" 
+            component={BookingsScreen}
+            options={{
+              presentation: 'card',
+              cardStyle: { backgroundColor: '#F8F9FA' }
             }}
           />
         </Stack.Navigator>

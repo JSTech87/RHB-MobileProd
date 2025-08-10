@@ -5,6 +5,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { SearchScreen } from '../screens/SearchScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { BookingsScreen } from '../screens/BookingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -54,13 +55,6 @@ const NewsScreen = () => (
   <View style={styles.placeholderContainer}>
     <Text style={styles.placeholderTitle}>News</Text>
     <Text style={styles.placeholderText}>Latest travel news and updates</Text>
-  </View>
-);
-
-const BookingsScreen = () => (
-  <View style={styles.placeholderContainer}>
-    <Text style={styles.placeholderTitle}>Bookings</Text>
-    <Text style={styles.placeholderText}>Your booking history will appear here</Text>
   </View>
 );
 
