@@ -94,7 +94,7 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
 
     // For now, fetch a reasonable number of airports and filter locally
     // This provides a good balance between performance and coverage
-    const params = new URLSearchParams({ limit: '500' });
+    const params = new URLSearchParams({ limit: '2000' }); // Increased to include major international airports
     const url = `${DUFFEL_API_BASE}/air/airports?${params}`;
      
     const response = await fetch(url, {
@@ -123,6 +123,21 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
       source: 'api' as const,
       type: 'airport'
     }));
+
+    // Debug: Log some sample airports to see what we're getting
+    console.log('Sample airports fetched:', 
+      allAirports.slice(0, 5).map((a: AirportOption) => `${a.iata}: ${a.name} (${a.city})`),
+      'Total:', allAirports.length
+    );
+
+    // Check if any London airports are in the dataset
+    const londonAirports = allAirports.filter((airport: AirportOption) => {
+      const nameMatch = normalizeText(airport.name).includes('london');
+      const cityMatch = normalizeText(airport.city).includes('london');
+      const iataMatch = ['lhr', 'lgw', 'stn', 'ltn', 'lcy'].includes(normalizeText(airport.iata));
+      return nameMatch || cityMatch || iataMatch;
+    });
+    console.log('London airports found in dataset:', londonAirports.length, londonAirports.map((a: AirportOption) => `${a.iata}: ${a.name}`));
 
     // Filter airports based on the search query
     const normalizedQuery = normalizeText(query);

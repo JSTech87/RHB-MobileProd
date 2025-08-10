@@ -158,6 +158,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
   ];
 
   const getFilteredBookings = () => {
+    if (!mockBookings || !Array.isArray(mockBookings)) return [];
     if (activeTab === 'all') return mockBookings;
     if (activeTab === 'inquiries') return mockBookings.filter(b => b.type === 'inquiry');
     return mockBookings.filter(b => b.type === activeTab.slice(0, -1) as 'flight' | 'hotel');
@@ -447,10 +448,10 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
 
   const filteredBookings = getFilteredBookings();
   const tabs = [
-    { key: 'all', label: 'All', count: mockBookings.length },
-    { key: 'flights', label: 'Flights', count: mockBookings.filter(b => b.type === 'flight').length },
-    { key: 'hotels', label: 'Hotels', count: mockBookings.filter(b => b.type === 'hotel').length },
-    { key: 'inquiries', label: 'Inquiries', count: mockBookings.filter(b => b.type === 'inquiry').length },
+    { key: 'all', label: 'All', count: mockBookings?.length || 0 },
+    { key: 'flights', label: 'Flights', count: mockBookings?.filter(b => b.type === 'flight')?.length || 0 },
+    { key: 'hotels', label: 'Hotels', count: mockBookings?.filter(b => b.type === 'hotel')?.length || 0 },
+    { key: 'inquiries', label: 'Inquiries', count: mockBookings?.filter(b => b.type === 'inquiry')?.length || 0 },
   ];
 
   return (
@@ -519,7 +520,7 @@ export const BookingsScreen: React.FC<BookingsScreenProps> = ({ navigation }) =>
         }
       >
         {filteredBookings.length > 0 ? (
-          filteredBookings.map((booking) => (
+          filteredBookings?.map((booking) => (
             <BookingCard key={booking.id} booking={booking} />
           ))
         ) : (
