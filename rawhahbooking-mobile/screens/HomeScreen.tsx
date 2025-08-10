@@ -179,81 +179,67 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* Header Pill Container */}
-        <View style={styles.headerPill}>
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <Image
-              source={require('../assets/Transparent Logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
+        {/* Professional Header */}
+        <View style={styles.professionalHeader}>
+          <View style={styles.headerContent}>
+            {/* Brand Section */}
+            <View style={styles.brandSection}>
+              <Image
+                source={require('../assets/Transparent Logo.png')}
+                style={styles.brandLogo}
+                resizeMode="contain"
+              />
+              <View style={styles.brandInfo}>
+                <Text style={styles.brandName}>RawhahBooking</Text>
+                <Text style={styles.brandTagline}>Travel Solutions</Text>
+              </View>
+            </View>
+            
+            {/* User Actions */}
+            <View style={styles.userActions}>
+              <TouchableOpacity style={styles.actionButton}>
+                <Ionicons name="search-outline" size={22} color="#64748B" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.actionButton}>
+                <Ionicons name="notifications-outline" size={22} color="#64748B" />
+                <View style={styles.notificationDot}>
+                  <Text style={styles.notificationCount}>3</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.profileButton}>
+                <Text style={styles.profileInitial}>
+                  {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
           
-          {/* User Section */}
-          <View style={styles.userSection}>
-            <TouchableOpacity style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={20} color="#64748B" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Personalized Greeting Card */}
-        <View style={styles.greetingCard}>
-          <Text style={styles.greetingText}>
-            Hello, {user?.name || user?.id || 'Traveler'}
-          </Text>
-          <Text style={styles.greetingSubtext}>
-            Welcome to RawhahBooking
-          </Text>
-        </View>
-
-        {/* Date Information Card */}
-        <View style={styles.dateCard}>
-          <View style={styles.dateRow}>
-            <View style={styles.dateSection}>
-              <View style={styles.dateItem}>
-                <Ionicons name="calendar-outline" size={16} color="#6366F1" />
-                <Text style={styles.dateLabel}>Today</Text>
-              </View>
-              <Text style={styles.gregorianDate}>
-                {new Date().toLocaleDateString('en-US', { 
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
+          {/* Status Bar */}
+          <View style={styles.statusBar}>
+            <View style={styles.statusItem}>
+              <Ionicons name="calendar-clear-outline" size={16} color="#6B7280" />
+              <Text style={styles.statusText}>
+                {getGregorianDate().formatted}
               </Text>
             </View>
-            <View style={styles.hijriSection}>
-              <View style={styles.dateItem}>
-                <Ionicons name="moon-outline" size={16} color="#D97706" />
-                <Text style={styles.dateLabel}>Hijri</Text>
-              </View>
-              <Text style={styles.hijriDate}>{getHijriDate()}</Text>
+            <View style={styles.statusDivider} />
+            <View style={styles.statusItem}>
+              <Ionicons name="moon-outline" size={16} color="#6B7280" />
+              <Text style={styles.statusText}>
+                {getHijriDate().formatted}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* Welcome Card */}
-        <View style={styles.welcomeCard}>
-          <View style={styles.welcomeContent}>
-            <Text style={styles.welcomeTitle}>Welcome to RawhahBooking</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Your trusted partner for exceptional travel experiences
-            </Text>
-          </View>
-          <View style={styles.welcomeIcon}>
-            <Ionicons name="airplane" size={24} color="#6366F1" />
-          </View>
+        {/* Welcome Section */}
+        <View style={styles.welcomeSection}>
+          <Text style={styles.welcomeMessage}>
+            Welcome back, {user?.name || user?.id || 'Traveler'}
+          </Text>
+          <Text style={styles.welcomeSubtext}>
+            Let's plan your next journey
+          </Text>
         </View>
 
         {/* Quick Actions */}
@@ -352,13 +338,10 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 24,
   },
-  headerPill: {
+  professionalHeader: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     marginTop: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 3 },
@@ -368,53 +351,39 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.05)',
   },
-  logoSection: {
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  brandSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  logo: {
+  brandLogo: {
     width: 48,
     height: 48,
+    marginRight: 12,
   },
-  userSection: {
+  brandInfo: {
+    flexDirection: 'column',
+  },
+  brandName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  brandTagline: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  userActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
-  avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#6366F1',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  avatarText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  userInfo: {
-    flexDirection: 'column',
-    justifyContent: 'center',
-  },
-  greeting: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 2,
-  },
-  userName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  notificationButton: {
+  actionButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -422,13 +391,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
   },
-  notificationBadge: {
+  notificationDot: {
     position: 'absolute',
     top: -2,
     right: -2,
@@ -439,118 +403,70 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  notificationBadgeText: {
+  notificationCount: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '600',
   },
-  greetingCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
+  profileButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  greetingText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
+  profileInitial: {
+    color: '#64748B',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
-  greetingSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
-  },
-  dateCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  dateRow: {
+  statusBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 10,
   },
-  dateSection: {
-    flex: 1,
-    alignItems: 'center',
-    paddingRight: 10,
-  },
-  dateItem: {
+  statusItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  dateLabel: {
+  statusText: {
     fontSize: 12,
     color: '#6B7280',
     marginLeft: 6,
-    fontWeight: '500',
   },
-  gregorianDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-    lineHeight: 20,
+  statusDivider: {
+    width: 1,
+    height: '100%',
+    backgroundColor: '#F1F5F9',
   },
-  hijriSection: {
-    flex: 1,
-    alignItems: 'center',
-    paddingLeft: 10,
-    borderLeftWidth: 1,
-    borderLeftColor: '#F1F5F9',
-  },
-  hijriDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  welcomeCard: {
+  welcomeSection: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 20,
     marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 3,
   },
-  welcomeContent: {
-    flex: 1,
-  },
-  welcomeTitle: {
+  welcomeMessage: {
     fontSize: 20,
     fontWeight: '600',
     color: '#111827',
     marginBottom: 4,
   },
-  welcomeSubtitle: {
+  welcomeSubtext: {
     fontSize: 14,
     color: '#6B7280',
     lineHeight: 20,
-  },
-  welcomeIcon: {
-    backgroundColor: '#EEF2FF',
-    borderRadius: 12,
-    padding: 12,
   },
   section: {
     marginTop: 24,
@@ -684,11 +600,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 12,
-  },
-  statusText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '600',
   },
   sectionHeader: {
     flexDirection: 'row',
