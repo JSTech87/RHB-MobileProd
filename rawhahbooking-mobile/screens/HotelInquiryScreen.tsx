@@ -37,11 +37,22 @@ interface HotelInquiryData {
   email: string;
   phone: string;
   specialRequests: string;
+  isGroupBooking: boolean;
+  groupDetails: {
+    totalTravelers: number;
+    groupName: string;
+    organizerName: string;
+    organizerEmail: string;
+    organizerPhone: string;
+    roomingPreference: 'single' | 'double' | 'mixed' | 'family';
+    specialGroupRequests: string;
+    eventType: string;
+    budgetRange: string;
+  };
 }
 
 export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPreferenceModal, setShowPreferenceModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [editingStayIndex, setEditingStayIndex] = useState(0);
   const [editingDateType, setEditingDateType] = useState<'checkIn' | 'checkOut'>('checkIn');
@@ -59,6 +70,18 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     email: '',
     phone: '',
     specialRequests: '',
+    isGroupBooking: false,
+    groupDetails: {
+      totalTravelers: 0,
+      groupName: '',
+      organizerName: '',
+      organizerEmail: '',
+      organizerPhone: '',
+      roomingPreference: 'double',
+      specialGroupRequests: '',
+      eventType: '',
+      budgetRange: '',
+    },
   });
 
   const updateFormData = (field: keyof HotelInquiryData, value: any) => {
@@ -150,6 +173,24 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       Alert.alert('Missing Information', 'Please enter your phone number');
       return false;
     }
+    if (formData.isGroupBooking) {
+      if (!formData.groupDetails.groupName.trim()) {
+        Alert.alert('Missing Group Information', 'Please enter the group/event name');
+        return false;
+      }
+      if (!formData.groupDetails.organizerName.trim()) {
+        Alert.alert('Missing Group Information', 'Please enter the organizer name');
+        return false;
+      }
+      if (!formData.groupDetails.organizerEmail.trim()) {
+        Alert.alert('Missing Group Information', 'Please enter the organizer email');
+        return false;
+      }
+      if (formData.groupDetails.totalTravelers < 1) {
+        Alert.alert('Missing Group Information', 'Please specify the total number of travelers');
+        return false;
+      }
+    }
     return true;
   };
 
@@ -192,24 +233,46 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
       message += `🏨 Rooms: ${stay.rooms}\n\n`;
     });
     
-    message += `👥 Guests: ${formData.adults} adults`;
-    if (formData.children > 0) {
-      message += `, ${formData.children} children`;
+    // Group booking section
+    if (formData.isGroupBooking) {
+      message += `🎯 GROUP BOOKING:\n`;
+      message += `Group Name: ${formData.groupDetails.groupName}\n`;
+      message += `Event Type: ${formData.groupDetails.eventType || 'Not specified'}\n`;
+      message += `Total Travelers: ${formData.groupDetails.totalTravelers}\n`;
+      message += `Rooming Preference: ${formData.groupDetails.roomingPreference.charAt(0).toUpperCase() + formData.groupDetails.roomingPreference.slice(1)} Rooms\n`;
+      if (formData.groupDetails.budgetRange) {
+        message += `Budget Range: ${formData.groupDetails.budgetRange}\n`;
+      }
+      message += `\n👤 Group Organizer:\n`;
+      message += `Name: ${formData.groupDetails.organizerName}\n`;
+      message += `Email: ${formData.groupDetails.organizerEmail}\n`;
+      message += `Phone: ${formData.groupDetails.organizerPhone || 'Not provided'}\n\n`;
+    } else {
+      message += `👥 Guests: ${formData.adults} adults`;
+      if (formData.children > 0) {
+        message += `, ${formData.children} children`;
+      }
+      message += `\n`;
     }
-    message += `\n`;
     
-    message += `⭐ Preference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star hotels')}`}\n\n`;
+    message += `⭐ Hotel Preference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star hotels')}`}\n\n`;
     
-    message += `📞 Contact Information:\n`;
-    message += `Name: ${formData.fullName}\n`;
-    message += `Email: ${formData.email}\n`;
-    message += `Phone: ${formData.phone}\n`;
+    if (!formData.isGroupBooking) {
+      message += `📞 Contact Information:\n`;
+      message += `Name: ${formData.fullName}\n`;
+      message += `Email: ${formData.email}\n`;
+      message += `Phone: ${formData.phone}\n`;
+    }
     
     if (formData.specialRequests.trim()) {
       message += `\n📝 Special Requests:\n${formData.specialRequests}\n`;
     }
     
-    message += `\n#HOTEL_BUSINESS_INQUIRY`;
+    if (formData.isGroupBooking && formData.groupDetails.specialGroupRequests.trim()) {
+      message += `\n🏢 Group Requirements:\n${formData.groupDetails.specialGroupRequests}\n`;
+    }
+    
+    message += `\n${formData.isGroupBooking ? '#GROUP_HOTEL_BUSINESS_INQUIRY' : '#HOTEL_BUSINESS_INQUIRY'}`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
@@ -411,23 +474,256 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
           {/* Hotel Preference */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Hotel Preference</Text>
+            <View style={styles.preferenceGrid}>
+              {hotelPreferences.map((preference) => (
+                <TouchableOpacity
+                  key={preference.key}
+                  style={[
+                    styles.preferenceCard,
+                    formData.hotelPreference === preference.key && styles.preferenceCardSelected
+                  ]}
+                  onPress={() => updateFormData('hotelPreference', preference.key)}
+                >
+                  <View style={styles.preferenceCardIcon}>
+                    <Ionicons 
+                      name={preference.icon as any} 
+                      size={24} 
+                      color={formData.hotelPreference === preference.key ? '#A83442' : '#6B7280'} 
+                    />
+                  </View>
+                  <Text style={[
+                    styles.preferenceCardLabel,
+                    formData.hotelPreference === preference.key && styles.preferenceCardLabelSelected
+                  ]}>
+                    {preference.label}
+                  </Text>
+                  <Text style={styles.preferenceCardDescription}>
+                    {preference.description}
+                  </Text>
+                  {formData.hotelPreference === preference.key && (
+                    <View style={styles.selectedIndicator}>
+                      <Ionicons name="checkmark-circle" size={20} color="#A83442" />
+                    </View>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Group Booking Toggle */}
+          <View style={styles.section}>
             <TouchableOpacity 
-              style={styles.preferenceButton}
-              onPress={() => setShowPreferenceModal(true)}
+              style={styles.groupToggle}
+              onPress={() => updateFormData('isGroupBooking', !formData.isGroupBooking)}
             >
-              <View style={styles.preferenceContent}>
-                <Ionicons 
-                  name={hotelPreferences.find(p => p.key === formData.hotelPreference)?.icon as any || 'business-outline'} 
-                  size={20} 
-                  color="#A83442" 
-                />
-                <Text style={styles.preferenceText}>
-                  {hotelPreferences.find(p => p.key === formData.hotelPreference)?.label || 'Any Hotel'}
-                </Text>
+              <View style={[styles.checkbox, formData.isGroupBooking && styles.checkboxActive]}>
+                {formData.isGroupBooking && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
               </View>
-              <Ionicons name="chevron-down" size={20} color="#6B7280" />
+              <View style={styles.groupToggleContent}>
+                <Text style={styles.groupToggleText}>This is a group booking</Text>
+                <Text style={styles.groupToggleSubtext}>For 10+ travelers or special events</Text>
+              </View>
             </TouchableOpacity>
           </View>
+
+          {/* Group Details Section */}
+          {formData.isGroupBooking && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Group Booking Details</Text>
+              
+              <View style={styles.inputContainer}>
+                <Ionicons name="people-outline" size={20} color="#A83442" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Group/Event Name"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.groupName}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, groupName: value }
+                    }));
+                  }}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Ionicons name="calendar-outline" size={20} color="#A83442" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Event Type (Conference, Wedding, etc.)"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.eventType}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, eventType: value }
+                    }));
+                  }}
+                />
+              </View>
+
+              <View style={styles.counterRow}>
+                <View style={styles.counterItem}>
+                  <Text style={styles.counterLabel}>Total Travelers</Text>
+                  <View style={styles.counter}>
+                    <TouchableOpacity 
+                      style={styles.counterButton}
+                      onPress={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          groupDetails: { 
+                            ...prev.groupDetails, 
+                            totalTravelers: Math.max(prev.groupDetails.totalTravelers - 1, 0) 
+                          }
+                        }));
+                      }}
+                    >
+                      <Ionicons name="remove" size={18} color="#A83442" />
+                    </TouchableOpacity>
+                    <Text style={styles.counterValue}>{formData.groupDetails.totalTravelers}</Text>
+                    <TouchableOpacity 
+                      style={styles.counterButton}
+                      onPress={() => {
+                        setFormData(prev => ({
+                          ...prev,
+                          groupDetails: { 
+                            ...prev.groupDetails, 
+                            totalTravelers: Math.min(prev.groupDetails.totalTravelers + 1, 200) 
+                          }
+                        }));
+                      }}
+                    >
+                      <Ionicons name="add" size={18} color="#A83442" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+
+              <Text style={styles.subSectionTitle}>Group Organizer</Text>
+              
+              <View style={styles.inputContainer}>
+                <Ionicons name="person-outline" size={20} color="#A83442" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Organizer Full Name"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.organizerName}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, organizerName: value }
+                    }));
+                  }}
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#A83442" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Organizer Email"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.organizerEmail}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, organizerEmail: value }
+                    }));
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Ionicons name="call-outline" size={20} color="#A83442" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Organizer Phone"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.organizerPhone}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, organizerPhone: value }
+                    }));
+                  }}
+                  keyboardType="phone-pad"
+                />
+              </View>
+
+              <Text style={styles.subSectionTitle}>Rooming Preference</Text>
+              <View style={styles.roomingGrid}>
+                {[
+                  { key: 'single', label: 'Single Rooms', icon: 'bed-outline' },
+                  { key: 'double', label: 'Double Rooms', icon: 'people-outline' },
+                  { key: 'mixed', label: 'Mixed Options', icon: 'options-outline' },
+                  { key: 'family', label: 'Family Rooms', icon: 'home-outline' },
+                ].map((option) => (
+                  <TouchableOpacity
+                    key={option.key}
+                    style={[
+                      styles.roomingOption,
+                      formData.groupDetails.roomingPreference === option.key && styles.roomingOptionSelected
+                    ]}
+                    onPress={() => {
+                      setFormData(prev => ({
+                        ...prev,
+                        groupDetails: { ...prev.groupDetails, roomingPreference: option.key as any }
+                      }));
+                    }}
+                  >
+                    <Ionicons 
+                      name={option.icon as any} 
+                      size={20} 
+                      color={formData.groupDetails.roomingPreference === option.key ? '#A83442' : '#6B7280'} 
+                    />
+                    <Text style={[
+                      styles.roomingOptionText,
+                      formData.groupDetails.roomingPreference === option.key && styles.roomingOptionTextSelected
+                    ]}>
+                      {option.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Ionicons name="card-outline" size={20} color="#A83442" />
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Budget Range (e.g., $100-200 per night)"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.budgetRange}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, budgetRange: value }
+                    }));
+                  }}
+                />
+              </View>
+
+              <View style={styles.textAreaContainer}>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Special group requirements (catering, meeting rooms, transportation, etc.)"
+                  placeholderTextColor="#9CA3AF"
+                  value={formData.groupDetails.specialGroupRequests}
+                  onChangeText={(value) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      groupDetails: { ...prev.groupDetails, specialGroupRequests: value }
+                    }));
+                  }}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </View>
+          )}
 
           {/* Contact Information */}
           <View style={styles.section}>
@@ -510,63 +806,6 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
           </View>
         </View>
       </ScrollView>
-
-      {/* Hotel Preference Modal */}
-      <Modal
-        visible={showPreferenceModal}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
-        <View style={styles.compactModalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowPreferenceModal(false)}>
-              <Text style={styles.modalCancel}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Hotel Preference</Text>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          <ScrollView style={styles.modalContent}>
-            {hotelPreferences.map((preference) => (
-              <TouchableOpacity
-                key={preference.key}
-                style={[
-                  styles.preferenceOption,
-                  formData.hotelPreference === preference.key && styles.preferenceOptionSelected
-                ]}
-                onPress={() => {
-                  updateFormData('hotelPreference', preference.key);
-                  setShowPreferenceModal(false);
-                }}
-              >
-                <View style={styles.preferenceOptionContent}>
-                  <View style={styles.preferenceOptionLeft}>
-                    <Ionicons 
-                      name={preference.icon as any} 
-                      size={24} 
-                      color={formData.hotelPreference === preference.key ? '#A83442' : '#6B7280'} 
-                    />
-                    <View style={styles.preferenceOptionText}>
-                      <Text style={[
-                        styles.preferenceOptionLabel,
-                        formData.hotelPreference === preference.key && styles.preferenceOptionLabelSelected
-                      ]}>
-                        {preference.label}
-                      </Text>
-                      <Text style={styles.preferenceOptionDescription}>
-                        {preference.description}
-                      </Text>
-                    </View>
-                  </View>
-                  {formData.hotelPreference === preference.key && (
-                    <Ionicons name="checkmark-circle" size={24} color="#A83442" />
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-      </Modal>
 
       {/* Date Picker Modal */}
       <Modal
@@ -763,64 +1002,6 @@ const styles = StyleSheet.create({
     color: '#111827',
     marginHorizontal: 15,
   },
-  preferenceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 12,
-  },
-  preferenceContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  preferenceText: {
-    fontSize: 16,
-    color: '#111827',
-    marginLeft: 10,
-  },
-  preferenceOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  preferenceOptionSelected: {
-    backgroundColor: '#FEE2E2',
-    borderBottomColor: '#FEE2E2',
-  },
-  preferenceOptionContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  preferenceOptionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  preferenceOptionText: {
-    flex: 1,
-  },
-  preferenceOptionLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  preferenceOptionLabelSelected: {
-    color: '#A83442',
-  },
-  preferenceOptionDescription: {
-    fontSize: 12,
-    color: '#6c757d',
-    marginTop: 2,
-  },
   textAreaContainer: {
     backgroundColor: '#F3F4F6',
     borderRadius: 12,
@@ -963,6 +1144,145 @@ const styles = StyleSheet.create({
   },
   removeStayButton: {
     padding: 5,
+  },
+  preferenceGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: -10, // Adjust for spacing between cards
+  },
+  preferenceCard: {
+    width: '48%', // Two columns
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 12,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  preferenceCardSelected: {
+    backgroundColor: '#FEE2E2',
+    borderColor: '#A83442',
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  preferenceCardIcon: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  preferenceCardLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  preferenceCardLabelSelected: {
+    color: '#A83442',
+  },
+  preferenceCardDescription: {
+    fontSize: 12,
+    color: '#6c757d',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  selectedIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: '#FEE2E2',
+    borderRadius: 10,
+    padding: 5,
+  },
+  groupToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#A83442',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  checkboxActive: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  groupToggleContent: {
+    flex: 1,
+  },
+  groupToggleText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  groupToggleSubtext: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 2,
+  },
+  subSectionTitle: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  roomingGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  roomingOption: {
+    width: '48%', // Two columns
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  roomingOptionSelected: {
+    borderColor: '#FEE2E2',
+    borderWidth: 2,
+  },
+  roomingOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#111827',
+    marginLeft: 10,
+  },
+  roomingOptionTextSelected: {
+    color: '#A83442',
   },
 });
 
