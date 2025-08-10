@@ -13,6 +13,8 @@ export type AirportOption = {
   type: 'airport' | 'city';
 };
 
+// Cache for all airports to avoid repeated API calls
+
 // Cache for API results during session
 const sessionCache = new Map<string, AirportOption[]>();
 let abortController: AbortController | null = null;
@@ -81,6 +83,8 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
     return [];
   }
 
+  console.log('Searching Duffel API for:', query);
+
   try {
     // Cancel previous request
     if (abortController) {
@@ -88,41 +92,72 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
     }
     abortController = new AbortController();
 
-    const response = await fetch(
-      `${DUFFEL_API_BASE}/places/suggestions?query=${encodeURIComponent(query)}`,
-      {
-        headers: {
-          'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
-          'Accept': 'application/json',
-          'Duffel-Version': 'v1'
-        },
-        signal: abortController.signal
-      }
-    );
+    // For now, fetch a reasonable number of airports and filter locally
+    // This provides a good balance between performance and coverage
+    const params = new URLSearchParams({ limit: '500' });
+    const url = `${DUFFEL_API_BASE}/air/airports?${params}`;
+     
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Duffel-Version': 'v2'
+      },
+      signal: abortController.signal
+    });
 
     if (!response.ok) {
       throw new Error(`Duffel API error: ${response.status}`);
     }
 
     const data = await response.json();
-    
-    return data.data.map((place: any): AirportOption => ({
-      iata: place.iata_code || place.id,
-      name: place.name,
-      city: place.city?.name || place.name,
-      region: place.city?.region,
-      country: place.city?.country?.name || place.country?.name,
-      lat: place.latitude,
-      lon: place.longitude,
+    const allAirports = data.data.map((airport: any): AirportOption => ({
+      iata: airport.iata_code,
+      name: airport.name,
+      city: airport.city_name || airport.name,
+      region: airport.region,
+      country: airport.iata_country_code || 'Unknown',
+      lat: airport.latitude,
+      lon: airport.longitude,
       source: 'api' as const,
-      type: place.type === 'city' ? 'city' : 'airport'
-    })).slice(0, 10);
+      type: 'airport'
+    }));
+
+    // Filter airports based on the search query
+    const normalizedQuery = normalizeText(query);
+    const filteredAirports = allAirports.filter((airport: AirportOption) => {
+      const nameMatch = normalizeText(airport.name).includes(normalizedQuery);
+      const cityMatch = normalizeText(airport.city).includes(normalizedQuery);
+      const iataMatch = normalizeText(airport.iata).includes(normalizedQuery);
+      const countryMatch = normalizeText(airport.country).includes(normalizedQuery);
+      
+      return nameMatch || cityMatch || iataMatch || countryMatch;
+    });
+
+    console.log(`Filtered ${filteredAirports.length} airports from ${allAirports.length} total`);
+    
+    // Sort results by relevance (exact matches first, then partial matches)
+    const sortedResults = filteredAirports.sort((a: AirportOption, b: AirportOption) => {
+      const aExactMatch = normalizeText(a.iata) === normalizedQuery || 
+                         normalizeText(a.city) === normalizedQuery;
+      const bExactMatch = normalizeText(b.iata) === normalizedQuery || 
+                         normalizeText(b.city) === normalizedQuery;
+      
+      if (aExactMatch && !bExactMatch) return -1;
+      if (!aExactMatch && bExactMatch) return 1;
+      
+      // Secondary sort by city name
+      return a.city.localeCompare(b.city);
+    });
+    
+    return sortedResults.slice(0, 10); // Return top 10 matches
 
   } catch (error) {
+    console.error('Duffel API search error:', error);
     if (error instanceof Error && error.name === 'AbortError') {
       return [];
     }
-    console.error('Duffel API search error:', error);
     return [];
   }
 }
