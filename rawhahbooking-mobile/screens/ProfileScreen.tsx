@@ -24,6 +24,7 @@ import { HelpSupportScreen } from './HelpSupportScreen';
 import { FamilyManagementScreen } from './FamilyManagementScreen';
 import { AddMemberScreen } from './AddMemberScreen';
 import { ProfileSettingsScreen } from './ProfileSettingsScreen';
+import { FlightCheckoutScreen } from './FlightCheckoutScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -139,7 +140,7 @@ const ProfileScreen: React.FC = () => {
       [
         { text: 'All Family (5)', onPress: () => bookWithMembers('all') },
         { text: 'Adults Only (3)', onPress: () => bookWithMembers('adults') },
-        { text: 'Custom Selection', onPress: () => showMemberSelection() },
+        { text: 'Custom Selection', onPress: () => handleNavigateToCheckout() },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
@@ -159,8 +160,8 @@ const ProfileScreen: React.FC = () => {
         break;
     }
     
-    Alert.alert('Booking Initiated', `Proceeding with ${members.length} travelers`);
-    // Navigate to booking flow with selected members
+    // Navigate to checkout with pre-selected family members
+    handleNavigateToCheckout();
   };
 
   const showMemberSelection = () => {
@@ -200,6 +201,7 @@ const ProfileScreen: React.FC = () => {
   const handleNavigateToFamilyManagement = () => setCurrentScreen('familyManagement');
   const handleNavigateToAddMember = () => setCurrentScreen('addMember');
   const handleNavigateToProfileSettings = () => setCurrentScreen('profileSettings');
+  const handleNavigateToCheckout = () => setCurrentScreen('checkout');
 
   const handleBackToProfile = () => setCurrentScreen('profile');
 
@@ -226,6 +228,11 @@ const ProfileScreen: React.FC = () => {
         return <AddMemberScreen onBack={handleBackToProfile} />;
       case 'profileSettings':
         return <ProfileSettingsScreen onBack={handleBackToProfile} />;
+      case 'checkout':
+        return <FlightCheckoutScreen 
+          onBack={handleBackToProfile}
+          familyMembers={familyMembers}
+        />;
       default:
         return renderProfileScreen();
     }
