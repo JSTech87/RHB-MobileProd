@@ -489,7 +489,7 @@ export const FlightResultsScreen: React.FC<{
           <TouchableOpacity
             style={styles.flightCard}
             onPress={() => toggleCard(flight.id)}
-            activeOpacity={0.9}
+            activeOpacity={0.95}
           >
             {/* Ticket cutouts */}
             <View style={[styles.cutout, styles.leftCutout]} />
@@ -918,30 +918,41 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingTop: 20,
     paddingHorizontal: 20,
+    paddingBottom: 20,
   },
   
   // Flight Cards
   cardContainer: {
     marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
     borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   flightCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     position: 'relative',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   flightCardDetailed: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     position: 'relative',
+    borderWidth: 2,
+    borderColor: '#A83442',
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
   },
   
   // Card Decorative Elements
@@ -1409,13 +1420,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   sortOptionSelected: {
     backgroundColor: '#FEF2F2',
     borderColor: '#A83442',
+    borderWidth: 2,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   sortOptionText: {
     fontSize: 14,
@@ -1438,13 +1460,24 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
     gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   filterOptionSelected: {
     backgroundColor: '#FEF2F2',
     borderColor: '#A83442',
+    borderWidth: 2,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   filterOptionText: {
     fontSize: 14,
