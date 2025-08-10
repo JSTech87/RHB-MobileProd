@@ -270,21 +270,6 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <Ionicons name="send" size={20} color="#FFFFFF" />
             <Text style={styles.hotelSubmitButtonText}>Start Hotel Inquiry</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={styles.hotelWhatsAppButton}
-            onPress={() => {
-              const message = "Hello! I'd like to inquire about hotel accommodations. Please help me find suitable options.";
-              const encodedMessage = encodeURIComponent(message);
-              const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
-              Linking.openURL(whatsappUrl).catch(() => {
-                Alert.alert('Error', 'Could not open WhatsApp');
-              });
-            }}
-          >
-            <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
-            <Text style={styles.hotelWhatsAppButtonText}>WhatsApp Inquiry</Text>
-          </TouchableOpacity>
         </View>
       </View>
     );
@@ -2097,26 +2082,6 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   hotelSubmitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  hotelWhatsAppButton: {
-    width: '100%',
-    backgroundColor: '#25D366', // WhatsApp green
-    borderRadius: 16,
-    paddingVertical: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#25D366',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  hotelWhatsAppButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',

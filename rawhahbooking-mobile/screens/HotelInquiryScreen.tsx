@@ -181,8 +181,35 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
   const handleWhatsApp = () => {
     if (!validateForm()) return;
 
-    const message = `Hotel Inquiry:
-Destination: ${formData.stays.map(stay => `${stay.destination} (${stay.checkIn} - ${stay.checkOut})`).join('\n')}\n\nGuests: ${formData.adults} adults, ${formData.children} children\nPreference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star')}`}\nContact: ${formData.fullName}\nEmail: ${formData.email}\nPhone: ${formData.phone}\n${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : ''}`;
+    let message = `Hotel Business Inquiry:\n\n`;
+    
+    // Add stays information
+    formData.stays.forEach((stay, index) => {
+      message += `Stay ${index + 1}:\n`;
+      message += `📍 Destination: ${stay.destination}\n`;
+      message += `📅 Check-in: ${stay.checkIn || 'Not selected'}\n`;
+      message += `📅 Check-out: ${stay.checkOut || 'Not selected'}\n`;
+      message += `🏨 Rooms: ${stay.rooms}\n\n`;
+    });
+    
+    message += `👥 Guests: ${formData.adults} adults`;
+    if (formData.children > 0) {
+      message += `, ${formData.children} children`;
+    }
+    message += `\n`;
+    
+    message += `⭐ Preference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star hotels')}`}\n\n`;
+    
+    message += `📞 Contact Information:\n`;
+    message += `Name: ${formData.fullName}\n`;
+    message += `Email: ${formData.email}\n`;
+    message += `Phone: ${formData.phone}\n`;
+    
+    if (formData.specialRequests.trim()) {
+      message += `\n📝 Special Requests:\n${formData.specialRequests}\n`;
+    }
+    
+    message += `\n#HOTEL_BUSINESS_INQUIRY`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
