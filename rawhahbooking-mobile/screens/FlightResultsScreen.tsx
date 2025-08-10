@@ -244,98 +244,11 @@ export const FlightResultsScreen: React.FC = () => {
 
   useEffect(() => {
     loadMarkupRules();
-    
-    // If no offers were provided, perform search automatically
-    if (searchParams && (!offers || offers.length === 0)) {
-      console.log('🔍 No offers provided, performing automatic search...');
-      performInitialSearch();
-    }
   }, []);
 
   useEffect(() => {
     applyFiltersAndSort();
   }, [offers, sortFilterOptions]);
-
-  const performInitialSearch = async () => {
-    try {
-      setLoading(true);
-      console.log('📡 Performing initial Supabase flight search with params:', searchParams);
-      
-      // Import BackendApiService to use Supabase Edge Functions
-      const { BackendApiService } = await import('../services/backendApi');
-      
-      // Create flight search request format for Supabase Edge Function
-      const flightSearchRequest = {
-        origin: searchParams.from,
-        destination: searchParams.to,
-        departure_date: searchParams.departureDate,
-        return_date: searchParams.tripType === 'roundTrip' ? searchParams.returnDate : undefined,
-        passengers: {
-          adults: searchParams.passengers?.adults || 1,
-          children: searchParams.passengers?.children || 0,
-          infants: searchParams.passengers?.infants || 0,
-        },
-        cabin_class: searchParams.cabinClass?.toLowerCase().replace(' ', '_') || 'economy',
-        trip_type: searchParams.tripType || 'oneWay',
-        user_id: 'anonymous_user', // Add user_id as required by Edge Function
-      };
-      
-      console.log('🚀 Supabase Edge Function Request:', JSON.stringify(flightSearchRequest, null, 2));
-      
-      // Search for offers via Supabase Edge Functions
-      try {
-        await BackendApiService.searchFlights(flightSearchRequest as any);
-      } catch (e) {
-        console.warn('Supabase logging failed (continuing with direct Duffel search):', (e as any)?.message || e);
-      }
-      
-      const { default: DuffelApiService } = await import('../services/duffelApi');
-      const duffelOfferRequest = {
-        cabin_class: flightSearchRequest.cabin_class,
-        passengers: [
-          ...Array(searchParams.passengers?.adults || 1).fill({ type: 'adult' }),
-          ...Array(searchParams.passengers?.children || 0).fill({ type: 'child' }),
-          ...Array(searchParams.passengers?.infants || 0).fill({ type: 'infant_without_seat' }),
-        ],
-        slices: [
-          {
-            origin: searchParams.from,
-            destination: searchParams.to,
-            departure_date: searchParams.departureDate,
-          },
-          ...(searchParams.tripType === 'roundTrip' && searchParams.returnDate ? [{
-            origin: searchParams.to,
-            destination: searchParams.from,
-            departure_date: searchParams.returnDate,
-          }] : [])
-        ],
-        return_offers: true,
-      } as any;
-      const duffelResponse = await DuffelApiService.searchOffers(duffelOfferRequest);
-      console.log('✅ Direct Duffel offers:', duffelResponse.data?.length || 0);
-      setOffers(duffelResponse.data || []);
-       
-      setLoading(false);
-    } catch (error) {
-      console.error('❌ Supabase flight search failed:', error);
-      setLoading(false);
-      
-      Alert.alert(
-        'Search Error', 
-        'Unable to search for flights via Supabase. Please try again.',
-        [
-          {
-            text: 'Retry',
-            onPress: () => performInitialSearch(),
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-        ]
-      );
-    }
-  };
 
   const loadMarkupRules = async () => {
     try {
@@ -532,8 +445,7 @@ export const FlightResultsScreen: React.FC = () => {
 
       // Calculate total passengers
       // Use search params to get passenger count since offer doesn't have passengers
-      const totalPassengers = searchParams?.passengers ? 
-        (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1;
+      const totalPassengers = searchParams.passengers?.length || 1;
 
       navigation.navigate('FlightCheckout', {
         flight: offer,
@@ -549,12 +461,9 @@ export const FlightResultsScreen: React.FC = () => {
     try {
       setLoading(true);
       
-      // Import BackendApiService to use Supabase Edge Functions
-      const { BackendApiService } = await import('../services/backendApi');
-      
-      // Re-fetch offers with same search parameters via Supabase
-      const response = await BackendApiService.searchFlights(searchParams as any);
-      let newOffers = response.offers;
+      // Re-fetch offers with same search parameters
+      const response = await DuffelApiService.searchOffers(searchParams);
+      let newOffers = response.data;
 
       // Note: Markup rules applied on backend for security
 
@@ -568,8 +477,8 @@ export const FlightResultsScreen: React.FC = () => {
       }, 30); // Cache for 30 minutes
 
     } catch (error) {
-      console.error('Error refreshing offers via Supabase:', error);
-      Alert.alert('Error', 'Unable to refresh flight offers via Supabase. Please try again.');
+      console.error('Error refreshing offers:', error);
+      Alert.alert('Error', 'Unable to refresh flight offers. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -685,42 +594,34 @@ export const FlightResultsScreen: React.FC = () => {
           <View style={styles.filterSection}>
             <Text style={styles.filterTitle}>Airlines</Text>
             <View style={styles.filterOptions}>
-              {offers && Array.isArray(offers) && offers.length > 0 ? 
-                Array.from(new Set(offers.flatMap(f => 
-                  f.slices && Array.isArray(f.slices) ? 
-                    f.slices.flatMap(s => 
-                      s.segments && Array.isArray(s.segments) ? 
-                        s.segments.map(seg => seg.operating_carrier?.iata_code).filter(Boolean)
-                        : []
-                    ) 
-                    : []
-                ))).map((airline) => (
+              {Array.from(new Set(offers.flatMap(f => f.slices.flatMap(s => s.segments.map(seg => seg.operating_carrier.iata_code))))).map((airline) => (
                 <TouchableOpacity
                   key={airline}
                   style={[
-                    styles.filterChip,
-                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterChipSelected
+                    styles.filterOption,
+                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterOptionSelected
                   ]}
-                  onPress={() => {
-                    const newAirlines = sortFilterOptions.filters.airlines.includes(airline)
-                      ? sortFilterOptions.filters.airlines.filter(a => a !== airline)
-                      : [...sortFilterOptions.filters.airlines, airline];
-                    setSortFilterOptions(prev => ({
-                      ...prev,
-                      filters: { ...prev.filters, airlines: newAirlines }
-                    }));
-                  }}
+                  onPress={() => setSortFilterOptions(prev => ({ 
+                    ...prev, 
+                    filters: { 
+                      ...prev.filters, 
+                      airlines: prev.filters.airlines.includes(airline)
+                        ? prev.filters.airlines.filter(a => a !== airline)
+                        : [...prev.filters.airlines, airline]
+                    }
+                  }))}
                 >
                   <Text style={[
-                    styles.filterChipText,
-                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterChipTextSelected
+                    styles.filterOptionText,
+                    sortFilterOptions.filters.airlines.includes(airline) && styles.filterOptionTextSelected
                   ]}>
                     {airline}
                   </Text>
+                  {sortFilterOptions.filters.airlines.includes(airline) && (
+                    <Ionicons name="checkmark" size={16} color="#A83442" />
+                  )}
                 </TouchableOpacity>
-              )) : (
-                <Text style={styles.noDataText}>No airlines available</Text>
-              )}
+              ))}
             </View>
           </View>
         </ScrollView>
@@ -747,20 +648,20 @@ export const FlightResultsScreen: React.FC = () => {
             {/* Airline Header */}
             <View style={styles.airlineHeader}>
               <View style={styles.airlineInfo}>
-                <View style={[styles.airlineLogo, { backgroundColor: '#A83442' }]}>
-                  <Text style={styles.airlineLogoText}>{offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code || 'XX'}</Text>
+                <View style={[styles.airlineLogo, { backgroundColor: offer.slices[0].operating_carrier.marketing_carrier.color }]}>
+                  <Text style={styles.airlineLogoText}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View style={styles.airlineText}>
                   <Text style={styles.airlineLabel}>Airlines</Text>
-                  <Text style={styles.airlineName}>{offer.slices?.[0]?.segments?.[0]?.operating_carrier?.name || 'Unknown carrier'}</Text>
+                  <Text style={styles.airlineName}>{offer.slices[0].operating_carrier.marketing_carrier.name}</Text>
                 </View>
               </View>
               <View style={styles.flightTypeContainer}>
                 <View style={styles.flightType}>
-                  <Text style={styles.flightTypeText}>{offer.slices?.[0]?.segments?.[0]?.operating_carrier?.name || ''}</Text>
+                  <Text style={styles.flightTypeText}>{offer.slices[0].operating_carrier.marketing_carrier.name}</Text>
                 </View>
-                <Text style={styles.flightNumber}>{offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code || ''}</Text>
-                <Text style={styles.cabinClassText}>{(offer as any)?.cabin_class || ''}</Text>
+                <Text style={styles.flightNumber}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code} {offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
+                <Text style={styles.cabinClassText}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
               </View>
             </View>
 
@@ -865,22 +766,22 @@ export const FlightResultsScreen: React.FC = () => {
               <View style={styles.flightInfo}>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Cabin Class:</Text>
-                  <Text style={styles.infoValue}>{offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code || ''}</Text>
+                  <Text style={styles.infoValue}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Baggage:</Text>
-                  <Text style={styles.infoValue}>{offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code || ''}</Text>
+                  <Text style={styles.infoValue}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Refundable:</Text>
-                  <Text style={[styles.infoValue, { color: offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code ? '#2ecc71' : '#e74c3c' }]}>
-                    {offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code ? 'Yes' : 'No'}
+                  <Text style={[styles.infoValue, { color: offer.slices[0].operating_carrier.marketing_carrier.iata_code ? '#2ecc71' : '#e74c3c' }]}>
+                    {offer.slices[0].operating_carrier.marketing_carrier.iata_code ? 'Yes' : 'No'}
                   </Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Seat Selection:</Text>
-                  <Text style={[styles.infoValue, { color: offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code ? '#2ecc71' : '#e74c3c' }]}>
-                    {offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code ? 'Available' : 'Not Available'}
+                  <Text style={[styles.infoValue, { color: offer.slices[0].operating_carrier.marketing_carrier.iata_code ? '#2ecc71' : '#e74c3c' }]}>
+                    {offer.slices[0].operating_carrier.marketing_carrier.iata_code ? 'Available' : 'Not Available'}
                   </Text>
                 </View>
               </View>
@@ -889,25 +790,25 @@ export const FlightResultsScreen: React.FC = () => {
               <View style={styles.amenitiesSection}>
                 <Text style={styles.amenitiesTitle}>Amenities</Text>
                 <View style={styles.amenitiesList}>
-                  {offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code && (
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
                     <View key="amenity-wifi" style={styles.amenityItem}>
                       <Text style={styles.amenityBullet}>•</Text>
                       <Text style={styles.amenityText}>WiFi</Text>
                     </View>
                   )}
-                  {offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code && (
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
                     <View key="amenity-entertainment" style={styles.amenityItem}>
                       <Text style={styles.amenityBullet}>•</Text>
                       <Text style={styles.amenityText}>In-flight Entertainment</Text>
                     </View>
                   )}
-                  {offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code && (
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
                     <View key="amenity-meal" style={styles.amenityItem}>
                       <Text style={styles.amenityBullet}>•</Text>
                       <Text style={styles.amenityText}>Meal Service</Text>
                     </View>
                   )}
-                  {offer.slices?.[0]?.segments?.[0]?.operating_carrier?.iata_code && (
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
                     <View key="amenity-usb" style={styles.amenityItem}>
                       <Text style={styles.amenityBullet}>•</Text>
                       <Text style={styles.amenityText}>USB Charging</Text>
@@ -1758,41 +1659,5 @@ const styles = StyleSheet.create({
   filterOptionTextSelected: {
     color: '#A83442',
     fontWeight: '600',
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    gap: 8,
-  },
-  filterChipText: {
-    fontSize: 13,
-    color: '#111827',
-    fontWeight: '500',
-  },
-  filterChipSelected: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#A83442',
-    borderWidth: 2,
-    shadowColor: '#A83442',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  filterChipTextSelected: {
-    color: '#A83442',
-    fontWeight: '600',
-  },
-  noDataText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginTop: 10,
   },
 }); 

@@ -1,63 +1,71 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
+import { 
+  DuffelOffer, 
+  DuffelOfferRequest, 
+  DuffelOrder, 
+  DuffelPassenger,
+  MarkupRule 
+} from './duffelApi';
 import { User, AuthTokens } from './authService';
 
 // Backend API Configuration
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://karldxbrqccpuocfehvz.supabase.co/functions/v1';
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.rawhahbooking.com';
+const API_VERSION = 'v1';
 
 // API Endpoints
 const ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: `/auth-login`,
-    REGISTER: `/auth-register`,
-    REFRESH: `/auth-refresh`,
-    LOGOUT: `/auth-logout`,
-    PROFILE: `/auth-profile`,
-    RESET_PASSWORD: `/auth-reset-password`,
-    VERIFY_EMAIL: `/auth-verify-email`,
-    ADMIN_LOGIN: `/auth-admin-login`,
+    LOGIN: `/api/${API_VERSION}/auth/login`,
+    REGISTER: `/api/${API_VERSION}/auth/register`,
+    REFRESH: `/api/${API_VERSION}/auth/refresh`,
+    LOGOUT: `/api/${API_VERSION}/auth/logout`,
+    PROFILE: `/api/${API_VERSION}/auth/profile`,
+    RESET_PASSWORD: `/api/${API_VERSION}/auth/reset-password`,
+    VERIFY_EMAIL: `/api/${API_VERSION}/auth/verify-email`,
+    ADMIN_LOGIN: `/api/${API_VERSION}/auth/admin/login`,
   },
   
   // Flight Services
   FLIGHTS: {
-    SEARCH: `/flight-search`,
-    OFFERS: `/flight-offers`,
-    BOOK: `/flight-book`,
-    BOOKINGS: `/flight-bookings`,
-    CANCEL: `/flight-cancel`,
+    SEARCH: `/api/${API_VERSION}/flights/search`,
+    OFFERS: `/api/${API_VERSION}/flights/offers`,
+    BOOK: `/api/${API_VERSION}/flights/book`,
+    BOOKINGS: `/api/${API_VERSION}/flights/bookings`,
+    CANCEL: `/api/${API_VERSION}/flights/cancel`,
   },
   
   // Hotel Services
   HOTELS: {
-    INQUIRY: `/hotel-inquiry`,
-    INQUIRIES: `/hotel-inquiries`,
+    INQUIRY: `/api/${API_VERSION}/hotels/inquiry`,
+    INQUIRIES: `/api/${API_VERSION}/hotels/inquiries`,
   },
   
   // User Management
   USERS: {
-    PROFILE: `/user-profile`,
-    FAMILY: `/user-family`,
-    PREFERENCES: `/user-preferences`,
-    DOCUMENTS: `/user-documents`,
+    PROFILE: `/api/${API_VERSION}/users/profile`,
+    FAMILY: `/api/${API_VERSION}/users/family`,
+    PREFERENCES: `/api/${API_VERSION}/users/preferences`,
+    DOCUMENTS: `/api/${API_VERSION}/users/documents`,
   },
   
   // Admin Services
   ADMIN: {
-    DASHBOARD: `/admin-dashboard`,
-    USERS: `/admin-users`,
-    BOOKINGS: `/admin-bookings`,
-    ANALYTICS: `/admin-analytics`,
-    MARKUP_RULES: `/admin-markup-rules`,
-    SETTINGS: `/admin-settings`,
+    DASHBOARD: `/api/${API_VERSION}/admin/dashboard`,
+    USERS: `/api/${API_VERSION}/admin/users`,
+    BOOKINGS: `/api/${API_VERSION}/admin/bookings`,
+    ANALYTICS: `/api/${API_VERSION}/admin/analytics`,
+    MARKUP_RULES: `/api/${API_VERSION}/admin/markup-rules`,
+    SETTINGS: `/api/${API_VERSION}/admin/settings`,
   },
   
   // Utility Services
   UTILS: {
-    AIRPORTS: `/util-airports`,
-    AIRLINES: `/util-airlines`,
-    COUNTRIES: `/util-countries`,
-    CURRENCIES: `/util-currencies`,
+    AIRPORTS: `/api/${API_VERSION}/utils/airports`,
+    AIRLINES: `/api/${API_VERSION}/utils/airlines`,
+    COUNTRIES: `/api/${API_VERSION}/utils/countries`,
+    CURRENCIES: `/api/${API_VERSION}/utils/currencies`,
   },
 };
 
@@ -95,9 +103,19 @@ export interface ApiResponse<T = any> {
   };
 }
 
+export interface FlightSearchRequest extends DuffelOfferRequest {
+  userId?: string;
+  preferences?: {
+    preferredAirlines?: string[];
+    maxPrice?: number;
+    maxDuration?: number;
+    seatPreferences?: string[];
+  };
+}
+
 export interface FlightBookingRequest {
   offerId: string;
-  passengers: any[]; // DuffelPassengerRequest is no longer imported, so using 'any' for now
+  passengers: DuffelPassenger[];
   contactInfo: {
     email: string;
     phone: string;
@@ -308,60 +326,26 @@ export class BackendApiService {
   }
 
   // Flight Services
-  static async searchFlights(searchRequest: {
-    origin: string;
-    destination: string;
-    departure_date: string;
-    return_date?: string;
-    passengers: {
-      adults: number;
-      children: number;
-      infants: number;
-    };
-    cabin_class: string;
-    trip_type: string;
-    user_id: string;
-  }): Promise<{
-    offers: any[]; // DuffelOffer is no longer imported, so using 'any' for now
+  static async searchFlights(searchRequest: FlightSearchRequest): Promise<{
+    offers: DuffelOffer[];
     searchId: string;
     expiresAt: string;
   }> {
-    // Step 1: Initiate search
-    const searchResponse = await HttpClient.post<{
-      search_id: string;
-      offer_request_id: string;
-      status: string;
-      expires_at: string;
+    const response = await HttpClient.post<{
+      offers: DuffelOffer[];
+      searchId: string;
+      expiresAt: string;
     }>(ENDPOINTS.FLIGHTS.SEARCH, searchRequest);
     
-    if (!searchResponse.success || !searchResponse.data) {
-      throw new BackendApiError('Failed to initiate flight search', 500);
+    if (!response.success || !response.data) {
+      throw new BackendApiError('Flight search failed');
     }
     
-    const { search_id, offer_request_id } = searchResponse.data;
-    
-    // Step 2: Poll for offers (wait a moment for results)
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-    
-    // Step 3: Fetch offers using the search_id
-    const offersResponse = await HttpClient.get<{
-      offers: any[]; // DuffelOffer is no longer imported, so using 'any' for now
-      status: string;
-    }>(`${ENDPOINTS.FLIGHTS.OFFERS}?search_id=${search_id}`);
-     
-    if (!offersResponse.success || !offersResponse.data) {
-      throw new BackendApiError('Failed to fetch flight offers', 500);
-    }
-    
-    return {
-      offers: offersResponse.data.offers || [],
-      searchId: search_id,
-      expiresAt: searchResponse.data.expires_at,
-    };
+    return response.data;
   }
 
-  static async getFlightOffer(offerId: string): Promise<any> { // DuffelOffer is no longer imported, so using 'any' for now
-    const response = await HttpClient.get<any>(`${ENDPOINTS.FLIGHTS.OFFERS}/${offerId}`);
+  static async getFlightOffer(offerId: string): Promise<DuffelOffer> {
+    const response = await HttpClient.get<DuffelOffer>(`${ENDPOINTS.FLIGHTS.OFFERS}/${offerId}`);
     
     if (!response.success || !response.data) {
       throw new BackendApiError('Failed to get flight offer');
@@ -371,13 +355,13 @@ export class BackendApiService {
   }
 
   static async bookFlight(bookingRequest: FlightBookingRequest): Promise<{
-    order: any; // DuffelOrder is no longer imported, so using 'any' for now
+    order: DuffelOrder;
     bookingReference: string;
     paymentStatus: 'pending' | 'completed' | 'failed';
     confirmationEmail: boolean;
   }> {
     const response = await HttpClient.post<{
-      order: any; // DuffelOrder is no longer imported, so using 'any' for now
+      order: DuffelOrder;
       bookingReference: string;
       paymentStatus: 'pending' | 'completed' | 'failed';
       confirmationEmail: boolean;
@@ -604,8 +588,8 @@ export class BackendApiService {
     return response.data;
   }
 
-  static async getMarkupRules(): Promise<any[]> { // Assuming MarkupRule is no longer imported, so using 'any' for now
-    const response = await HttpClient.get<any[]>(ENDPOINTS.ADMIN.MARKUP_RULES);
+  static async getMarkupRules(): Promise<MarkupRule[]> {
+    const response = await HttpClient.get<MarkupRule[]>(ENDPOINTS.ADMIN.MARKUP_RULES);
     
     if (!response.success || !response.data) {
       throw new BackendApiError('Failed to get markup rules');
@@ -614,8 +598,8 @@ export class BackendApiService {
     return response.data;
   }
 
-  static async createMarkupRule(rule: any): Promise<any> { // Assuming MarkupRule is no longer imported, so using 'any' for now
-    const response = await HttpClient.post<any>(ENDPOINTS.ADMIN.MARKUP_RULES, rule);
+  static async createMarkupRule(rule: Omit<MarkupRule, 'id' | 'created_at' | 'updated_at'>): Promise<MarkupRule> {
+    const response = await HttpClient.post<MarkupRule>(ENDPOINTS.ADMIN.MARKUP_RULES, rule);
     
     if (!response.success || !response.data) {
       throw new BackendApiError('Failed to create markup rule');
@@ -624,8 +608,8 @@ export class BackendApiService {
     return response.data;
   }
 
-  static async updateMarkupRule(id: string, updates: any): Promise<any> { // Assuming MarkupRule is no longer imported, so using 'any' for now
-    const response = await HttpClient.put<any>(`${ENDPOINTS.ADMIN.MARKUP_RULES}/${id}`, updates);
+  static async updateMarkupRule(id: string, updates: Partial<MarkupRule>): Promise<MarkupRule> {
+    const response = await HttpClient.put<MarkupRule>(`${ENDPOINTS.ADMIN.MARKUP_RULES}/${id}`, updates);
     
     if (!response.success || !response.data) {
       throw new BackendApiError('Failed to update markup rule');
