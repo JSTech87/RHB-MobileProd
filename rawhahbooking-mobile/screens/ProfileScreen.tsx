@@ -232,6 +232,20 @@ const ProfileScreen: React.FC = () => {
         return <FlightCheckoutScreen 
           onBack={handleBackToProfile}
           familyMembers={familyMembers}
+          userProfile={{
+            firstName: userProfile.firstName,
+            lastName: userProfile.lastName,
+            email: userProfile.email,
+            phone: userProfile.phone,
+            dateOfBirth: '1990-05-15', // This should come from user profile
+            nationality: 'United States', // This should come from user profile
+            passportNumber: '', // This should come from user profile
+            passportExpiry: '', // This should come from user profile
+            profileImage: userProfile.profileImage || undefined,
+            emergencyContactName: 'Sarah Moses', // This should come from user profile
+            emergencyContactPhone: '+1 555-987-6543', // This should come from user profile
+          }}
+          preSelectedFamilyMembers={selectedMembers}
         />;
       default:
         return renderProfileScreen();

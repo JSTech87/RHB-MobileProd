@@ -110,30 +110,50 @@ export const FlightCheckoutScreen: React.FC<{
   onBack?: () => void;
   flightDetails?: FlightDetails;
   familyMembers?: FamilyMember[];
-}> = ({ onBack, flightDetails, familyMembers = [] }) => {
+  userProfile?: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    dateOfBirth: string;
+    nationality: string;
+    passportNumber?: string;
+    passportExpiry?: string;
+    profileImage?: string;
+    emergencyContactName?: string;
+    emergencyContactPhone?: string;
+  };
+  preSelectedFamilyMembers?: string[]; // IDs of pre-selected family members
+}> = ({ 
+  onBack, 
+  flightDetails, 
+  familyMembers = [], 
+  userProfile,
+  preSelectedFamilyMembers = []
+}) => {
   
   // State Management
   const [currentStep, setCurrentStep] = useState(1);
   const [passengers, setPassengers] = useState<PassengerInfo[]>([]);
   const [contactInfo, setContactInfo] = useState<ContactInfo>({
-    email: 'irvan.moses@gmail.com',
-    phone: '+1 555-123-4567',
+    email: userProfile?.email || 'irvan.moses@gmail.com',
+    phone: userProfile?.phone || '+1 555-123-4567',
     countryCode: '+1',
-    emergencyContactName: 'Sarah Moses',
-    emergencyContactPhone: '+1 555-987-6543',
+    emergencyContactName: userProfile?.emergencyContactName || 'Sarah Moses',
+    emergencyContactPhone: userProfile?.emergencyContactPhone || '+1 555-987-6543',
   });
   const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
     method: 'card',
     cardNumber: '',
     expiryDate: '',
     cvv: '',
-    cardholderName: 'Irvan Moses',
+    cardholderName: userProfile ? `${userProfile.firstName} ${userProfile.lastName}` : 'Irvan Moses',
     billingAddress: {
       street: '',
       city: '',
       state: '',
       zipCode: '',
-      country: 'United States',
+      country: userProfile?.nationality || 'United States',
     },
     saveCard: false,
   });
@@ -169,28 +189,66 @@ export const FlightCheckoutScreen: React.FC<{
     currency: 'USD',
   };
 
-  // Initialize with one adult passenger
+  // Initialize with one adult passenger and pre-selected family members
   useEffect(() => {
     if (passengers.length === 0) {
       const initialPassenger: PassengerInfo = {
         id: 'passenger-1',
         type: 'adult',
         title: 'Mr',
-        firstName: 'Irvan',
-        lastName: 'Moses',
-        dateOfBirth: '1990-05-15',
+        firstName: userProfile?.firstName || 'Irvan',
+        lastName: userProfile?.lastName || 'Moses',
+        dateOfBirth: userProfile?.dateOfBirth || '1990-05-15',
         gender: 'Male',
-        nationality: 'United States',
-        passportNumber: '',
-        passportExpiry: '',
+        nationality: userProfile?.nationality || 'United States',
+        passportNumber: userProfile?.passportNumber || '',
+        passportExpiry: userProfile?.passportExpiry || '',
         passportIssueCountry: 'United States',
         specialRequests: [],
         seatPreference: 'Window',
         mealPreference: 'Halal',
+        profileImage: userProfile?.profileImage,
       };
-      setPassengers([initialPassenger]);
+
+      // Start with the logged-in user
+      const initialPassengers = [initialPassenger];
+
+      // Add pre-selected family members if any
+      if (preSelectedFamilyMembers.length > 0) {
+        const preSelectedMembers: PassengerInfo[] = preSelectedFamilyMembers.map(memberId => {
+          const familyMember = familyMembers.find(m => m.id === memberId);
+          if (!familyMember) return null;
+
+          const age = calculateAge(familyMember.dateOfBirth);
+          const passengerType = getPassengerType(age);
+
+          return {
+            id: `family-${familyMember.id}`,
+            type: passengerType,
+            title: age >= 18 ? (familyMember.name.toLowerCase().includes('fatima') || familyMember.name.toLowerCase().includes('aisha') ? 'Ms' : 'Mr') : 'Mr',
+            firstName: familyMember.name.split(' ')[0],
+            lastName: familyMember.name.split(' ').slice(1).join(' '),
+            dateOfBirth: familyMember.dateOfBirth,
+            gender: familyMember.name.toLowerCase().includes('fatima') || familyMember.name.toLowerCase().includes('aisha') ? 'Female' : 'Male', // Smart gender detection
+            nationality: 'United States', // Default
+            passportNumber: familyMember.passportNumber,
+            passportExpiry: familyMember.passportExpiry,
+            passportIssueCountry: 'United States',
+            specialRequests: familyMember.specialNeeds || [],
+            seatPreference: 'Any',
+            mealPreference: familyMember.specialNeeds?.includes('Halal meals') ? 'Halal' : 'Standard',
+            profileImage: familyMember.profileImage,
+            isFromFamily: true,
+            familyMemberId: familyMember.id,
+          };
+        }).filter(Boolean) as PassengerInfo[];
+
+        initialPassengers.push(...preSelectedMembers);
+      }
+
+      setPassengers(initialPassengers);
     }
-  }, []);
+  }, [userProfile, preSelectedFamilyMembers, familyMembers]);
 
   // Utility Functions
   const calculateAge = (dateOfBirth: string): number => {
@@ -248,7 +306,7 @@ export const FlightCheckoutScreen: React.FC<{
       return {
         id: `family-${familyMember.id}`,
         type: passengerType,
-        title: age >= 18 ? 'Mr' : 'Master', // Default titles
+        title: age >= 18 ? 'Mr' : 'Mr', // Default titles
         firstName: familyMember.name.split(' ')[0],
         lastName: familyMember.name.split(' ').slice(1).join(' '),
         dateOfBirth: familyMember.dateOfBirth,
@@ -270,6 +328,62 @@ export const FlightCheckoutScreen: React.FC<{
     setSelectedFamilyMembers([]);
     setShowFamilyModal(false);
     Alert.alert('Success', `${newPassengers.length} family member(s) added to booking`);
+  };
+
+  const handleAddAllFamilyMembers = () => {
+    const alreadyAddedFamilyIds = passengers
+      .filter(p => p.isFromFamily)
+      .map(p => p.familyMemberId)
+      .filter(Boolean) as string[];
+    
+    const availableFamilyMembers = familyMembers.filter(
+      member => !alreadyAddedFamilyIds.includes(member.id)
+    );
+
+    if (availableFamilyMembers.length === 0) {
+      Alert.alert('Info', 'All family members are already added to this booking.');
+      return;
+    }
+
+    Alert.alert(
+      'Add All Family Members',
+      `Add all ${availableFamilyMembers.length} remaining family member(s) to this booking?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Add All', 
+          onPress: () => {
+            const newPassengers: PassengerInfo[] = availableFamilyMembers.map(familyMember => {
+              const age = calculateAge(familyMember.dateOfBirth);
+              const passengerType = getPassengerType(age);
+
+              return {
+                id: `family-${familyMember.id}`,
+                type: passengerType,
+                title: age >= 18 ? (familyMember.name.toLowerCase().includes('fatima') || familyMember.name.toLowerCase().includes('aisha') ? 'Ms' : 'Mr') : 'Mr',
+                firstName: familyMember.name.split(' ')[0],
+                lastName: familyMember.name.split(' ').slice(1).join(' '),
+                dateOfBirth: familyMember.dateOfBirth,
+                gender: familyMember.name.toLowerCase().includes('fatima') || familyMember.name.toLowerCase().includes('aisha') ? 'Female' : 'Male',
+                nationality: 'United States',
+                passportNumber: familyMember.passportNumber,
+                passportExpiry: familyMember.passportExpiry,
+                passportIssueCountry: 'United States',
+                specialRequests: familyMember.specialNeeds || [],
+                seatPreference: 'Any',
+                mealPreference: familyMember.specialNeeds?.includes('Halal meals') ? 'Halal' : 'Standard',
+                profileImage: familyMember.profileImage,
+                isFromFamily: true,
+                familyMemberId: familyMember.id,
+              };
+            });
+
+            setPassengers(prev => [...prev, ...newPassengers]);
+            Alert.alert('Success', `${newPassengers.length} family member(s) added to booking`);
+          }
+        },
+      ]
+    );
   };
 
   // Passenger Management Functions
@@ -649,6 +763,15 @@ export const FlightCheckoutScreen: React.FC<{
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#A83442" />
+          </TouchableOpacity>
+          
+          {/* Add All Family Button */}
+          <TouchableOpacity 
+            style={styles.addAllFamilyButton}
+            onPress={handleAddAllFamilyMembers}
+          >
+            <MaterialIcons name="group-add" size={20} color="#FFFFFF" />
+            <Text style={styles.addAllFamilyText}>Add All Family</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -2244,5 +2367,19 @@ const styles = StyleSheet.create({
   specialRequestOptionTextSelected: {
     color: '#A83442',
     fontWeight: '500',
+  },
+  addAllFamilyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#A83442',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginTop: 12,
+  },
+  addAllFamilyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 }); 
