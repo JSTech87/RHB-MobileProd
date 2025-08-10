@@ -208,7 +208,7 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
           <View style={styles.welcomeContent}>
             <Text style={styles.welcomeTitle}>Welcome to RawhahBooking</Text>
             <Text style={styles.welcomeSubtitle}>
-              Your trusted partner for premium travel experiences
+              Your trusted partner for exceptional travel experiences
             </Text>
           </View>
           <View style={styles.welcomeIcon}>
@@ -314,17 +314,19 @@ const styles = StyleSheet.create({
   },
   headerPill: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 16,
+    padding: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
   },
   logoSection: {
     flexDirection: 'row',
@@ -332,22 +334,27 @@ const styles = StyleSheet.create({
     marginRight: 15,
   },
   logo: {
-    width: 30,
-    height: 30,
-    marginRight: 10,
+    width: 36,
+    height: 36,
+    marginRight: 12,
   },
   userSection: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: '#6366F1',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 12,
+    shadowColor: '#6366F1',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarText: {
     color: '#FFFFFF',
@@ -356,6 +363,7 @@ const styles = StyleSheet.create({
   },
   userInfo: {
     flexDirection: 'column',
+    justifyContent: 'center',
   },
   greeting: {
     fontSize: 12,
@@ -368,13 +376,18 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   notificationButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: '#F8FAFC',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   notificationBadge: {
     position: 'absolute',

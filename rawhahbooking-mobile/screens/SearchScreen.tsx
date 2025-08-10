@@ -514,7 +514,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             {/* Logo */}
             <View style={styles.logoContainer}>
               <Image
-                source={require('../assets/rawhah-logo.png')}
+                source={require('../assets/Transparent Logo.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />
