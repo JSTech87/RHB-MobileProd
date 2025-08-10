@@ -15,6 +15,7 @@ import {
   Modal,
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
+import DateTimePicker from 'react-native-ui-datepicker';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,10 +24,12 @@ interface HotelInquiryScreenProps {
 }
 
 interface HotelInquiryData {
-  destination: string;
-  checkIn: string;
-  checkOut: string;
-  rooms: number;
+  stays: {
+    destination: string;
+    checkIn: string;
+    checkOut: string;
+    rooms: number;
+  }[];
   adults: number;
   children: number;
   hotelPreference: 'any' | '3star' | '4star' | '5star';
@@ -39,11 +42,16 @@ interface HotelInquiryData {
 export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigation }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPreferenceModal, setShowPreferenceModal] = useState(false);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [editingStayIndex, setEditingStayIndex] = useState(0);
+  const [editingDateType, setEditingDateType] = useState<'checkIn' | 'checkOut'>('checkIn');
   const [formData, setFormData] = useState<HotelInquiryData>({
-    destination: '',
-    checkIn: '',
-    checkOut: '',
-    rooms: 1,
+    stays: [{
+      destination: '',
+      checkIn: '',
+      checkOut: '',
+      rooms: 1,
+    }],
     adults: 2,
     children: 0,
     hotelPreference: 'any',
@@ -57,30 +65,77 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const incrementValue = (field: 'rooms' | 'adults' | 'children') => {
-    setFormData(prev => ({ 
-      ...prev, 
-      [field]: field === 'adults' ? Math.min(prev[field] + 1, 10) : 
-               field === 'children' ? Math.min(prev[field] + 1, 8) :
-               Math.min(prev[field] + 1, 5)
-    }));
+  const incrementValue = (field: 'adults' | 'children' | 'rooms') => {
+    if (field === 'rooms') {
+      const newStays = [...formData.stays];
+      newStays[editingStayIndex].rooms = Math.min(newStays[editingStayIndex].rooms + 1, 5);
+      setFormData(prev => ({ ...prev, stays: newStays }));
+    } else {
+      setFormData(prev => ({ 
+        ...prev, 
+        [field]: field === 'adults' ? Math.min(prev[field] + 1, 10) : Math.min(prev[field] + 1, 8)
+      }));
+    }
   };
 
-  const decrementValue = (field: 'rooms' | 'adults' | 'children') => {
-    setFormData(prev => ({ 
-      ...prev, 
-      [field]: field === 'adults' ? Math.max(prev[field] - 1, 1) : 
-               Math.max(prev[field] - 1, 0)
-    }));
+  const decrementValue = (field: 'adults' | 'children' | 'rooms') => {
+    if (field === 'rooms') {
+      const newStays = [...formData.stays];
+      newStays[editingStayIndex].rooms = Math.max(newStays[editingStayIndex].rooms - 1, 1);
+      setFormData(prev => ({ ...prev, stays: newStays }));
+    } else {
+      setFormData(prev => ({ 
+        ...prev, 
+        [field]: field === 'adults' ? Math.max(prev[field] - 1, 1) : Math.max(prev[field] - 1, 0)
+      }));
+    }
+  };
+
+  const addStay = () => {
+    if (formData.stays.length < 6) {
+      setFormData(prev => ({
+        ...prev,
+        stays: [...prev.stays, {
+          destination: '',
+          checkIn: '',
+          checkOut: '',
+          rooms: 1,
+        }]
+      }));
+    } else {
+      Alert.alert('Maximum Stays', 'You can add up to 6 stays for your inquiry.');
+    }
+  };
+
+  const removeStay = (index: number) => {
+    if (formData.stays.length > 1) {
+      setFormData(prev => ({
+        ...prev,
+        stays: prev.stays.filter((_, i) => i !== index)
+      }));
+      if (editingStayIndex >= formData.stays.length - 1) {
+        setEditingStayIndex(0);
+      }
+    }
+  };
+
+  const handleDateSelect = (date: Date) => {
+    const newStays = [...formData.stays];
+    const dateString = date.toISOString().split('T')[0];
+    newStays[editingStayIndex][editingDateType] = dateString;
+    setFormData(prev => ({ ...prev, stays: newStays }));
+    setShowDateModal(false);
+  };
+
+  const openDatePicker = (stayIndex: number, dateType: 'checkIn' | 'checkOut') => {
+    setEditingStayIndex(stayIndex);
+    setEditingDateType(dateType);
+    setShowDateModal(true);
   };
 
   const validateForm = (): boolean => {
-    if (!formData.destination.trim()) {
-      Alert.alert('Missing Information', 'Please enter your destination');
-      return false;
-    }
-    if (!formData.checkIn || !formData.checkOut) {
-      Alert.alert('Missing Information', 'Please select check-in and check-out dates');
+    if (!formData.stays.every(stay => stay.destination.trim() && stay.checkIn && stay.checkOut)) {
+      Alert.alert('Missing Information', 'Please complete all stay details.');
       return false;
     }
     if (!formData.fullName.trim()) {
@@ -127,16 +182,7 @@ export const HotelInquiryScreen: React.FC<HotelInquiryScreenProps> = ({ navigati
     if (!validateForm()) return;
 
     const message = `Hotel Inquiry:
-Destination: ${formData.destination}
-Check-in: ${formData.checkIn}
-Check-out: ${formData.checkOut}
-Rooms: ${formData.rooms}
-Guests: ${formData.adults} adults, ${formData.children} children
-Preference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star')}`}
-Contact: ${formData.fullName}
-Email: ${formData.email}
-Phone: ${formData.phone}
-${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : ''}`;
+Destination: ${formData.stays.map(stay => `${stay.destination} (${stay.checkIn} - ${stay.checkOut})`).join('\n')}\n\nGuests: ${formData.adults} adults, ${formData.children} children\nPreference: ${formData.hotelPreference === 'any' ? 'Any hotel' : `${formData.hotelPreference.replace('star', ' star')}`}\nContact: ${formData.fullName}\nEmail: ${formData.email}\nPhone: ${formData.phone}\n${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : ''}`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
@@ -188,69 +234,113 @@ ${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : '
             </Text>
           </View>
 
-          {/* Destination */}
+          {/* Multiple Stays Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Destination</Text>
-            <View style={styles.inputContainer}>
-              <Ionicons name="location-outline" size={20} color="#A83442" />
-              <TextInput
-                style={styles.textInput}
-                placeholder="Where would you like to stay?"
-                placeholderTextColor="#9CA3AF"
-                value={formData.destination}
-                onChangeText={(value) => updateFormData('destination', value)}
-              />
-            </View>
-          </View>
-
-          {/* Dates */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Stay Dates</Text>
-            <View style={styles.dateRow}>
-              <View style={styles.dateContainer}>
-                <Text style={styles.dateLabel}>Check-in</Text>
-                <TouchableOpacity style={styles.dateButton}>
-                  <Ionicons name="calendar-outline" size={18} color="#A83442" />
-                  <Text style={styles.dateText}>
-                    {formData.checkIn || 'Select date'}
-                  </Text>
+            <View style={styles.staysHeader}>
+              <Text style={styles.sectionTitle}>Your Stays ({formData.stays.length}/6)</Text>
+              {formData.stays.length < 6 && (
+                <TouchableOpacity style={styles.addStayButton} onPress={addStay}>
+                  <Ionicons name="add-circle-outline" size={16} color="#A83442" />
+                  <Text style={styles.addStayButtonText}>Add Stay</Text>
                 </TouchableOpacity>
-              </View>
-              <View style={styles.dateContainer}>
-                <Text style={styles.dateLabel}>Check-out</Text>
-                <TouchableOpacity style={styles.dateButton}>
-                  <Ionicons name="calendar-outline" size={18} color="#A83442" />
-                  <Text style={styles.dateText}>
-                    {formData.checkOut || 'Select date'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+              )}
             </View>
-          </View>
+            
+            {formData.stays.map((stay, index) => (
+              <View key={index} style={styles.stayCard}>
+                <View style={styles.stayHeader}>
+                  <Text style={styles.stayTitle}>Stay {index + 1}</Text>
+                  {formData.stays.length > 1 && (
+                    <TouchableOpacity 
+                      style={styles.removeStayButton}
+                      onPress={() => removeStay(index)}
+                    >
+                      <Ionicons name="close-circle" size={20} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                
+                {/* Destination for this stay */}
+                <View style={styles.inputContainer}>
+                  <Ionicons name="location-outline" size={20} color="#A83442" />
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="Where would you like to stay?"
+                    placeholderTextColor="#9CA3AF"
+                    value={stay.destination}
+                    onChangeText={(value) => {
+                      const newStays = [...formData.stays];
+                      newStays[index].destination = value;
+                      setFormData(prev => ({ ...prev, stays: newStays }));
+                    }}
+                  />
+                </View>
 
-          {/* Rooms & Guests */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rooms & Guests</Text>
-            <View style={styles.counterRow}>
-              <View style={styles.counterItem}>
-                <Text style={styles.counterLabel}>Rooms</Text>
-                <View style={styles.counter}>
-                  <TouchableOpacity 
-                    style={styles.counterButton}
-                    onPress={() => decrementValue('rooms')}
-                  >
-                    <Ionicons name="remove" size={18} color="#A83442" />
-                  </TouchableOpacity>
-                  <Text style={styles.counterValue}>{formData.rooms}</Text>
-                  <TouchableOpacity 
-                    style={styles.counterButton}
-                    onPress={() => incrementValue('rooms')}
-                  >
-                    <Ionicons name="add" size={18} color="#A83442" />
-                  </TouchableOpacity>
+                {/* Dates for this stay */}
+                <View style={styles.dateRow}>
+                  <View style={styles.dateContainer}>
+                    <Text style={styles.dateLabel}>Check-in</Text>
+                    <TouchableOpacity 
+                      style={styles.dateButton} 
+                      onPress={() => openDatePicker(index, 'checkIn')}
+                    >
+                      <Ionicons name="calendar-outline" size={18} color="#A83442" />
+                      <Text style={styles.dateText}>
+                        {stay.checkIn || 'Select date'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <View style={styles.dateContainer}>
+                    <Text style={styles.dateLabel}>Check-out</Text>
+                    <TouchableOpacity 
+                      style={styles.dateButton} 
+                      onPress={() => openDatePicker(index, 'checkOut')}
+                    >
+                      <Ionicons name="calendar-outline" size={18} color="#A83442" />
+                      <Text style={styles.dateText}>
+                        {stay.checkOut || 'Select date'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Rooms for this stay */}
+                <View style={styles.counterRow}>
+                  <View style={styles.counterItem}>
+                    <Text style={styles.counterLabel}>Rooms</Text>
+                    <View style={styles.counter}>
+                      <TouchableOpacity 
+                        style={styles.counterButton}
+                        onPress={() => {
+                          const newStays = [...formData.stays];
+                          newStays[index].rooms = Math.max(newStays[index].rooms - 1, 1);
+                          setFormData(prev => ({ ...prev, stays: newStays }));
+                        }}
+                      >
+                        <Ionicons name="remove" size={18} color="#A83442" />
+                      </TouchableOpacity>
+                      <Text style={styles.counterValue}>{stay.rooms}</Text>
+                      <TouchableOpacity 
+                        style={styles.counterButton}
+                        onPress={() => {
+                          const newStays = [...formData.stays];
+                          newStays[index].rooms = Math.min(newStays[index].rooms + 1, 5);
+                          setFormData(prev => ({ ...prev, stays: newStays }));
+                        }}
+                      >
+                        <Ionicons name="add" size={18} color="#A83442" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
               </View>
-              
+            ))}
+          </View>
+
+          {/* Global Guests Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Guests (for all stays)</Text>
+            <View style={styles.counterRow}>
               <View style={styles.counterItem}>
                 <Text style={styles.counterLabel}>Adults</Text>
                 <View style={styles.counter}>
@@ -382,14 +472,6 @@ ${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : '
                 {isSubmitting ? 'Submitting...' : 'Submit Inquiry'}
               </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.whatsappButton}
-              onPress={handleWhatsApp}
-            >
-              <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
-              <Text style={styles.whatsappButtonText}>WhatsApp Inquiry</Text>
-            </TouchableOpacity>
           </View>
         </View>
       </ScrollView>
@@ -400,7 +482,7 @@ ${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : '
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.compactModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowPreferenceModal(false)}>
               <Text style={styles.modalCancel}>Cancel</Text>
@@ -448,7 +530,47 @@ ${formData.specialRequests ? `Special Requests: ${formData.specialRequests}` : '
               </TouchableOpacity>
             ))}
           </ScrollView>
-        </SafeAreaView>
+        </View>
+      </Modal>
+
+      {/* Date Picker Modal */}
+      <Modal
+        visible={showDateModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.compactModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowDateModal(false)}>
+              <Text style={styles.modalCancel}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Date</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <View style={styles.datePickerContainer}>
+            <Text style={styles.datePickerLabel}>
+              {editingDateType === 'checkIn' ? 'Check-in Date' : 'Check-out Date'}
+            </Text>
+            <DateTimePicker
+              mode="single"
+              date={new Date()}
+              onChange={(params: any) => {
+                if (params.date) {
+                  handleDateSelect(params.date);
+                }
+              }}
+              minDate={new Date()}
+              firstDayOfWeek={1}
+              styles={{
+                selected: { backgroundColor: '#A83442' },
+                selected_label: { color: '#FFFFFF' },
+                today: { borderColor: '#A83442' },
+                today_label: { color: '#A83442' },
+              }}
+            />
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -702,26 +824,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
   },
-  whatsappButton: {
-    backgroundColor: '#25D366',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    shadowColor: '#25D366',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
-  },
-  whatsappButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 8,
-  },
   modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+  },
+  compactModalContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
@@ -749,6 +860,55 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     flex: 1,
+  },
+  datePickerContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  datePickerLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 15,
+  },
+  staysHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  addStayButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  addStayButtonText: {
+    fontSize: 14,
+    color: '#A83442',
+    marginLeft: 5,
+  },
+  stayCard: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  stayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  stayTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  removeStayButton: {
+    padding: 5,
   },
 });
 

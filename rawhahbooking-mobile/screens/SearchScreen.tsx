@@ -895,7 +895,12 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
               style={styles.modernDoneButton}
               onPress={() => setShowDateModal(false)}
             >
-              <Text style={styles.modernDoneButtonText}>Confirm Dates</Text>
+              <Text style={styles.modernDoneButtonText}>
+                {selectedTripType === 'roundTrip' 
+                  ? `Confirm Dates (${formatDate(selectedDepartureDate)} - ${formatDate(selectedReturnDate)})`
+                  : `Confirm Date (${formatDate(selectedDepartureDate)})`
+                }
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
