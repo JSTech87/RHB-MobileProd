@@ -5,748 +5,1129 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
+  StatusBar,
+  Dimensions,
   TextInput,
   Modal,
+  Platform,
   SafeAreaView,
   Alert,
   Animated,
-  StatusBar,
+  Linking,
   Image,
-  ActivityIndicator,
-  Dimensions,
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
-import DateTimePicker from 'react-native-ui-datepicker';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
-// Duffel API Service (fetch-based wrapper)
-import DuffelApiService from '../services/duffelApi';
-import AuthService from '../services/authService';
-import DatabaseService from '../services/databaseService';
+import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
+import FromToPicker from '../components/FromToPicker';
+import { AirportOption } from '../services/airportSearch';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
-type RootStackParamList = {
-  FlightResults: {
-    searchParams: any;
-    offers: any[];
-  };
-  HotelInquiry: undefined;
-};
-
+// Enhanced interfaces for professional flight search
 interface PassengerCounts {
   adults: number;
   children: number;
-  infants: number;
-}
-
-interface DuffelAirport {
-  iata_code: string;
-  name: string;
-  city_name: string;
-  country_code: string;
+  infantsInSeat: number;
+  infantsOnLap: number;
 }
 
 interface SearchFormData {
-  tripType: 'oneway' | 'roundtrip' | 'multicity';
-  fromAirport: DuffelAirport | null;
-  toAirport: DuffelAirport | null;
+  from: AirportOption | null;
+  to: AirportOption | null;
   departureDate: Date;
-  returnDate: Date | null;
+  returnDate: Date;
   passengers: PassengerCounts;
-  cabinClass: 'economy' | 'premium_economy' | 'business' | 'first';
-  multiCityFlights: Array<{
-    id: string;
-    from: DuffelAirport | null;
-    to: DuffelAirport | null;
-    date: Date;
-  }>;
+  cabinClass: 'Economy' | 'Premium Economy' | 'Business' | 'First';
+  tripType: 'oneWay' | 'roundTrip' | 'multiCity';
+}
+
+interface RecentSearch {
+  id: string;
+  from: string;
+  to: string;
+  date: string;
+  passengers: number;
+}
+
+interface PopularDestination {
+  id: string;
+  city: string;
+  country: string;
+  code: string;
+  price: string;
+  image: string;
 }
 
 interface IslamicDate {
   name: string;
-  date: string;
   hijriDate: string;
-  description: string;
+  gregorianDate: Date;
+  description?: string;
+  isPast: boolean;
 }
 
-export const SearchScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
+  const [selectedService, setSelectedService] = useState<'hotel' | 'flight'>('flight');
+  const [selectedTripType, setSelectedTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
+  const [fromAirport, setFromAirport] = useState<AirportOption | null>(null);
+  const [toAirport, setToAirport] = useState<AirportOption | null>(null);
+  const [seatClass, setSeatClass] = useState<'Economy' | 'Premium Economy' | 'Business' | 'First'>('Economy');
   
-  // Form state
-  const [formData, setFormData] = useState<SearchFormData>({
-    tripType: 'roundtrip',
-    fromAirport: null,
-    toAirport: null,
-    departureDate: new Date(),
-    returnDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    passengers: { adults: 1, children: 0, infants: 0 },
-    cabinClass: 'economy',
-    multiCityFlights: [],
-  });
+  // Enhanced date management
+  const [selectedDepartureDate, setSelectedDepartureDate] = useState(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)); // 7 days from now
+  const [selectedReturnDate, setSelectedReturnDate] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)); // 14 days from now
   
-  // Modal states
+  // Modal and UI states
   const [showPassengerModal, setShowPassengerModal] = useState(false);
   const [showDateModal, setShowDateModal] = useState(false);
   const [showClassModal, setShowClassModal] = useState(false);
-  const [datePickerType, setDatePickerType] = useState<'departure' | 'return'>('departure');
+  const [showRecentSearches, setShowRecentSearches] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  // Enhanced passenger management
+  const [passengers, setPassengers] = useState<PassengerCounts>({
+    adults: 2,
+    children: 0,
+    infantsInSeat: 0,
+    infantsOnLap: 0,
+  });
 
-  // Airport search states
-  const [showFromAirportSearch, setShowFromAirportSearch] = useState(false);
-  const [showToAirportSearch, setShowToAirportSearch] = useState(false);
-  const [airportSearchQuery, setAirportSearchQuery] = useState('');
-  const [airportSearchResults, setAirportSearchResults] = useState<DuffelAirport[]>([]);
-  const [searchingAirports, setSearchingAirports] = useState(false);
+  // Multi-city flights state
+  const [multiCityFlights, setMultiCityFlights] = useState([
+    { from: null as AirportOption | null, to: null as AirportOption | null, date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+  ]);
 
-  // Loading states
-  const [isSearching, setIsSearching] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'failed'>('checking');
+  // Mock data for enhanced experience
+  const [recentSearches] = useState<RecentSearch[]>([
+    { id: '1', from: 'NYC', to: 'LAX', date: 'Dec 15', passengers: 2 },
+    { id: '2', from: 'JFK', to: 'DXB', date: 'Jan 10', passengers: 1 },
+    { id: '3', from: 'LHR', to: 'CDG', date: 'Nov 28', passengers: 4 },
+  ]);
 
-  // Islamic calendar dates
-  const [islamicDates] = useState<IslamicDate[]>([
+  const [popularDestinations] = useState<PopularDestination[]>([
+    { id: '1', city: 'Dubai', country: 'UAE', code: 'DXB', price: 'from $899', image: '🏙️' },
+    { id: '2', city: 'London', country: 'UK', code: 'LHR', price: 'from $1,299', image: '🏰' },
+    { id: '3', city: 'Tokyo', country: 'Japan', code: 'NRT', price: 'from $1,199', image: '🗾' },
+    { id: '4', city: 'Paris', country: 'France', code: 'CDG', price: 'from $1,099', image: '🗼' },
+  ]);
+
+  // Islamic Calendar Dates for 2026 (Corrected based on 16 Safar 1447 AH being current)
+  const islamicDates2026: IslamicDate[] = [
     {
-      name: 'Hajj',
-      date: 'June 14-19, 2026',
-      hijriDate: '9-12 Dhu al-Hijjah 1447',
-      description: 'Annual Islamic pilgrimage to Mecca',
+      name: 'Islamic New Year',
+      hijriDate: '1 Muharram 1447',
+      gregorianDate: new Date(2025, 6, 7), // July 7, 2025
+      description: 'Start of the Islamic year',
+      isPast: true,
     },
     {
-      name: 'Day of Arafah',
-      date: 'June 15, 2026',
-      hijriDate: '9 Dhu al-Hijjah 1447',
-      description: 'The holiest day in the Islamic calendar',
+      name: 'Ashura',
+      hijriDate: '10 Muharram 1447',
+      gregorianDate: new Date(2025, 6, 16), // July 16, 2025
+      description: 'Day of remembrance',
+      isPast: true,
     },
     {
-      name: 'Eid al-Adha',
-      date: 'June 16, 2026',
-      hijriDate: '10 Dhu al-Hijjah 1447',
-      description: 'Festival of the Sacrifice',
+      name: 'Ramadan Begins',
+      hijriDate: '1 Ramadan 1447',
+      gregorianDate: new Date(2026, 1, 28), // February 28, 2026
+      description: 'Holy month of fasting',
+      isPast: false,
     },
     {
       name: 'Eid al-Fitr',
-      date: 'March 30, 2026',
       hijriDate: '1 Shawwal 1447',
+      gregorianDate: new Date(2026, 2, 30), // March 30, 2026
       description: 'Festival of Breaking the Fast',
+      isPast: false,
     },
     {
-      name: 'Mawlid an-Nabi',
-      date: 'September 15, 2025',
-      hijriDate: '12 Rabi al-Awwal 1447',
-      description: 'Birth of Prophet Muhammad',
+      name: 'Hajj Season',
+      hijriDate: '8-13 Dhu al-Hijjah 1447',
+      gregorianDate: new Date(2026, 5, 24), // June 24, 2026
+      description: 'Pilgrimage to Mecca',
+      isPast: false,
     },
-  ]);
+    {
+      name: 'Day of Arafah',
+      hijriDate: '9 Dhu al-Hijjah 1447',
+      gregorianDate: new Date(2026, 5, 25), // June 25, 2026
+      description: 'Most important day of Hajj',
+      isPast: false,
+    },
+    {
+      name: 'Eid al-Adha',
+      hijriDate: '10 Dhu al-Hijjah 1447',
+      gregorianDate: new Date(2026, 5, 26), // June 26, 2026
+      description: 'Festival of Sacrifice',
+      isPast: false,
+    },
+  ];
 
-  // Test Duffel connection on mount
+  // Animation values
+  const [fadeAnim] = useState(new Animated.Value(1));
+  const [slideAnim] = useState(new Animated.Value(0));
+
+  // Start loading spinner animation
   useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const ok = await DuffelApiService.ping();
-        setConnectionStatus(ok ? 'connected' : 'failed');
-        if (!ok) {
-          console.warn('Duffel API connection failed');
-        }
-      } catch (error) {
-        console.error('Connection test failed:', error);
-        setConnectionStatus('failed');
-      }
+    if (isLoading) {
+      const spinAnimation = Animated.loop(
+        Animated.timing(slideAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        })
+      );
+      spinAnimation.start();
+      return () => spinAnimation.stop();
+    }
+  }, [isLoading, slideAnim]);
+
+  // Enhanced search functionality
+  const handleSearch = () => {
+    // Validation
+    if (!fromAirport || !toAirport) {
+      Alert.alert('Missing Information', 'Please select departure and destination airports');
+      return;
+    }
+
+    if (fromAirport.iata === toAirport.iata) {
+      Alert.alert('Invalid Route', 'Departure and destination cannot be the same');
+      return;
+    }
+
+    if (selectedDepartureDate < new Date()) {
+      Alert.alert('Invalid Date', 'Departure date cannot be in the past');
+      return;
+    }
+
+    if (selectedTripType === 'roundTrip' && selectedReturnDate <= selectedDepartureDate) {
+      Alert.alert('Invalid Dates', 'Return date must be after departure date');
+      return;
+    }
+
+    // Set loading state with animation
+    setIsLoading(true);
+    Animated.timing(fadeAnim, {
+      toValue: 0.7,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    // Prepare search parameters
+    const searchParams = {
+      from: fromAirport.iata,
+      to: toAirport.iata,
+      departureDate: selectedDepartureDate.toISOString().split('T')[0],
+      returnDate: selectedTripType === 'roundTrip' ? selectedReturnDate.toISOString().split('T')[0] : null,
+      passengers,
+      cabinClass: seatClass,
+      tripType: selectedTripType,
     };
 
-    testConnection();
-  }, []);
+    // Simulate API call
+    setTimeout(() => {
+      setIsLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
 
-  // Handle flight search with proper Duffel API integration
-  const handleSearch = async () => {
-    // Validation
-    if (!formData.fromAirport || !formData.toAirport) {
-      Alert.alert('Missing Information', 'Please select both departure and destination airports.');
-      return;
-    }
-
-    if (formData.passengers.adults === 0) {
-      Alert.alert('Invalid Passengers', 'At least one adult passenger is required.');
-      return;
-    }
-
-    if (formData.tripType === 'roundtrip' && !formData.returnDate) {
-      Alert.alert('Missing Return Date', 'Please select a return date for round trip flights.');
-      return;
-    }
-
-    setIsSearching(true);
-
-    try {
-      // Check authentication
-      const user = AuthService.getCurrentUser();
-      console.log('User authenticated:', !!user);
-
-      // Build passengers array for Duffel
-      const passengers = [
-        ...Array(formData.passengers.adults).fill({ type: 'adult' }),
-        ...Array(formData.passengers.children).fill({ type: 'child', age: 10 }),
-        ...Array(formData.passengers.infants).fill({ type: 'infant_without_seat', age: 1 }),
-      ];
-
-      const slices = [
-        {
-          origin: formData.fromAirport.iata_code,
-          destination: formData.toAirport.iata_code,
-          departure_date: formData.departureDate.toISOString().split('T')[0],
-        },
-      ];
-
-      if (formData.tripType === 'roundtrip' && formData.returnDate) {
-        slices.push({
-          origin: formData.toAirport.iata_code,
-          destination: formData.fromAirport.iata_code,
-          departure_date: formData.returnDate.toISOString().split('T')[0],
-        });
-      }
-
-      const request = {
-        cabin_class: formData.cabinClass,
-        passengers,
-        slices,
-        max_connections: 2,
-      } as any;
-
-      console.log('Searching with Duffel request:', request);
-
-      const response = await DuffelApiService.searchOffers(request);
-
-      const offers = response.data || [];
-
-      // Cache search results
-      await DatabaseService.setCache(
-        'last_flight_search',
-        {
-          request,
-          offers,
-          searchedAt: new Date().toISOString(),
-        },
-        30
-      );
-
-      navigation.navigate('FlightResults', {
-        searchParams: request,
-        offers,
-      });
-
-    } catch (error) {
-      console.error('Search error:', error);
-      Alert.alert(
-        'Search Error', 
-        (error as Error).message || 'Unable to search for flights. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsSearching(false);
-    }
+      // Navigate to results with search parameters
+      navigation?.navigate('FlightResults', { searchParams });
+    }, 2000);
   };
 
-  // Replace mock airport search with Duffel API search (v2)
-  const searchAirports = async (query: string) => {
-    if (query.length < 2) return;
-
-    setSearchingAirports(true);
-    try {
-      const res = await DuffelApiService.searchAirports(query);
-      // Map to local type if needed
-      setAirportSearchResults(
-        (res.data || []).map((a: any) => ({
-          iata_code: a.iata_code,
-          name: a.name,
-          city_name: a.city_name,
-          country_code: a.iata_country_code || a.country_code || '',
-        }))
-      );
-    } catch (e) {
-      console.error('Airport search error:', e);
-      setAirportSearchResults([]);
-    } finally {
-      setSearchingAirports(false);
-    }
+  const handleHotelInquiry = () => {
+    navigation?.navigate('HotelInquiry');
   };
 
-  useEffect(() => {
-    if (airportSearchQuery.length >= 2) {
-      const timeoutId = setTimeout(() => {
-        searchAirports(airportSearchQuery);
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setAirportSearchResults([]);
-    }
-  }, [airportSearchQuery]);
-
-  // Helper functions
-  const handleAirportSelect = (airport: DuffelAirport, type: 'from' | 'to') => {
-    if (type === 'from') {
-      setFormData(prev => ({ ...prev, fromAirport: airport }));
-      setShowFromAirportSearch(false);
-    } else {
-      setFormData(prev => ({ ...prev, toAirport: airport }));
-      setShowToAirportSearch(false);
-    }
-    setAirportSearchQuery('');
-    setAirportSearchResults([]);
-  };
-
-  const swapAirports = () => {
-    setFormData(prev => ({
-      ...prev,
-      fromAirport: prev.toAirport,
-      toAirport: prev.fromAirport,
-    }));
-  };
-
-  const updatePassengerCount = (type: keyof PassengerCounts, increment: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      passengers: {
-        ...prev.passengers,
-        [type]: Math.max(0, prev.passengers[type] + (increment ? 1 : -1)),
-      },
-    }));
-  };
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
+  // Quick search from recent or popular destinations
+  const handleQuickSearch = (destination: PopularDestination) => {
+    setToAirport({
+      iata: destination.code,
+      name: destination.city,
+      city: destination.city,
+      country: destination.country,
+      source: 'local' as const,
+      type: 'airport' as const,
     });
   };
 
-  const getPassengerText = () => {
-    const { adults, children, infants } = formData.passengers;
-    const total = adults + children + infants;
-    if (total === 1) return '1 Passenger';
-    return `${total} Passengers`;
+  const handleRecentSearch = (recent: RecentSearch) => {
+    // This would typically set the full search data
+    Alert.alert('Quick Search', `Search from ${recent.from} to ${recent.to} on ${recent.date}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Search', onPress: () => handleSearch() },
+    ]);
   };
 
-  const getCabinClassText = () => {
-    const classMap = {
-      economy: 'Economy',
-      premium_economy: 'Premium Economy',
-      business: 'Business',
-      first: 'First Class',
-    };
-    return classMap[formData.cabinClass];
+  const addMultiCityFlight = () => {
+    if (multiCityFlights.length < 6) {
+      setMultiCityFlights(prev => [
+        ...prev,
+        { from: null, to: null, date: new Date(Date.now() + (prev.length + 7) * 24 * 60 * 60 * 1000) }
+      ]);
+    } else {
+      Alert.alert('Maximum Flights', 'You can add up to 6 flights for multi-city trips.');
+    }
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <View style={styles.logoSection}>
-        <Image
-          source={require('../assets/rawhah-adaptive-icon.png')}
-          style={styles.topLogo}
-          resizeMode="contain"
-        />
-        <View style={styles.brandTextContainer}>
-          <Text style={styles.brandText}>Rawhah</Text>
-          <Text style={styles.brandTextRed}>Booking</Text>
+  const removeMultiCityFlight = (index: number) => {
+    if (multiCityFlights.length > 1) {
+      setMultiCityFlights(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateMultiCityFlight = (index: number, field: 'from' | 'to' | 'date', value: any) => {
+    setMultiCityFlights(prev => prev.map((flight, i) => 
+      i === index ? { ...flight, [field]: value } : flight
+    ));
+  };
+
+  const updatePassengerCount = (type: keyof PassengerCounts, increment: boolean) => {
+    setPassengers(prev => {
+      const newCount = increment ? prev[type] + 1 : Math.max(0, prev[type] - 1);
+      // Ensure at least 1 adult
+      if (type === 'adults' && newCount === 0) return prev;
+      return { ...prev, [type]: newCount };
+    });
+  };
+
+  const renderHotelForm = () => {
+    return (
+      <View style={styles.hotelContainer}>
+        {/* Main Heading */}
+        <Text style={styles.hotelMainHeading}>Professional Hotel Accommodations</Text>
+        
+        {/* Subheading */}
+        <Text style={styles.hotelSubheading}>
+          A trusted selection of quality hotels offering excellent service, comfort, and value.
+        </Text>
+
+        {/* How It Works Section */}
+        <View style={styles.hotelSection}>
+          <Text style={styles.hotelSectionTitle}>How It Works</Text>
+          <View style={styles.hotelStepItem}>
+            <Text style={styles.hotelStepNumber}>1.</Text>
+            <Text style={styles.hotelStepText}>Tell Us Your Plans – Destination, travel dates, and preferences.</Text>
+          </View>
+          <View style={styles.hotelStepItem}>
+            <Text style={styles.hotelStepNumber}>2.</Text>
+            <Text style={styles.hotelStepText}>Get Expert Options – We'll find the most suitable hotels for you with quality selections approved for reliability and comfort.</Text>
+          </View>
+          <View style={styles.hotelStepItem}>
+            <Text style={styles.hotelStepNumber}>3.</Text>
+            <Text style={styles.hotelStepText}>Book Securely – Confirm with confidence at the best rate with our competitive pricing guarantee and fast response within 10-15 minutes.</Text>
+          </View>
+        </View>
+
+        {/* Submit Button */}
+        <View style={styles.hotelActionContainer}>
+          <TouchableOpacity
+            style={styles.hotelSubmitButton}
+            onPress={handleHotelInquiry}
+          >
+            <Ionicons name="send" size={20} color="#FFFFFF" />
+            <Text style={styles.hotelSubmitButtonText}>Start Hotel Inquiry</Text>
+          </TouchableOpacity>
         </View>
       </View>
-      {connectionStatus === 'failed' && (
-        <View style={styles.connectionWarning}>
-          <Ionicons name="warning" size={16} color="#EF4444" />
-          <Text style={styles.connectionWarningText}>API Connection Failed</Text>
-        </View>
-      )}
-    </View>
-  );
+    );
+  };
 
-  // Rest of the component implementation continues...
-  // (The render method and other components remain the same structure but with fixed styles)
+  const getPassengerText = () => {
+    const parts = [];
+    if (passengers.adults > 0) parts.push(`${passengers.adults}A`);
+    if (passengers.children > 0) parts.push(`${passengers.children}C`);
+    if (passengers.infantsInSeat > 0) parts.push(`${passengers.infantsInSeat}IS`);
+    if (passengers.infantsOnLap > 0) parts.push(`${passengers.infantsOnLap}IL`);
+    
+    return parts.length > 0 ? parts.join(' ') : '1A';
+  };
 
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F5F3F0" />
-      <SafeAreaView style={styles.mainContainer}>
-        {renderHeader()}
-        
-        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-          {/* Trip Type Selector */}
-          <View style={styles.tripTypeContainer}>
-            {(['oneway', 'roundtrip', 'multicity'] as const).map((type) => (
-    <TouchableOpacity
-                key={type}
-                style={[
-                  styles.tripTypeButton,
-                  formData.tripType === type && styles.tripTypeButtonActive,
-                ]}
-                onPress={() => setFormData(prev => ({ ...prev, tripType: type }))}
-              >
-                <Text
-                  style={[
-                    styles.tripTypeText,
-                    formData.tripType === type && styles.tripTypeTextActive,
-                  ]}
-                >
-                  {type === 'oneway' ? 'One Way' : type === 'roundtrip' ? 'Round Trip' : 'Multi City'}
-      </Text>
-    </TouchableOpacity>
-            ))}
+  const formatDate = (date: Date) => {
+    const options: Intl.DateTimeFormatOptions = { 
+      weekday: 'short', 
+      month: 'short', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatDateRange = (departure: Date, returnDate: Date) => {
+    const depFormatted = formatDate(departure);
+    const retFormatted = formatDate(returnDate);
+    return `${depFormatted} - ${retFormatted}`;
+  };
+
+  const calculateDaysBetween = (start: Date, end: Date) => {
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const getDaysInMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date: Date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const isSameDay = (date1: Date, date2: Date) => {
+    return date1.getDate() === date2.getDate() &&
+           date1.getMonth() === date2.getMonth() &&
+           date1.getFullYear() === date2.getFullYear();
+  };
+
+  const isDateInRange = (date: Date, start: Date, end: Date) => {
+    return date >= start && date <= end;
+  };
+
+  const getDurationText = () => {
+    if (selectedTripType === 'roundTrip') {
+      const diffDays = calculateDaysBetween(selectedDepartureDate, selectedReturnDate);
+      return `${diffDays} days`;
+    }
+    return '';
+  };
+
+  const renderSearchForm = () => {
+    if (selectedTripType === 'oneWay') {
+      return (
+        <>
+          {/* From/To Picker */}
+          <FromToPicker
+            mode="flight"
+            onChange={({ from, to }) => {
+              setFromAirport(from);
+              setToAirport(to);
+            }}
+            onSwap={() => {
+              const temp = fromAirport;
+              setFromAirport(toAirport);
+              setToAirport(temp);
+            }}
+          />
+
+          {/* Date Section */}
+          <View style={styles.formSection}>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setShowDateModal(true)}
+            >
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Departure Date</Text>
+                <Text style={styles.formInputText}>{formatDate(selectedDepartureDate)}</Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
-          {/* Search Card */}
-          <View style={styles.searchCard}>
-            {/* Airport Selection */}
-            <View style={styles.airportSection}>
-              <View style={styles.airportRow}>
-    <TouchableOpacity
-                  style={[styles.airportButton, formData.fromAirport && styles.airportButtonActive]}
-                  onPress={() => setShowFromAirportSearch(true)}
-                >
-                  <Text style={styles.airportLabel}>From</Text>
-                  <Text style={styles.airportText}>
-                    {formData.fromAirport ? formData.fromAirport.iata_code : 'Select'}
-                  </Text>
-                  <Text style={styles.airportSubtext}>
-                    {formData.fromAirport ? formData.fromAirport.city_name : 'Departure city'}
-                  </Text>
-    </TouchableOpacity>
-
-                <View style={styles.swapButtonContainer}>
-                  <TouchableOpacity style={styles.swapButton} onPress={swapAirports}>
-                    <Ionicons name="swap-horizontal" size={20} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-
+          {/* Bottom Row */}
+          <View style={styles.bottomRow}>
             <TouchableOpacity 
-                  style={[styles.airportButton, formData.toAirport && styles.airportButtonActive]}
-                  onPress={() => setShowToAirportSearch(true)}
-                >
-                  <Text style={styles.airportLabel}>To</Text>
-                  <Text style={styles.airportText}>
-                    {formData.toAirport ? formData.toAirport.iata_code : 'Select'}
-                  </Text>
-                  <Text style={styles.airportSubtext}>
-                    {formData.toAirport ? formData.toAirport.city_name : 'Destination city'}
-                  </Text>
-            </TouchableOpacity>
-              </View>
-          </View>
-
-            {/* Date Selection */}
-            <View style={styles.dateSection}>
-              <View style={styles.dateRow}>
-            <TouchableOpacity 
-                  style={styles.dateButton}
-                  onPress={() => {
-                    setDatePickerType('departure');
-                    setShowDateModal(true);
-                  }}
-                >
-                  <Text style={styles.dateLabel}>Departure</Text>
-                  <Text style={styles.dateText}>{formatDate(formData.departureDate)}</Text>
-            </TouchableOpacity>
-
-                {formData.tripType === 'roundtrip' && (
-          <TouchableOpacity 
-                    style={styles.dateButton}
-                    onPress={() => {
-                      setDatePickerType('return');
-                      setShowDateModal(true);
-                    }}
-                  >
-                    <Text style={styles.dateLabel}>Return</Text>
-                    <Text style={styles.dateText}>
-                      {formData.returnDate ? formatDate(formData.returnDate) : 'Select'}
-                </Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            {/* Options Container */}
-            <View style={styles.optionsContainer}>
-            <TouchableOpacity 
-                style={styles.optionButton}
+              style={styles.passengerCabinContainer}
               onPress={() => setShowPassengerModal(true)}
             >
-                <Ionicons name="people" size={20} color="#6B7280" />
-                <Text style={styles.optionText}>{getPassengerText()}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-                style={styles.optionButton}
-                onPress={() => setShowClassModal(true)}
-              >
-                <Ionicons name="airplane" size={20} color="#6B7280" />
-                <Text style={styles.optionText}>{getCabinClassText()}</Text>
+              <View style={styles.passengerSection}>
+                <Text style={styles.inputLabel}>Travelers</Text>
+                <Text style={styles.formInputText}>{getPassengerText()}</Text>
+              </View>
+              <View style={styles.cabinSection}>
+                <Text style={styles.inputLabel}>Class</Text>
+                <Text style={styles.cabinClassText}>{seatClass}</Text>
+              </View>
             </TouchableOpacity>
           </View>
+        </>
+      );
+    } else if (selectedTripType === 'roundTrip') {
+      return (
+        <>
+          {/* From/To Picker */}
+          <FromToPicker
+            mode="flight"
+            onChange={({ from, to }) => {
+              setFromAirport(from);
+              setToAirport(to);
+            }}
+            onSwap={() => {
+              const temp = fromAirport;
+              setFromAirport(toAirport);
+              setToAirport(temp);
+            }}
+          />
 
-            {/* Search Button */}
+          <View style={styles.locationDivider}>
+            <View style={styles.flightPath} />
+          </View>
+
+          {/* Date Row for Round Trip */}
+          <TouchableOpacity 
+            style={styles.singleDateRowContainer}
+            onPress={() => setShowDateModal(true)}
+          >
+            <View style={styles.inputContainer}>
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Departure Date - Return Date</Text>
+                <Text style={styles.formInputText}>
+                  {formatDate(selectedDepartureDate)} - {formatDate(selectedReturnDate)}
+                </Text>
+              </View>
+            </View>
+            {getDurationText() && (
+              <View style={styles.durationBadge}>
+                <Text style={styles.durationText}>{getDurationText()}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Bottom Row */}
+          <View style={styles.bottomRow}>
             <TouchableOpacity 
-              style={[styles.searchButton, isSearching && styles.searchButtonDisabled]}
-              onPress={handleSearch}
-              disabled={isSearching}
+              style={styles.passengerCabinContainer}
+              onPress={() => setShowPassengerModal(true)}
             >
-              {isSearching ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Ionicons name="search" size={20} color="#FFFFFF" />
-              )}
-              <Text style={styles.searchButtonText}>
-                {isSearching ? 'Searching...' : 'Search Flights'}
-              </Text>
+              <View style={styles.passengerSection}>
+                <Text style={styles.inputLabel}>Travelers</Text>
+                <Text style={styles.formInputText}>{getPassengerText()}</Text>
+              </View>
+              <View style={styles.cabinSection}>
+                <Text style={styles.inputLabel}>Class</Text>
+                <Text style={styles.cabinClassText}>{seatClass}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </>
+      );
+    } else {
+      // Multi City
+      return (
+        <>
+          {/* From/To Picker */}
+          <FromToPicker
+            mode="flight"
+            onChange={({ from, to }) => {
+              setFromAirport(from);
+              setToAirport(to);
+            }}
+            onSwap={() => {
+              const temp = fromAirport;
+              setFromAirport(toAirport);
+              setToAirport(temp);
+            }}
+          />
+
+          <View style={styles.locationDivider}>
+            <View style={styles.flightPath} />
+          </View>
+
+          {/* Date Section */}
+          <View style={styles.formSection}>
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setShowDateModal(true)}
+            >
+              <View style={styles.inputContent}>
+                <Text style={styles.inputLabel}>Departure Date</Text>
+                <Text style={styles.formInputText}>{formatDate(selectedDepartureDate)}</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
-          {/* Islamic Calendar Card */}
-          <View style={styles.islamicCalendarCard}>
-            <Text style={styles.islamicCalendarTitle}>Notable Islamic Dates</Text>
-            <View style={styles.islamicDatesList}>
-              {islamicDates.map((islamicDate, index) => (
-                <View key={index} style={styles.islamicDateItem}>
-                  <View style={styles.islamicDateLeft}>
-                    <Text style={styles.islamicDateName}>{islamicDate.name}</Text>
-                    <Text style={styles.islamicDateDescription}>{islamicDate.description}</Text>
-              </View>
-                  <View style={styles.islamicDateRight}>
-                    <Text style={styles.islamicDateGregorian}>{islamicDate.date}</Text>
-                    <Text style={styles.islamicDateHijri}>{islamicDate.hijriDate}</Text>
-              </View>
-            </View>
-              ))}
-            </View>
-          </View>
-        </ScrollView>
+          {/* Add Flight Button */}
+          <TouchableOpacity style={styles.addFlightButton}>
+            <Ionicons name="add-circle-outline" size={20} color="#A83442" />
+            <Text style={styles.addFlightText}>Add Another Flight</Text>
+          </TouchableOpacity>
 
-        {/* Airport Search Modal */}
-        <Modal visible={showFromAirportSearch || showToAirportSearch} animationType="slide" presentationStyle="pageSheet">
-          <SafeAreaView style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity 
-                onPress={() => {
-                  setShowFromAirportSearch(false);
-                  setShowToAirportSearch(false);
-                }} 
-                style={styles.modalCloseButton}
-              >
-                <Ionicons name="close" size={24} color="#6B7280" />
+          {/* Bottom Row */}
+          <View style={styles.bottomRow}>
+            <TouchableOpacity 
+              style={styles.passengerCabinContainer}
+              onPress={() => setShowPassengerModal(true)}
+            >
+              <View style={styles.passengerSection}>
+                <Text style={styles.inputLabel}>Travelers</Text>
+                <Text style={styles.formInputText}>{getPassengerText()}</Text>
+              </View>
+              <View style={styles.cabinSection}>
+                <Text style={styles.inputLabel}>Class</Text>
+                <Text style={styles.cabinClassText}>{seatClass}</Text>
+              </View>
             </TouchableOpacity>
-              <Text style={styles.modalTitle}>
-                {showFromAirportSearch ? 'Select Departure Airport' : 'Select Destination Airport'}
-              </Text>
-              <View style={{ width: 24 }} />
           </View>
+        </>
+      );
+    }
+  };
 
-            <View style={{ paddingHorizontal: 20 }}>
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search airports..."
-                value={airportSearchQuery}
-                onChangeText={setAirportSearchQuery}
-                autoFocus
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#D6D5C9" />
+      
+      <Animated.View style={[styles.mainContainer, { opacity: fadeAnim }]}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../assets/Original Logo Symbol.png')}
+                style={styles.logo}
+                resizeMode="contain"
               />
+              <View style={styles.brandTextContainer}>
+                <Text style={styles.brandTextBlack}>Rawhah</Text>
+                <Text style={styles.brandTextRed}>Booking</Text>
+              </View>
+            </View>
           </View>
 
-            {searchingAirports ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="small" color="#A83442" />
-            </View>
-            ) : (
-              <ScrollView style={styles.airportResults}>
-                {airportSearchResults.map((airport, index) => (
+          {/* Service Tabs */}
+          <View style={styles.serviceTabs}>
+            <TouchableOpacity
+              style={[styles.serviceTab, selectedService === 'flight' && styles.serviceTabActive]}
+              onPress={() => setSelectedService('flight')}
+            >
+              <Ionicons 
+                name="airplane-outline" 
+                size={20} 
+                color={selectedService === 'flight' ? '#FFFFFF' : '#6B7280'} 
+              />
+              <Text style={[styles.serviceTabText, selectedService === 'flight' && styles.serviceTabTextActive]}>
+                Flights
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.serviceTab, selectedService === 'hotel' && styles.serviceTabActive]}
+              onPress={() => setSelectedService('hotel')}
+            >
+              <Ionicons 
+                name="bed-outline" 
+                size={20} 
+                color={selectedService === 'hotel' ? '#FFFFFF' : '#6B7280'} 
+              />
+              <Text style={[styles.serviceTabText, selectedService === 'hotel' && styles.serviceTabTextActive]}>
+                Hotels
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView 
+          style={styles.scrollView} 
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          {selectedService === 'flight' ? (
+            <>
+              {/* Flight Search Form */}
+              <View style={styles.searchCard}>
+                {/* Trip Type Selection */}
+                <View style={styles.tripTypeContainer}>
+                  {[
+                    { key: 'roundTrip', label: 'Round Trip', icon: 'swap-horizontal-outline' },
+                    { key: 'oneWay', label: 'One Way', icon: 'arrow-forward-outline' },
+                    { key: 'multiCity', label: 'Multi City', icon: 'location-outline' },
+                  ].map((trip) => (
+                    <TouchableOpacity
+                      key={trip.key}
+                      style={[
+                        styles.tripTypeButton,
+                        selectedTripType === trip.key && styles.tripTypeButtonActive
+                      ]}
+                      onPress={() => setSelectedTripType(trip.key as any)}
+                    >
+                      <Ionicons 
+                        name={trip.icon as any} 
+                        size={18} 
+                        color={selectedTripType === trip.key ? '#A83442' : '#6B7280'} 
+                      />
+                      <Text style={[
+                        styles.tripTypeText,
+                        selectedTripType === trip.key && styles.tripTypeTextActive
+                      ]}>
+                        {trip.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                {/* Route Selection */}
+                <View style={styles.routeContainer}>
+                  <FromToPicker
+                    mode="flight"
+                    onChange={({ from, to }) => {
+                      setFromAirport(from);
+                      setToAirport(to);
+                    }}
+                    onSwap={() => {
+                      const temp = fromAirport;
+                      setFromAirport(toAirport);
+                      setToAirport(temp);
+                    }}
+                  />
+                </View>
+
+                {/* Date Selection */}
+                <View style={styles.dateContainer}>
+                  <TouchableOpacity 
+                    style={styles.dateButton}
+                    onPress={() => setShowDateModal(true)}
+                  >
+                    <View style={styles.dateContent}>
+                      <View style={styles.dateSection}>
+                        <Ionicons name="calendar-outline" size={20} color="#A83442" />
+                        <View style={styles.dateInfo}>
+                          <Text style={styles.dateLabel}>Departure</Text>
+                          <Text style={styles.dateValue}>
+                            {selectedDepartureDate.toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
+                          </Text>
+                        </View>
+                      </View>
+                      
+                      {selectedTripType === 'roundTrip' && (
+                        <>
+                          <View style={styles.dateDivider}>
+                            <Ionicons name="arrow-forward" size={16} color="#6B7280" />
+                          </View>
+                          <View style={styles.dateSection}>
+                            <Ionicons name="calendar-outline" size={20} color="#A83442" />
+                            <View style={styles.dateInfo}>
+                              <Text style={styles.dateLabel}>Return</Text>
+                              <Text style={styles.dateValue}>
+                                {selectedReturnDate.toLocaleDateString('en-US', { 
+                                  weekday: 'short', 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </Text>
+                            </View>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                    <View style={styles.dateMetaInfo}>
+                      <Ionicons name="chevron-down" size={20} color="#6B7280" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Passengers and Class */}
+                <View style={styles.bottomRow}>
+                  <TouchableOpacity 
+                    style={styles.passengerButton}
+                    onPress={() => setShowPassengerModal(true)}
+                  >
+                    <Ionicons name="people-outline" size={20} color="#A83442" />
+                    <View style={styles.passengerInfo}>
+                      <Text style={styles.passengerLabel}>Travelers</Text>
+                      <Text style={styles.passengerValue}>{getPassengerText()}</Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.classButton}
+                    onPress={() => setShowClassModal(true)}
+                  >
+                    <Ionicons name="airplane-outline" size={20} color="#A83442" />
+                    <View style={styles.classInfo}>
+                      <Text style={styles.classLabel}>Class</Text>
+                      <Text style={styles.classValue}>{seatClass}</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Add Flight Button for Multi-City */}
+                {selectedTripType === 'multiCity' && (
+                  <TouchableOpacity 
+                    style={styles.addFlightButton}
+                    onPress={addMultiCityFlight}
+                  >
+                    <Ionicons name="add-circle-outline" size={20} color="#A83442" />
+                    <Text style={styles.addFlightText}>Add Another Flight ({multiCityFlights.length}/6)</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Search Button */}
+                <TouchableOpacity 
+                  style={[styles.searchButton, isLoading && styles.searchButtonLoading]} 
+                  onPress={handleSearch}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <View style={styles.loadingContainer}>
+                      <Animated.View style={[
+                        styles.loadingSpinner, 
+                        { 
+                          transform: [{ 
+                            rotate: slideAnim.interpolate({
+                              inputRange: [0, 1],
+                              outputRange: ['0deg', '360deg']
+                            })
+                          }] 
+                        }
+                      ]} />
+                      <Text style={styles.searchButtonText}>Searching...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Ionicons name="search" size={20} color="#FFFFFF" />
+                      <Text style={styles.searchButtonText}>Search Flights</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            renderHotelForm()
+          )}
+
+          {/* Islamic Calendar Section - Only show for flights */}
+          {selectedService === 'flight' && (
+            <View style={styles.islamicCalendarSection}>
+              <View style={styles.calendarHeader}>
+                <Ionicons name="calendar" size={20} color="#A83442" />
+                <Text style={styles.calendarTitle}>Notable Islamic Dates 2026</Text>
+              </View>
+              
+              <View style={styles.calendarList}>
+                {islamicDates2026.map((date, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={styles.airportResult}
+                    style={[
+                      styles.calendarListItem,
+                      date.isPast && styles.calendarListItemPast
+                    ]}
                     onPress={() => {
-                      handleAirportSelect(airport, showFromAirportSearch ? 'from' : 'to');
+                      if (!date.isPast) {
+                        // Set the date for quick booking
+                        setSelectedDepartureDate(date.gregorianDate);
+                        Alert.alert('Date Selected', `Departure date set to ${date.gregorianDate.toLocaleDateString()}`);
+                      }
                     }}
                   >
-                    <Text style={styles.airportResultName}>
-                      {airport.name} ({airport.iata_code})
-                    </Text>
-                    <Text style={styles.airportResultDetails}>
-                      {airport.city_name}, {airport.country_code}
-                    </Text>
+                    <View style={styles.calendarItemLeft}>
+                      <Text style={[
+                        styles.calendarEventName,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.name}
+                      </Text>
+                      <Text style={[
+                        styles.calendarDescription,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.description}
+                      </Text>
+                    </View>
+                    
+                    <View style={styles.calendarItemRight}>
+                      <Text style={[
+                        styles.calendarHijriDate,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.hijriDate}
+                      </Text>
+                      <Text style={[
+                        styles.calendarGregorianDate,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.gregorianDate.toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })}
+                      </Text>
+                      {date.isPast && (
+                        <Ionicons name="checkmark-circle" size={16} color="#9CA3AF" style={styles.checkIcon} />
+                      )}
+                    </View>
                   </TouchableOpacity>
                 ))}
-              </ScrollView>
-            )}
-          </SafeAreaView>
-        </Modal>
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
 
-        {/* Date Picker Modal */}
-        <Modal visible={showDateModal} animationType="slide" presentationStyle="pageSheet">
-          <View style={styles.datePickerModal}>
-            <View style={styles.datePickerHeader}>
-              <TouchableOpacity onPress={() => setShowDateModal(false)}>
-                <Text style={styles.modalCloseText}>Cancel</Text>
-              </TouchableOpacity>
-              <Text style={styles.modalTitle}>
-                {datePickerType === 'departure' ? 'Departure Date' : 'Return Date'}
-              </Text>
-            <TouchableOpacity 
-                onPress={() => {
-                  setShowDateModal(false);
-                }}
-              >
-                <Text style={styles.modalSaveText}>Done</Text>
-            </TouchableOpacity>
-          </View>
-            <View style={styles.datePickerContent}>
-              <DateTimePicker
-                mode="single"
-                date={datePickerType === 'departure' ? formData.departureDate : formData.returnDate || new Date()}
-                onChange={(params) => {
-                  if (params.date) {
-                    const selectedDate = new Date(params.date as string | number | Date);
-                    if (datePickerType === 'departure') {
-                      setFormData(prev => ({ ...prev, departureDate: selectedDate }));
-                    } else {
-                      setFormData(prev => ({ ...prev, returnDate: selectedDate }));
-                    }
-                  }
-                }}
-                minDate={new Date()}
-              />
-        </View>
-          </View>
-        </Modal>
-
-        {/* Passenger Modal */}
-        <Modal visible={showPassengerModal} animationType="slide" presentationStyle="pageSheet">
-          <SafeAreaView style={styles.compactModalContainer}>
+      {/* Passenger Selection Modal */}
+      <Modal
+        visible={showPassengerModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowPassengerModal(false)}>
-                <Text style={styles.modalCloseText}>Cancel</Text>
+              <Text style={styles.closeButton}>✕</Text>
             </TouchableOpacity>
-              <Text style={styles.modalTitle}>Passengers</Text>
-              <TouchableOpacity onPress={() => setShowPassengerModal(false)}>
-                <Text style={styles.modalSaveText}>Done</Text>
-              </TouchableOpacity>
+            <Text style={styles.modalTitle}>Travelers</Text>
+            <View style={styles.headerSpacer} />
           </View>
 
-            <View style={{ paddingHorizontal: 20 }}>
+          <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalScrollContent}>
             {/* Adults */}
             <View style={styles.passengerRow}>
-                <View style={styles.passengerInfo}>
-                  <Text style={styles.passengerType}>Adults</Text>
-                  <Text style={styles.passengerDescription}>12+ years</Text>
-                </View>
-                <View style={styles.passengerCounter}>
+              <Text style={styles.passengerLabel}>Adults</Text>
+              <View style={styles.counterContainer}>
                 <TouchableOpacity 
-                    style={[styles.counterButton, formData.passengers.adults > 1 && styles.counterButtonActive]}
+                  style={styles.counterButton}
                   onPress={() => updatePassengerCount('adults', false)}
-                    disabled={formData.passengers.adults <= 1}
                 >
-                    <Ionicons name="remove" size={16} color={formData.passengers.adults > 1 ? "#FFFFFF" : "#9CA3AF"} />
+                  <Text style={styles.counterButtonText}>−</Text>
                 </TouchableOpacity>
-                  <Text style={styles.counterText}>{formData.passengers.adults}</Text>
+                <Text style={styles.counterValue}>{passengers.adults}</Text>
                 <TouchableOpacity 
-                    style={[styles.counterButton, styles.counterButtonActive]}
+                  style={styles.counterButton}
                   onPress={() => updatePassengerCount('adults', true)}
                 >
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.counterButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Children */}
             <View style={styles.passengerRow}>
-                <View style={styles.passengerInfo}>
-                  <Text style={styles.passengerType}>Children</Text>
-                  <Text style={styles.passengerDescription}>2-11 years</Text>
+              <View>
+                <Text style={styles.passengerLabel}>Children</Text>
+                <Text style={styles.passengerSubLabel}>Ages 2 to 17</Text>
               </View>
-                <View style={styles.passengerCounter}>
+              <View style={styles.counterContainer}>
                 <TouchableOpacity 
-                    style={[styles.counterButton, formData.passengers.children > 0 && styles.counterButtonActive]}
+                  style={styles.counterButton}
                   onPress={() => updatePassengerCount('children', false)}
-                    disabled={formData.passengers.children <= 0}
                 >
-                    <Ionicons name="remove" size={16} color={formData.passengers.children > 0 ? "#FFFFFF" : "#9CA3AF"} />
+                  <Text style={styles.counterButtonText}>−</Text>
                 </TouchableOpacity>
-                  <Text style={styles.counterText}>{formData.passengers.children}</Text>
+                <Text style={styles.counterValue}>{passengers.children}</Text>
                 <TouchableOpacity 
-                    style={[styles.counterButton, styles.counterButtonActive]}
+                  style={styles.counterButton}
                   onPress={() => updatePassengerCount('children', true)}
                 >
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.counterButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
-              {/* Infants */}
+            {/* Infants in seat */}
             <View style={styles.passengerRow}>
-                <View style={styles.passengerInfo}>
-                  <Text style={styles.passengerType}>Infants</Text>
-                  <Text style={styles.passengerDescription}>Under 2 years</Text>
+              <View>
+                <Text style={styles.passengerLabel}>Infants in seat</Text>
+                <Text style={styles.passengerSubLabel}>Younger than 2</Text>
               </View>
-                <View style={styles.passengerCounter}>
+              <View style={styles.counterContainer}>
                 <TouchableOpacity 
-                    style={[styles.counterButton, formData.passengers.infants > 0 && styles.counterButtonActive]}
-                    onPress={() => updatePassengerCount('infants', false)}
-                    disabled={formData.passengers.infants <= 0}
+                  style={styles.counterButton}
+                  onPress={() => updatePassengerCount('infantsInSeat', false)}
                 >
-                    <Ionicons name="remove" size={16} color={formData.passengers.infants > 0 ? "#FFFFFF" : "#9CA3AF"} />
+                  <Text style={styles.counterButtonText}>−</Text>
                 </TouchableOpacity>
-                  <Text style={styles.counterText}>{formData.passengers.infants}</Text>
+                <Text style={styles.counterValue}>{passengers.infantsInSeat}</Text>
                 <TouchableOpacity 
-                    style={[styles.counterButton, styles.counterButtonActive]}
-                    onPress={() => updatePassengerCount('infants', true)}
+                  style={styles.counterButton}
+                  onPress={() => updatePassengerCount('infantsInSeat', true)}
                 >
-                    <Ionicons name="add" size={16} color="#FFFFFF" />
+                  <Text style={styles.counterButtonText}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
+
+            {/* Infants on lap */}
+            <View style={styles.passengerRow}>
+              <View>
+                <Text style={styles.passengerLabel}>Infants on lap</Text>
+                <Text style={styles.passengerSubLabel}>Younger than 2</Text>
               </View>
-          </SafeAreaView>
-        </Modal>
-
-        {/* Class Selection Modal */}
-        <Modal visible={showClassModal} animationType="slide" presentationStyle="pageSheet">
-          <SafeAreaView style={styles.compactModalContainer}>
-            <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setShowClassModal(false)}>
-                <Text style={styles.modalCloseText}>Cancel</Text>
+              <View style={styles.counterContainer}>
+                <TouchableOpacity 
+                  style={styles.counterButton}
+                  onPress={() => updatePassengerCount('infantsOnLap', false)}
+                >
+                  <Text style={styles.counterButtonText}>−</Text>
                 </TouchableOpacity>
-              <Text style={styles.modalTitle}>Cabin Class</Text>
-              <TouchableOpacity onPress={() => setShowClassModal(false)}>
-                <Text style={styles.modalSaveText}>Done</Text>
+                <Text style={styles.counterValue}>{passengers.infantsOnLap}</Text>
+                <TouchableOpacity 
+                  style={styles.counterButton}
+                  onPress={() => updatePassengerCount('infantsOnLap', true)}
+                >
+                  <Text style={styles.counterButtonText}>+</Text>
                 </TouchableOpacity>
+              </View>
             </View>
+          </ScrollView>
 
-            <View style={{ paddingHorizontal: 20 }}>
-              {(['economy', 'premium_economy', 'business', 'first'] as const).map((classType) => (
-                    <TouchableOpacity
-                      key={classType}
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.doneButton}
+              onPress={() => setShowPassengerModal(false)}
+            >
+              <Text style={styles.doneButtonText}>Done</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Date Selection Modal */}
+      <Modal
+        visible={showDateModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.modernDateModalContainer}>
+          {/* Header */}
+          <View style={styles.modernDateHeader}>
+            <Text style={styles.modernModalTitle}>Select Dates</Text>
+            <TouchableOpacity 
+              style={styles.modernCloseButton}
+              onPress={() => setShowDateModal(false)}
+            >
+              <Text style={styles.modernCloseButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Modern Date Picker */}
+          <View style={styles.datePickerContainer}>
+            <DateTimePicker
+              mode={selectedTripType === 'roundTrip' ? 'range' : 'single'}
+              startDate={selectedTripType === 'roundTrip' ? selectedDepartureDate : undefined}
+              endDate={selectedTripType === 'roundTrip' ? selectedReturnDate : undefined}
+              date={selectedTripType === 'oneWay' ? selectedDepartureDate : undefined}
+              onChange={(params: any) => {
+                if (selectedTripType === 'roundTrip') {
+                  if (params.startDate) setSelectedDepartureDate(params.startDate as Date);
+                  if (params.endDate) setSelectedReturnDate(params.endDate as Date);
+                } else {
+                  if (params.date) setSelectedDepartureDate(params.date as Date);
+                }
+              }}
+              minDate={new Date()}
+              firstDayOfWeek={1}
+              styles={{
+                selected: { backgroundColor: '#A83442' },
+                selected_label: { color: '#FFFFFF' },
+                today: { borderColor: '#A83442' },
+                today_label: { color: '#A83442' },
+              }}
+            />
+          </View>
+
+          {/* Footer */}
+          <View style={styles.modernDateFooter}>
+            <TouchableOpacity 
+              style={styles.modernDoneButton}
+              onPress={() => setShowDateModal(false)}
+            >
+              <Text style={styles.modernDoneButtonText}>
+                {selectedTripType === 'roundTrip' 
+                  ? `Confirm Dates (${formatDate(selectedDepartureDate)} - ${formatDate(selectedReturnDate)})`
+                  : `Confirm Date (${formatDate(selectedDepartureDate)})`
+                }
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Class Selection Modal */}
+      <Modal
+        visible={showClassModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
+        <View style={styles.compactModalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowClassModal(false)}>
+              <Text style={styles.closeButton}>✕</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Cabin Class</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <ScrollView style={styles.compactModalContent} contentContainerStyle={styles.modalScrollContent}>
+            <View style={styles.classOptions}>
+              {[
+                { 
+                  key: 'Economy', 
+                  label: 'Economy', 
+                  description: 'Standard seating and service',
+                  icon: 'airplane-outline' 
+                },
+                { 
+                  key: 'Premium Economy', 
+                  label: 'Premium Economy', 
+                  description: 'Extra legroom and enhanced service',
+                  icon: 'airplane' 
+                },
+                { 
+                  key: 'Business', 
+                  label: 'Business', 
+                  description: 'Lie-flat seats and premium dining',
+                  icon: 'business-outline' 
+                },
+                { 
+                  key: 'First', 
+                  label: 'First Class', 
+                  description: 'Ultimate luxury and privacy',
+                  icon: 'diamond-outline' 
+                },
+              ].map((classOption) => (
+                <TouchableOpacity
+                  key={classOption.key}
                   style={[
                     styles.classOption,
-                    formData.cabinClass === classType && styles.classOptionSelected,
+                    seatClass === classOption.key && styles.classOptionSelected
                   ]}
-                  onPress={() => setFormData(prev => ({ ...prev, cabinClass: classType }))}
+                  onPress={() => {
+                    setSeatClass(classOption.key as 'Economy' | 'Premium Economy' | 'Business' | 'First');
+                    setShowClassModal(false);
+                  }}
                 >
-                  <Text
-                    style={[
-                      styles.classOptionText,
-                      formData.cabinClass === classType && styles.classOptionTextSelected,
-                    ]}
-                  >
-                    {classType === 'economy' ? 'Economy' :
-                     classType === 'premium_economy' ? 'Premium Economy' :
-                     classType === 'business' ? 'Business' : 'First Class'}
-                      </Text>
-                  {formData.cabinClass === classType && (
-                    <Ionicons name="checkmark" size={20} color="#A83442" />
-                  )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-          </SafeAreaView>
+                  <View style={styles.classOptionContent}>
+                    <View style={styles.classOptionLeft}>
+                      <Ionicons 
+                        name={classOption.icon as any} 
+                        size={24} 
+                        color={seatClass === classOption.key ? '#A83442' : '#6B7280'} 
+                      />
+                      <View style={styles.classOptionText}>
+                        <Text style={[
+                          styles.classOptionLabel,
+                          seatClass === classOption.key && styles.classOptionLabelSelected
+                        ]}>
+                          {classOption.label}
+                        </Text>
+                        <Text style={styles.classOptionDescription}>
+                          {classOption.description}
+                        </Text>
+                      </View>
+                    </View>
+                    {seatClass === classOption.key && (
+                      <Ionicons name="checkmark-circle" size={24} color="#A83442" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
       </Modal>
-      </SafeAreaView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  // Main Layout
   container: {
     flex: 1,
-    backgroundColor: '#F5F3F0',
+    backgroundColor: '#D6D5C9',
   },
   mainContainer: {
     flex: 1,
@@ -755,77 +1136,189 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 20,
   },
   
   // Header Styles
   header: {
-    backgroundColor: '#F5F3F0',
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
-  logoSection: {
+  headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
   },
-  topLogo: {
+  logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logo: {
     width: 50,
     height: 50,
-    marginRight: 12,
+    marginRight: 8,
   },
-  brandTextContainer: {
-    flexDirection: 'row',
+  logoText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
   brandText: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
+    color: '#A83442',
+  },
+  brandTextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  brandTextBlack: {
+    fontSize: 24,
+    fontWeight: '600',
     color: '#000000',
   },
   brandTextRed: {
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#A83442',
   },
-  connectionWarning: {
+  profileSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF2F2',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#EF4444',
+    gap: 12,
   },
-  connectionWarningText: {
-    color: '#EF4444',
+  profileAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#A83442',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  profileAvatarText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  greetingContainer: {
+    flexDirection: 'column',
+  },
+  greeting: {
     fontSize: 12,
-    marginLeft: 8,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  username: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '600',
   },
   
-  // Trip Type Selector
-  tripTypeContainer: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 4,
+  // Service Tabs
+  serviceTabs: {
     flexDirection: 'row',
+    gap: 12,
+  },
+  serviceTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  serviceTabActive: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  serviceTabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  serviceTabTextActive: {
+    color: '#FFFFFF',
+  },
+  
+  // Search Card
+  searchCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  
+  // Trip Type Selection
+  tripTypeContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+    gap: 8,
   },
   tripTypeButton: {
     flex: 1,
-    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
   },
   tripTypeButtonActive: {
-    backgroundColor: '#A83442',
+    backgroundColor: '#FEF2F2',
+    borderColor: '#A83442',
   },
   tripTypeText: {
     fontSize: 14,
@@ -833,452 +1326,1033 @@ const styles = StyleSheet.create({
     color: '#6B7280',
   },
   tripTypeTextActive: {
-    color: '#FFFFFF',
+    color: '#A83442',
     fontWeight: '600',
   },
   
-  // Search Card
-  searchCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  // Route and Date Selection
+  routeContainer: {
+    marginBottom: 24,
   },
-  
-  // Airport Selection
-  airportSection: {
-    marginBottom: 20,
-  },
-  airportRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  airportButton: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  airportButtonActive: {
-    borderColor: '#A83442',
-    backgroundColor: '#FEF2F2',
-  },
-  airportLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  airportText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  airportSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  swapButtonContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  swapButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#A83442',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#A83442',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  
-  // Date Selection
-  dateSection: {
-    marginBottom: 20,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: 12,
+  dateContainer: {
+    marginBottom: 24,
   },
   dateButton: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
     borderColor: '#E5E7EB',
+    minHeight: 64,
   },
-  dateButtonActive: {
-    borderColor: '#A83442',
-    backgroundColor: '#FEF2F2',
+  dateContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dateSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  dateInfo: {
+    flexDirection: 'column',
   },
   dateLabel: {
     fontSize: 12,
     color: '#6B7280',
+    fontWeight: '500',
     marginBottom: 4,
   },
-  dateText: {
+  dateValue: {
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
   },
-  
-  // Multi-City Flights
-  multiCitySection: {
-    marginBottom: 20,
+  dateDivider: {
+    marginHorizontal: 16,
   },
-  multiCityHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  addFlightButton: {
+  dateMetaInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#A83442',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
     gap: 4,
   },
-  addFlightText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  multiCityFlight: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  multiCityHeader2: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  flightNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#A83442',
-  },
-  removeButton: {
-    padding: 4,
-  },
-  routeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
   
-  // Options Container
-  optionsContainer: {
+  // Bottom Row (Passengers and Class)
+  bottomRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 24,
   },
-  optionButton: {
+  passengerButton: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minHeight: 64,
   },
-  optionButtonActive: {
-    borderColor: '#A83442',
-    backgroundColor: '#FEF2F2',
+  passengerInfo: {
+    flex: 1,
   },
-  optionLabel: {
+  passengerLabel: {
     fontSize: 12,
     color: '#6B7280',
+    fontWeight: '500',
     marginBottom: 4,
   },
-  optionText: {
-    fontSize: 14,
+  passengerValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  classButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minHeight: 64,
+  },
+  classInfo: {
+    flex: 1,
+  },
+  classLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  classValue: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#111827',
   },
   
   // Search Button
   searchButton: {
+    width: '100%',
     backgroundColor: '#A83442',
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
     gap: 8,
     shadowColor: '#A83442',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  searchButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
   searchButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  
-  // Islamic Calendar Card
-  islamicCalendarCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  searchButtonLoading: {
+    opacity: 0.7,
   },
-  islamicCalendarTitle: {
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  loadingSpinner: {
+    width: 20,
+    height: 20,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    borderTopColor: 'transparent',
+    borderRadius: 10,
+  },
+  
+  // Sections
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 16,
   },
-  islamicDatesList: {
+  
+  // Recent Searches
+  recentContainer: {
+    marginBottom: 24,
+  },
+  recentList: {
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  recentItem: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    minWidth: 120,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  recentRoute: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  recentFromTo: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    textAlign: 'center',
+  },
+  recentDate: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  recentPassengers: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  
+  // Popular Destinations
+  popularContainer: {
+    marginBottom: 24,
+    paddingHorizontal: 20,
+  },
+  destinationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
     gap: 12,
   },
-  islamicDateItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  destinationCard: {
+    width: (width - 64) / 2, // Account for padding and gap
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  islamicDateLeft: {
-    flex: 1,
+  destinationEmoji: {
+    fontSize: 32,
+    marginBottom: 12,
   },
-  islamicDateName: {
+  destinationInfo: {
+    alignItems: 'center',
+  },
+  destinationCity: {
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
-    marginBottom: 2,
+    textAlign: 'center',
+    marginBottom: 4,
   },
-  islamicDateDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 18,
-  },
-  islamicDateRight: {
-    alignItems: 'flex-end',
-    marginLeft: 12,
-  },
-  islamicDateGregorian: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#A83442',
-  },
-  islamicDateHijri: {
+  destinationCountry: {
     fontSize: 12,
     color: '#6B7280',
-    marginTop: 2,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  destinationPrice: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#A83442',
   },
   
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+  // Additional required styles
+  formSection: {
+    marginBottom: 16,
+  },
+  locationDivider: {
+    height: 20,
+    marginVertical: 8,
+    position: 'relative',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  flightPath: {
+    position: 'absolute',
+    left: 20,
+    right: 60,
+    top: '50%',
+    marginTop: -1,
+    height: 2,
+    borderTopWidth: 2,
+    borderTopColor: '#dee2e6',
+    borderStyle: 'dashed',
+  },
+  passengerCabinContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minHeight: 60,
+  },
+  passengerSection: {
+    flex: 1,
+    minWidth: 0,
+  },
+  cabinSection: {
+    minWidth: 0,
+  },
+  cabinClassText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  addFlightButton: {
+    width: '100%',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#E5E7EB',
+    marginBottom: 24,
+  },
+  addFlightText: {
+    color: '#A83442',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // New styles for the rest of the file
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    minHeight: 60,
+  },
+  inputContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  inputLabel: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  formInputText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  airportCode: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  swapButton: {
+    position: 'absolute',
+    right: 20,
+    top: -35,
+    width: 40,
+    height: 40,
+    backgroundColor: '#000000',
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  swapButtonIcon: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  dateRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 20,
+  },
+  dateField: {
+    flex: 1,
+  },
+  bottomField: {
+    flex: 1,
+    minWidth: 0,
+  },
+  dropdownArrow: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginLeft: 8,
   },
   modalContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    width: '90%',
-    maxHeight: '80%',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    maxHeight: '60%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   modalHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 20,
   },
+  closeButton: {
+    fontSize: 24,
+    color: '#6c757d',
+  },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
+    fontSize: 20,
+    fontWeight: '600', // Changed from '700' to semi-bold
+    color: '#000000',
   },
-  modalCloseButton: {
-    padding: 4,
+  headerSpacer: {
+    width: 40,
   },
-  modalCloseText: {
-    color: '#6B7280',
-    fontSize: 16,
-  },
-  modalSaveText: {
-    color: '#A83442',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  
-  // Airport Search Modal
-  searchInput: {
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  airportResults: {
+  modalContent: {
+    flexGrow: 1,
     maxHeight: 300,
   },
-  airportResult: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  modalScrollContent: {
+    paddingBottom: 20, // Added padding to the scroll content
   },
-  airportResultName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
+  modalFooter: {
+    paddingBottom: 20,
   },
-  airportResultDetails: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  loadingContainer: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  
-  // Compact Modal Styles
-  compactModalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    maxHeight: '50%',
-  },
-  
-  // Passenger Counter
   passengerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    marginBottom: 16,
   },
-  passengerInfo: {
-    flex: 1,
+  passengerSubLabel: {
+    fontSize: 12,
+    color: '#6c757d',
+    marginTop: 4,
   },
-  passengerType: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  passengerDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  passengerCounter: {
+  counterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
   },
   counterButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  counterButtonText: {
+    fontSize: 20,
+    color: '#000000',
+    fontWeight: '600', // Changed from '700' to semi-bold
+  },
+  counterValue: {
+    fontSize: 16,
+    fontWeight: '600', // Changed from '700' to semi-bold
+    color: '#000000',
+    paddingHorizontal: 10,
+  },
+  cabinClassSection: {
+    marginTop: 20,
+    marginBottom: 24,
+  },
+  cabinClassSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  cabinClassValue: {
+    fontSize: 16,
+    fontWeight: '500', // Changed from '700' to medium
+    color: '#000000',
+  },
+  doneButton: {
+    width: '100%',
+    backgroundColor: '#000000',
+    borderRadius: 25,
+    paddingVertical: 18,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  counterButtonActive: {
-    backgroundColor: '#A83442',
-  },
-  counterText: {
+  doneButtonText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    minWidth: 20,
-    textAlign: 'center',
+    fontWeight: '600', // Changed from '700' to semi-bold
   },
-  
-  // Class Selection
-  classOption: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+  classDropdown: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  classDropdownOption: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
   },
-  classOptionSelected: {
-    backgroundColor: '#FEF2F2',
+  classDropdownOptionSelected: {
+    backgroundColor: '#f8f9fa',
   },
-  classOptionText: {
+  classDropdownText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#111827',
+    color: '#000000',
   },
-  classOptionTextSelected: {
+  classDropdownTextSelected: {
     color: '#A83442',
-    fontWeight: '600',
   },
-  
-  // Date Picker Modal
-  datePickerModal: {
+  checkmark: {
+    fontSize: 18,
+    color: '#A83442',
+    marginLeft: 10,
+  },
+  dateModalContainer: {
+    flex: 1,
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingTop: 20,
-    maxHeight: '70%',
+    paddingTop: 50,
+    paddingHorizontal: 20,
   },
-  datePickerHeader: {
+  dateModalHeader: {
+    flexDirection: 'column',
+    marginBottom: 20,
+  },
+  closeButtonContainer: {
+    alignSelf: 'flex-end',
+    padding: 10,
+    marginBottom: 10,
+  },
+  roundTripDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  oneWayDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: 20,
+  },
+  dateRangePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+    flex: 1,
+    marginRight: 12,
+  },
+  singleDateRowContainer: {
+    marginBottom: 20,
+  },
+  durationBadge: {
+    backgroundColor: '#e9ecef',
+    borderRadius: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    alignSelf: 'flex-start',
+    marginTop: -10,
+  },
+  durationText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernDateModalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    paddingTop: 50,
+    paddingHorizontal: 20,
+  },
+  modernDateHeader: {
+    marginBottom: 20,
+  },
+  modernHeaderTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  modernModalTitle: {
+    fontSize: 20,
+    fontWeight: '600', // Changed from '700' to semi-bold
+    color: '#000000',
+  },
+  modernCloseButton: {
+    padding: 10,
+  },
+  modernCloseButtonText: {
+    fontSize: 24,
+    color: '#6c757d',
+  },
+  modernDateTabs: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 25,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  modernDateTab: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  modernDateTabActive: {
+    backgroundColor: '#A83442',
+    borderRadius: 25,
+    paddingVertical: 10,
+  },
+  modernTabLabel: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernTabDate: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  modernTabDateActive: {
+    color: '#FFFFFF',
+  },
+  modernDateConnector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    marginBottom: 10,
+  },
+  modernConnectorLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#dee2e6',
+    marginHorizontal: 10,
+  },
+  modernConnectorText: {
+    fontSize: 14,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernCalendarContainer: {
+    flex: 1,
+  },
+  modernMonthContainer: {
     marginBottom: 20,
   },
-  datePickerContent: {
+  modernMonthTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  modernWeekHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 8,
+  },
+  modernWeekHeaderText: {
+    fontSize: 12,
+    color: '#6c757d',
+    fontWeight: '500',
+  },
+  modernCalendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+  },
+  modernEmptyDay: {
+    width: (width - 40 - 16) / 7,
+    aspectRatio: 1,
+  },
+  modernDayButton: {
+    width: (width - 40 - 16) / 7, // Adjust for padding and gap
+    aspectRatio: 1,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: 4,
+    borderWidth: 1,
+    borderColor: '#dee2e6',
+  },
+  modernDayText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000000',
+  },
+  modernTodayButton: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+  },
+  modernDepartureDay: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  modernReturnDay: {
+    backgroundColor: '#A83442',
+    borderColor: '#A83442',
+  },
+  modernRangeDay: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+  },
+  modernPastDay: {
+    backgroundColor: '#f8f9fa',
+    borderColor: '#dee2e6',
+    opacity: 0.5,
+  },
+  modernTodayText: {
+    color: '#000000',
+  },
+  modernSelectedDayText: {
+    color: '#FFFFFF',
+  },
+  modernPastDayText: {
+    color: '#6c757d',
+  },
+  modernDateFooter: {
+    paddingBottom: 20,
+  },
+  modernDoneButton: {
+    width: '100%',
+    backgroundColor: '#000000',
+    borderRadius: 25,
+    paddingVertical: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modernDoneButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600', // Changed from '700' to semi-bold
+  },
+  datePickerContainer: {
+    flex: 1,
+  },
+  hotelContainer: {
+    paddingTop: 24,
+    paddingHorizontal: '5%', // 90% width, 5% margin on each side
+    maxWidth: '90%',
+    alignSelf: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  hotelMainHeading: {
+    fontSize: width > 768 ? 28 : 24, // Responsive: 26-28px on tablet, 22-24px on mobile
+    fontWeight: '700',
+    color: '#A83442', // Brand color for main heading
+    textAlign: 'left', // Left aligned as specified
+    marginBottom: 8,
+    lineHeight: width > 768 ? 36 : 32,
+  },
+  hotelSubheading: {
+    fontSize: width > 768 ? 17 : 16, // 15-16px base, slightly larger on tablet
+    lineHeight: 22,
+    fontWeight: '400',
+    color: '#6c757d',
+    textAlign: 'left', // Left aligned as specified
+    marginBottom: 16,
+    maxWidth: '95%', // Ensure line length stays under ~60 characters
+  },
+  hotelSection: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginVertical: width > 768 ? 20 : 16, // More spacing on tablet
+    borderWidth: 1,
+    borderColor: '#A83442', // Brand color border
+    shadowColor: '#A83442', // Brand color shadow
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  hotelSectionTitle: {
+    fontSize: width > 768 ? 18 : 17, // 16-17px base, slightly larger on tablet
+    fontWeight: '600',
+    color: '#A83442', // Brand color for section titles
+    textAlign: 'left', // Left aligned as specified
+    marginBottom: 12,
+  },
+  hotelStepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start', // Top align for better text flow
+    marginBottom: 8, // 8px between list items as specified
+    paddingRight: 10, // Prevent text from touching edge
+  },
+  hotelStepNumber: {
+    fontSize: width > 768 ? 16 : 15, // Body text size
+    fontWeight: '600',
+    color: '#A83442',
+    marginRight: 8,
+    minWidth: 20, // Ensure consistent alignment
+  },
+  hotelStepText: {
+    fontSize: width > 768 ? 16 : 15, // 14-15px body text, slightly larger on tablet
+    lineHeight: width > 768 ? 22 : 20, // 20-22px line height
+    fontWeight: '400',
+    color: '#000000',
+    flex: 1,
+    textAlign: 'left',
+  },
+  hotelBodyText: {
+    fontSize: width > 768 ? 16 : 15, // 14-15px body text
+    lineHeight: width > 768 ? 22 : 20, // 20-22px line height
+    fontWeight: '400',
+    color: '#6c757d',
+    textAlign: 'left', // Left aligned as specified
+  },
+  classOptions: {
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
+  classOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  classOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  classOptionLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  classOptionText: {
+    flexDirection: 'column',
+  },
+  classOptionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  classOptionLabelSelected: {
+    color: '#A83442',
+  },
+  classOptionDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  classOptionSelected: {
+    backgroundColor: '#f8f9fa',
+  },
+  compactModalContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 20,
     paddingHorizontal: 20,
+    paddingBottom: 20,
+    maxHeight: '50%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  compactModalContent: {
+    flexGrow: 1,
+    maxHeight: 250,
+  },
+  hotelActionContainer: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  hotelSubmitButton: {
+    width: '100%',
+    backgroundColor: '#A83442',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hotelSubmitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  islamicCalendarSection: {
+    marginTop: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#A83442',
+  },
+  calendarScrollContent: {
+    paddingHorizontal: 8,
+    gap: 12,
+  },
+  calendarCard: {
+    width: 180,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  calendarCardPast: {
+    opacity: 0.5,
+  },
+  calendarCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  calendarEventName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  calendarTextPast: {
+    color: '#9CA3AF',
+  },
+  calendarHijriDate: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 2,
+    textAlign: 'right',
+  },
+  calendarGregorianDate: {
+    fontSize: 13,
+    color: '#6B7280',
+    textAlign: 'right',
+  },
+  calendarDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    lineHeight: 16,
+  },
+  calendarList: {
+    gap: 8,
+  },
+  calendarListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  calendarListItemPast: {
+    opacity: 0.6,
+  },
+  calendarItemLeft: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  calendarItemRight: {
+    alignItems: 'flex-end',
+    minWidth: 100,
+  },
+  checkIcon: {
+    marginLeft: 10,
   },
 }); 
