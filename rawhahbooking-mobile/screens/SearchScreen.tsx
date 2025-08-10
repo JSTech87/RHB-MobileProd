@@ -13,6 +13,7 @@ import {
   SafeAreaView,
   Alert,
   Animated,
+  Linking,
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import DateTimePicker, { DateType } from 'react-native-ui-datepicker';
@@ -81,6 +82,11 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     infantsInSeat: 0,
     infantsOnLap: 0,
   });
+
+  // Multi-city flights state
+  const [multiCityFlights, setMultiCityFlights] = useState([
+    { from: null as AirportOption | null, to: null as AirportOption | null, date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) }
+  ]);
 
   // Mock data for enhanced experience
   const [recentSearches] = useState<RecentSearch[]>([
@@ -195,6 +201,29 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     ]);
   };
 
+  const addMultiCityFlight = () => {
+    if (multiCityFlights.length < 6) {
+      setMultiCityFlights(prev => [
+        ...prev,
+        { from: null, to: null, date: new Date(Date.now() + (prev.length + 7) * 24 * 60 * 60 * 1000) }
+      ]);
+    } else {
+      Alert.alert('Maximum Flights', 'You can add up to 6 flights for multi-city trips.');
+    }
+  };
+
+  const removeMultiCityFlight = (index: number) => {
+    if (multiCityFlights.length > 1) {
+      setMultiCityFlights(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const updateMultiCityFlight = (index: number, field: 'from' | 'to' | 'date', value: any) => {
+    setMultiCityFlights(prev => prev.map((flight, i) => 
+      i === index ? { ...flight, [field]: value } : flight
+    ));
+  };
+
   const updatePassengerCount = (type: keyof PassengerCounts, increment: boolean) => {
     setPassengers(prev => {
       const newCount = increment ? prev[type] + 1 : Math.max(0, prev[type] - 1);
@@ -224,30 +253,38 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
           </View>
           <View style={styles.hotelStepItem}>
             <Text style={styles.hotelStepNumber}>2.</Text>
-            <Text style={styles.hotelStepText}>Get Expert Options – We'll find the most suitable hotels for you.</Text>
+            <Text style={styles.hotelStepText}>Get Expert Options – We'll find the most suitable hotels for you with quality selections approved for reliability and comfort.</Text>
           </View>
           <View style={styles.hotelStepItem}>
             <Text style={styles.hotelStepNumber}>3.</Text>
-            <Text style={styles.hotelStepText}>Book Securely – Confirm with confidence at the best rate.</Text>
+            <Text style={styles.hotelStepText}>Book Securely – Confirm with confidence at the best rate with our competitive pricing guarantee and fast response within 10-15 minutes.</Text>
           </View>
         </View>
 
-        {/* Quality Selection Section */}
-        <View style={styles.hotelSection}>
-          <Text style={styles.hotelSectionTitle}>Quality Selection</Text>
-          <Text style={styles.hotelBodyText}>Hotels approved for reliability and comfort.</Text>
-        </View>
-
-        {/* Best Rate Guarantee Section */}
-        <View style={styles.hotelSection}>
-          <Text style={styles.hotelSectionTitle}>Best Rate Guarantee</Text>
-          <Text style={styles.hotelBodyText}>Competitive pricing you can trust.</Text>
-        </View>
-
-        {/* Fast Response Section */}
-        <View style={styles.hotelSection}>
-          <Text style={styles.hotelSectionTitle}>Fast Response</Text>
-          <Text style={styles.hotelBodyText}>Booking options sent within 10–15 minutes.</Text>
+        {/* Submit Button */}
+        <View style={styles.hotelActionContainer}>
+          <TouchableOpacity
+            style={styles.hotelSubmitButton}
+            onPress={handleHotelInquiry}
+          >
+            <Ionicons name="send" size={20} color="#FFFFFF" />
+            <Text style={styles.hotelSubmitButtonText}>Start Hotel Inquiry</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.hotelWhatsAppButton}
+            onPress={() => {
+              const message = "Hello! I'd like to inquire about hotel accommodations. Please help me find suitable options.";
+              const encodedMessage = encodeURIComponent(message);
+              const whatsappUrl = `https://wa.me/+1234567890?text=${encodedMessage}`;
+              Linking.openURL(whatsappUrl).catch(() => {
+                Alert.alert('Error', 'Could not open WhatsApp');
+              });
+            }}
+          >
+            <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+            <Text style={styles.hotelWhatsAppButtonText}>WhatsApp Inquiry</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -646,9 +683,12 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
 
                 {/* Add Flight Button for Multi-City */}
                 {selectedTripType === 'multiCity' && (
-                  <TouchableOpacity style={styles.addFlightButton}>
+                  <TouchableOpacity 
+                    style={styles.addFlightButton}
+                    onPress={addMultiCityFlight}
+                  >
                     <Ionicons name="add-circle-outline" size={20} color="#A83442" />
-                    <Text style={styles.addFlightText}>Add Another Flight</Text>
+                    <Text style={styles.addFlightText}>Add Another Flight ({multiCityFlights.length}/6)</Text>
                   </TouchableOpacity>
                 )}
 
@@ -703,7 +743,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <View style={styles.headerSpacer} />
           </View>
 
-          <ScrollView style={styles.modalContent}>
+          <ScrollView style={styles.modalContent} contentContainerStyle={styles.modalScrollContent}>
             {/* Adults */}
             <View style={styles.passengerRow}>
               <Text style={styles.passengerLabel}>Adults</Text>
@@ -792,7 +832,6 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
                 </TouchableOpacity>
               </View>
             </View>
-
           </ScrollView>
 
           <View style={styles.modalFooter}>
@@ -868,7 +907,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
         animationType="slide"
         presentationStyle="pageSheet"
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <View style={styles.compactModalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowClassModal(false)}>
               <Text style={styles.closeButton}>✕</Text>
@@ -877,7 +916,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             <View style={styles.headerSpacer} />
           </View>
 
-          <ScrollView style={styles.modalContent}>
+          <ScrollView style={styles.compactModalContent} contentContainerStyle={styles.modalScrollContent}>
             <View style={styles.classOptions}>
               {[
                 { 
@@ -943,7 +982,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
               ))}
             </View>
           </ScrollView>
-        </SafeAreaView>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1521,10 +1560,13 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   modalContainer: {
-    flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: 50,
+    paddingTop: 20,
     paddingHorizontal: 20,
+    paddingBottom: 20,
+    maxHeight: '60%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1545,7 +1587,11 @@ const styles = StyleSheet.create({
     width: 40,
   },
   modalContent: {
-    flex: 1,
+    flexGrow: 1,
+    maxHeight: 300,
+  },
+  modalScrollContent: {
+    paddingBottom: 20, // Added padding to the scroll content
   },
   modalFooter: {
     paddingBottom: 20,
@@ -1994,5 +2040,63 @@ const styles = StyleSheet.create({
   },
   classOptionSelected: {
     backgroundColor: '#f8f9fa',
+  },
+  compactModalContainer: {
+    backgroundColor: '#FFFFFF',
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    maxHeight: '50%',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+  compactModalContent: {
+    flexGrow: 1,
+    maxHeight: 250,
+  },
+  hotelActionContainer: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  hotelSubmitButton: {
+    width: '100%',
+    backgroundColor: '#A83442',
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#A83442',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hotelSubmitButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  hotelWhatsAppButton: {
+    width: '100%',
+    backgroundColor: '#25D366', // WhatsApp green
+    borderRadius: 16,
+    paddingVertical: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#25D366',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  hotelWhatsAppButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 
