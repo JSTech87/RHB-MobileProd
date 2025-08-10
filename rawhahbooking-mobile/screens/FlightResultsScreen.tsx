@@ -450,6 +450,9 @@ export const FlightResultsScreen: React.FC = () => {
 =======
       const totalPassengers = searchParams?.passengers ? 
         (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1;
+<<<<<<< HEAD
+>>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
+=======
 >>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
 
       navigation.navigate('FlightCheckout', {
@@ -868,7 +871,11 @@ export const FlightResultsScreen: React.FC = () => {
               <Text style={styles.airportCode}>{searchParams?.from || 'N/A'}</Text>
               <Text style={styles.cityName}>Surabaya</Text>
 <<<<<<< HEAD
+<<<<<<< HEAD
           </View>
+=======
+            </View>
+>>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
 =======
             </View>
 >>>>>>> parent of 76ef61f (UX: Allow guest checkout; remove mock data; fix header labels and airline fields in results card)
