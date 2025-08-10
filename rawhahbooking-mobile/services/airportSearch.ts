@@ -14,6 +14,9 @@ export type AirportOption = {
 };
 
 // Cache for all airports to avoid repeated API calls
+let allAirportsCache: AirportOption[] | null = null;
+let cacheTimestamp: number | null = null;
+const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 // Cache for API results during session
 const sessionCache = new Map<string, AirportOption[]>();
@@ -21,7 +24,7 @@ let abortController: AbortController | null = null;
 
 // Storage keys
 const RECENT_SEARCHES_KEY = 'recent_airport_searches';
-const CACHED_AIRPORTS_KEY = 'cached_top_airports';
+const CACHED_AIRPORTS_KEY = 'cached_all_airports';
 
 // Duffel API configuration
 const DUFFEL_API_BASE = 'https://api.duffel.com';
@@ -75,73 +78,128 @@ function searchLocalAirports(query: string): AirportOption[] {
 }
 
 /**
- * Search airports via Duffel API
+ * Fetch ALL airports from Duffel API with proper pagination
+ * Gets all 9,027 airports available in Duffel's database
  */
-async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
+async function fetchAllDuffelAirports(): Promise<AirportOption[]> {
+  // Check memory cache first
+  if (allAirportsCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
+    console.log('✅ Using cached airports from memory');
+    return allAirportsCache;
+  }
+
+  // Check AsyncStorage cache
+  try {
+    const cachedData = await AsyncStorage.getItem(CACHED_AIRPORTS_KEY);
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      if (parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_DURATION)) {
+        console.log('✅ Using cached airports from storage');
+        allAirportsCache = parsed.airports;
+        cacheTimestamp = parsed.timestamp;
+        return allAirportsCache!;
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to load cached airports:', error);
+  }
+
+  console.log('🌍 Fetching ALL airports from Duffel API...');
+  
   if (!DUFFEL_API_TOKEN) {
     console.warn('Duffel API token not configured');
     return [];
   }
 
-  console.log('Searching Duffel API for:', query);
+  const allAirports: AirportOption[] = [];
+  let after: string | null = null;
+  let pageCount = 0;
 
   try {
-    // Cancel previous request
-    if (abortController) {
-      abortController.abort();
+    do {
+      pageCount++;
+      console.log(`📄 Fetching page ${pageCount}...`);
+      
+      const params = new URLSearchParams({ limit: '200' }); // Duffel's max per request
+      if (after) {
+        params.set('after', after);
+      }
+      
+      const url = `${DUFFEL_API_BASE}/air/airports?${params}`;
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Duffel-Version': 'v2'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Duffel API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      const pageAirports = data.data.map((airport: any): AirportOption => ({
+        iata: airport.iata_code,
+        name: airport.name,
+        city: airport.city_name || airport.name,
+        region: undefined, // Duffel API doesn't provide region field
+        country: airport.iata_country_code || 'Unknown',
+        lat: airport.latitude,
+        lon: airport.longitude,
+        source: 'api' as const,
+        type: 'airport'
+      }));
+
+      allAirports.push(...pageAirports);
+      after = data.meta?.after;
+      
+      // Show progress every 10 pages
+      if (pageCount % 10 === 0) {
+        console.log(`  📊 Progress: ${allAirports.length} airports fetched`);
+      }
+      
+    } while (after);
+    
+    console.log(`✅ Fetched ALL ${allAirports.length} airports from Duffel API`);
+    
+    // Cache results in memory and storage
+    allAirportsCache = allAirports;
+    cacheTimestamp = Date.now();
+    
+    // Save to AsyncStorage for persistence
+    try {
+      await AsyncStorage.setItem(CACHED_AIRPORTS_KEY, JSON.stringify({
+        airports: allAirports,
+        timestamp: cacheTimestamp
+      }));
+      console.log('💾 Cached airports to storage');
+    } catch (error) {
+      console.warn('Failed to cache airports to storage:', error);
     }
-    abortController = new AbortController();
+    
+    return allAirports;
 
-    // For comprehensive coverage including major airports like London (LHR, LGW, etc.)
-    // which are on later pages, we need to fetch more airports
-    const params = new URLSearchParams({ limit: '5000' }); // Fetch enough to include airports up to 'S' codes
-    const url = `${DUFFEL_API_BASE}/air/airports?${params}`;
-     
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Duffel-Version': 'v2'
-      },
-      signal: abortController.signal
-    });
+  } catch (error) {
+    console.error('Failed to fetch all airports:', error);
+    return [];
+  }
+}
 
-    if (!response.ok) {
-      throw new Error(`Duffel API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const allAirports = data.data.map((airport: any): AirportOption => ({
-      iata: airport.iata_code,
-      name: airport.name,
-      city: airport.city_name || airport.name,
-      region: undefined, // Duffel API doesn't provide region field
-      country: airport.iata_country_code || 'Unknown',
-      lat: airport.latitude,
-      lon: airport.longitude,
-      source: 'api' as const,
-      type: 'airport'
-    }));
-
-    // Debug: Log some sample airports to see what we're getting
-    console.log('Sample airports fetched:', 
-      allAirports.slice(0, 5).map((a: AirportOption) => `${a.iata}: ${a.name} (${a.city})`),
-      'Total:', allAirports.length
-    );
-
-    // Check if any London airports are in the dataset
-    const londonAirports = allAirports.filter((airport: AirportOption) => {
-      const nameMatch = normalizeText(airport.name).includes('london');
-      const cityMatch = normalizeText(airport.city).includes('london');
-      const iataMatch = ['lhr', 'lgw', 'stn', 'ltn', 'lcy'].includes(normalizeText(airport.iata));
-      return nameMatch || cityMatch || iataMatch;
-    });
-    if (londonAirports.length > 0) {
-      console.log(`✅ Found ${londonAirports.length} London airports in dataset:`);
-      londonAirports.forEach((a: AirportOption) => console.log(`  ${a.iata}: ${a.name} (${a.city})`));
-    } else {
-      console.log('❌ No London airports found in dataset - may need to increase limit');
+/**
+ * Search airports from the complete dataset
+ */
+async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
+  try {
+    // Get all airports from cache or API
+    const allAirports = await fetchAllDuffelAirports();
+    
+    if (allAirports.length === 0) {
+      console.warn('No airports available for search');
+      return [];
     }
 
     // Filter airports based on the search query
@@ -155,7 +213,7 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
       return nameMatch || cityMatch || iataMatch || countryMatch;
     });
 
-    console.log(`Filtered ${filteredAirports.length} airports from ${allAirports.length} total`);
+    console.log(`🔍 Found ${filteredAirports.length} airports matching "${query}" from ${allAirports.length} total`);
     
     // Sort results by relevance (exact matches first, then partial matches)
     const sortedResults = filteredAirports.sort((a: AirportOption, b: AirportOption) => {
@@ -175,9 +233,6 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
 
   } catch (error) {
     console.error('Duffel API search error:', error);
-    if (error instanceof Error && error.name === 'AbortError') {
-      return [];
-    }
     return [];
   }
 }
@@ -306,9 +361,41 @@ export async function saveRecentSearch(airport: AirportOption): Promise<void> {
 }
 
 /**
+ * Initialize airport cache in background (call on app start)
+ */
+export async function initializeAirportCache(): Promise<void> {
+  try {
+    console.log('🚀 Initializing airport cache in background...');
+    await fetchAllDuffelAirports();
+    console.log('✅ Airport cache initialized');
+  } catch (error) {
+    console.warn('Failed to initialize airport cache:', error);
+  }
+}
+
+/**
  * Get top airports for initial display
  */
 export function getTopAirports(limit: number = 20): AirportOption[] {
+  // If we have cached airports, use popular ones from there
+  if (allAirportsCache && allAirportsCache.length > 0) {
+    // Return major international airports first
+    const majorCodes = ['LHR', 'JFK', 'DXB', 'CDG', 'NRT', 'LAX', 'SIN', 'AMS', 'FRA', 'ORD'];
+    const majorAirports = majorCodes
+      .map(code => allAirportsCache!.find(a => a.iata === code))
+      .filter(Boolean) as AirportOption[];
+    
+    // Fill remaining with local data if needed
+    const remaining = limit - majorAirports.length;
+    if (remaining > 0) {
+      const localAirports = (topAirports as AirportOption[]).slice(0, remaining);
+      return [...majorAirports, ...localAirports];
+    }
+    
+    return majorAirports.slice(0, limit);
+  }
+  
+  // Fallback to local data
   return (topAirports as AirportOption[]).slice(0, limit);
 }
 

@@ -199,12 +199,12 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeMessage}>
                 Welcome back, {user?.name || user?.id || 'Traveler'}
-              </Text>
+            </Text>
               <Text style={styles.welcomeSubtext}>
                 Let's plan your next journey
-              </Text>
-            </View>
-            
+            </Text>
+          </View>
+
             {/* User Actions */}
             <View style={styles.userActions}>
               <TouchableOpacity style={styles.actionButton}>
@@ -216,10 +216,10 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
               <TouchableOpacity style={styles.profileButton}>
                 <Text style={styles.profileInitial}>
                   {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
           
           {/* Status Bar */}
           <View style={styles.statusBar}>

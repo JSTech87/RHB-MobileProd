@@ -49,15 +49,15 @@ export const LoginScreen: React.FC = () => {
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>
+        <Text style={styles.title}>
               {isSignUp ? 'Create your account' : 'Sign in to RawhahBooking'}
-            </Text>
-            <Text style={styles.subtitle}>
+        </Text>
+        <Text style={styles.subtitle}>
               {isSignUp 
                 ? 'Welcome! Please fill in the details to get started.'
                 : 'Welcome back! Please sign in to continue'
               }
-            </Text>
+        </Text>
 
             {/* Social Login Buttons */}
             <View style={styles.socialContainer}>
@@ -77,7 +77,7 @@ export const LoginScreen: React.FC = () => {
             </View>
 
             {/* Form Fields */}
-            <View style={styles.formContainer}>
+        <View style={styles.formContainer}>
               {isSignUp && (
                 <>
                   {/* Name Row */}
@@ -126,13 +126,13 @@ export const LoginScreen: React.FC = () => {
                 <Text style={styles.fieldLabel}>
                   {isSignUp ? 'Email address' : 'Email address or username'}
                 </Text>
-                <TextInput
-                  style={styles.input}
+          <TextInput
+            style={styles.input}
                   placeholder={isSignUp ? 'Enter your email address' : 'Enter email or username'}
-                  value={email}
-                  onChangeText={setEmail}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
                   placeholderTextColor="#9CA3AF"
                 />
               </View>
@@ -166,11 +166,11 @@ export const LoginScreen: React.FC = () => {
               <View style={styles.fieldContainer}>
                 <Text style={styles.fieldLabel}>Password</Text>
                 <View style={styles.passwordContainer}>
-                  <TextInput
+          <TextInput
                     style={styles.passwordInput}
                     placeholder="Enter your password"
-                    value={password}
-                    onChangeText={setPassword}
+            value={password}
+            onChangeText={setPassword}
                     secureTextEntry={!showPassword}
                     placeholderTextColor="#9CA3AF"
                   />

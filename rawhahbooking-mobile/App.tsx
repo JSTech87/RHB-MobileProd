@@ -13,6 +13,7 @@ import { FlightCheckoutScreen } from './screens/FlightCheckoutScreen';
 import { HotelInquiryScreen } from './screens/HotelInquiryScreen';
 import { BookingsScreen } from './screens/BookingsScreen';
 import { CustomSplashScreen } from './components/CustomSplashScreen';
+import { initializeAirportCache } from './services/airportSearch';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -30,6 +31,11 @@ function AppContent() {
       try {
         // Hide the native splash screen
         await SplashScreen.hideAsync();
+        
+        // Initialize airport cache in background (don't wait for it)
+        initializeAirportCache().catch(error => {
+          console.warn('Failed to initialize airport cache on startup:', error);
+        });
         
         // Show our custom splash screen for 2 seconds
         setTimeout(() => {
