@@ -23,6 +23,7 @@ import { PrivacySecurityScreen } from './PrivacySecurityScreen';
 import { HelpSupportScreen } from './HelpSupportScreen';
 import { FamilyManagementScreen } from './FamilyManagementScreen';
 import { AddMemberScreen } from './AddMemberScreen';
+import { ProfileSettingsScreen } from './ProfileSettingsScreen';
 
 const { width } = Dimensions.get('window');
 
@@ -198,6 +199,7 @@ const ProfileScreen: React.FC = () => {
   const handleNavigateToHelp = () => setCurrentScreen('help');
   const handleNavigateToFamilyManagement = () => setCurrentScreen('familyManagement');
   const handleNavigateToAddMember = () => setCurrentScreen('addMember');
+  const handleNavigateToProfileSettings = () => setCurrentScreen('profileSettings');
 
   const handleBackToProfile = () => setCurrentScreen('profile');
 
@@ -222,6 +224,8 @@ const ProfileScreen: React.FC = () => {
         />;
       case 'addMember':
         return <AddMemberScreen onBack={handleBackToProfile} />;
+      case 'profileSettings':
+        return <ProfileSettingsScreen onBack={handleBackToProfile} />;
       default:
         return renderProfileScreen();
     }
@@ -348,14 +352,16 @@ const ProfileScreen: React.FC = () => {
         <View style={styles.profileHeader}>
           <View style={styles.profileCard}>
             <View style={styles.profileSection}>
-              <LinearGradient
-                colors={['#A83442', '#d63447']}
-                style={styles.profileAvatar}
-              >
-                <Text style={styles.profileInitials}>
-                  {userProfile.firstName[0]}{userProfile.lastName[0]}
-                </Text>
-              </LinearGradient>
+              <TouchableOpacity onPress={handleNavigateToProfileSettings}>
+                <LinearGradient
+                  colors={['#A83442', '#d63447']}
+                  style={styles.profileAvatar}
+                >
+                  <Text style={styles.profileInitials}>
+                    {userProfile.firstName[0]}{userProfile.lastName[0]}
+                  </Text>
+                </LinearGradient>
+              </TouchableOpacity>
               <View style={styles.profileInfo}>
                 <Text style={styles.greeting}>Good morning,</Text>
                 <Text style={styles.profileName}>
@@ -364,9 +370,11 @@ const ProfileScreen: React.FC = () => {
                 <Text style={styles.profileEmail}>{userProfile.email}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#6B7280" />
-              <View style={styles.notificationDot} />
+            <TouchableOpacity 
+              style={styles.settingsButton} 
+              onPress={handleNavigateToProfileSettings}
+            >
+              <Ionicons name="settings-outline" size={24} color="#6B7280" />
             </TouchableOpacity>
           </View>
         </View>
@@ -491,6 +499,12 @@ const ProfileScreen: React.FC = () => {
                 subtitle: '24/7 customer support',
                 onPress: handleNavigateToHelp
               },
+              { 
+                icon: 'cog', 
+                title: 'Profile Settings', 
+                subtitle: 'Manage your profile and preferences',
+                onPress: handleNavigateToProfileSettings
+              },
             ].map((item, index) => (
               <TouchableOpacity key={index} style={styles.settingItem} onPress={item.onPress}>
                 <View style={styles.settingItemLeft}>
@@ -583,19 +597,6 @@ const styles = StyleSheet.create({
   profileEmail: {
     fontSize: 14,
     color: '#6B7280',
-  },
-  notificationButton: {
-    position: 'relative',
-    padding: 8,
-  },
-  notificationDot: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#EF4444',
   },
   quickStats: {
     flexDirection: 'row',
@@ -853,6 +854,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#EF4444',
+  },
+  settingsButton: {
+    padding: 8,
   },
 });
 
