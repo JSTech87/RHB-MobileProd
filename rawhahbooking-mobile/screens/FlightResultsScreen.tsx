@@ -89,114 +89,6 @@ interface FlightData {
   amenities: string[];
 }
 
-const mockFlights: FlightData[] = [
-  {
-    id: '1',
-    airline: {
-      name: 'Garuda Indonesia',
-      code: 'GA',
-      logo: 'GA',
-      color: '#0066cc',
-    },
-    flightType: 'Type A330',
-    flightNumber: 'GA 123',
-    cabinClass: 'Economy',
-    departure: {
-      time: '09:00 AM',
-      code: 'SBY',
-      location: 'Surabaya, East Java',
-      terminal: 'Terminal 1',
-      gate: 'Gate A12',
-      date: 'Dec 21, 2023',
-    },
-    arrival: {
-      time: '13:30 PM',
-      code: 'DPS',
-      location: 'Denpasar, Bali',
-      terminal: 'Terminal 2',
-      gate: 'Gate B7',
-      date: 'Dec 21, 2023',
-    },
-    price: '$320',
-    duration: '4h 30m',
-    stops: 'Non-stop',
-    baggage: '20kg checked + 7kg cabin',
-    refundable: true,
-    seatSelection: true,
-    amenities: ['WiFi', 'In-flight Entertainment', 'Meal Service', 'USB Charging'],
-  },
-  {
-    id: '2',
-    airline: {
-      name: 'Lion Air',
-      code: 'LA',
-      logo: 'LA',
-      color: '#A83442',
-    },
-    flightType: 'Type JT-25',
-    flightNumber: 'JT 456',
-    cabinClass: 'Economy',
-    departure: {
-      time: '10:00 AM',
-      code: 'SBY',
-      location: 'Surabaya, East Java',
-      terminal: 'Terminal 1',
-      gate: 'Gate A8',
-      date: 'Dec 21, 2023',
-    },
-    arrival: {
-      time: '15:30 PM',
-      code: 'DPS',
-      location: 'Denpasar, Bali',
-      terminal: 'Terminal 1',
-      gate: 'Gate C3',
-      date: 'Dec 21, 2023',
-    },
-    price: '$479',
-    duration: '5h 30m',
-    stops: '1 Stop in Jakarta',
-    baggage: '15kg checked + 7kg cabin',
-    refundable: false,
-    seatSelection: true,
-    amenities: ['In-flight Entertainment', 'Snack Service'],
-  },
-  {
-    id: '3',
-    airline: {
-      name: 'Citilink',
-      code: 'CL',
-      logo: 'CL',
-      color: '#2ecc71',
-    },
-    flightType: 'Type JT-15',
-    flightNumber: 'QG 789',
-    cabinClass: 'Economy',
-    departure: {
-      time: '12:30 PM',
-      code: 'SBY',
-      location: 'Surabaya, East Java',
-      terminal: 'Terminal 2',
-      gate: 'Gate B15',
-      date: 'Dec 21, 2023',
-    },
-    arrival: {
-      time: '17:00 PM',
-      code: 'DPS',
-      location: 'Denpasar, Bali',
-      terminal: 'Terminal 1',
-      gate: 'Gate A9',
-      date: 'Dec 21, 2023',
-    },
-    price: '$285',
-    duration: '4h 30m',
-    stops: 'Non-stop',
-    baggage: '20kg checked + 7kg cabin',
-    refundable: true,
-    seatSelection: false,
-    amenities: ['WiFi', 'Meal Service'],
-  },
-];
-
 type RootStackParamList = {
   FlightCheckout: {
     flight: DuffelOffer;
@@ -519,22 +411,14 @@ export const FlightResultsScreen: React.FC = () => {
 
   const handleBookNow = async (offer: DuffelOffer) => {
     try {
-      // Check if user is authenticated
+      // Allow guest booking; authentication can be completed during checkout
       const user = AuthService.getCurrentUser();
-      if (!user) {
-        Alert.alert(
-          'Authentication Required',
-          'Please log in to book flights.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
+ 
       // Calculate total passengers
       // Use search params to get passenger count since offer doesn't have passengers
       const totalPassengers = searchParams?.passengers ? 
         (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1;
-
+ 
       navigation.navigate('FlightCheckout', {
         flight: offer,
         passengers: totalPassengers,
@@ -962,11 +846,11 @@ export const FlightResultsScreen: React.FC = () => {
 
         {/* Route Information */}
         <View style={styles.routeContainer}>
-        <View style={styles.routeInfo}>
+            <View style={styles.routeInfo}>
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams?.from || 'N/A'}</Text>
-              <Text style={styles.cityName}>Surabaya</Text>
-            </View>
+              <Text style={styles.cityName}>{''}</Text>
+          </View>
             
             <View style={styles.routeMiddle}>
               <View style={styles.routeLine} />
@@ -978,7 +862,7 @@ export const FlightResultsScreen: React.FC = () => {
             
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams?.to || 'N/A'}</Text>
-              <Text style={styles.cityName}>Denpasar</Text>
+              <Text style={styles.cityName}>{''}</Text>
             </View>
           </View>
           
