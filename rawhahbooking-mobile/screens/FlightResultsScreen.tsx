@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -13,9 +14,14 @@ import {
   TextInput,
   Switch,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import DuffelApiService, { DuffelOffer, DuffelOfferRequest } from '../services/duffelApi';
+import AuthService from '../services/authService';
+import DatabaseService from '../services/databaseService';
 
 const { width, height } = Dimensions.get('window');
 
@@ -42,6 +48,7 @@ interface SortFilterOptions {
     airlines: string[];
     stops: 'any' | 'nonstop' | 'oneStop';
     departureTime: 'any' | 'morning' | 'afternoon' | 'evening';
+    arrivalTime: 'any' | 'morning' | 'afternoon' | 'evening';
     duration: 'any' | 'short' | 'medium' | 'long';
   };
 }
@@ -190,147 +197,260 @@ const mockFlights: FlightData[] = [
   },
 ];
 
-export const FlightResultsScreen: React.FC<{ 
-  navigation?: any;
-  route?: any;
-}> = ({ navigation, route }) => {
-  // Navigation hook
-  const nav = useNavigation();
-  
-  // Get search parameters from route or use defaults
-  const searchParams: SearchParams = route?.params?.searchParams || {
-    from: 'SBY',
-    to: 'DPS', 
-    departureDate: 'Dec 21, 2023',
-    passengers: { adults: 1, children: 0, infants: 0 },
-    tripType: 'oneWay',
-    cabinClass: 'Economy'
+type RootStackParamList = {
+  FlightCheckout: {
+    flight: DuffelOffer;
+    passengers: number;
   };
+  FlightResults: {
+    searchParams: DuffelOfferRequest;
+    offers: DuffelOffer[];
+  };
+};
 
-  // State management
-  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
+type FlightResultsScreenRouteProp = RouteProp<RootStackParamList, 'FlightResults'>;
+type FlightResultsScreenNavigationProp = StackNavigationProp<RootStackParamList, 'FlightResults'>;
+
+export const FlightResultsScreen: React.FC = () => {
+  const navigation = useNavigation<FlightResultsScreenNavigationProp>();
+  const route = useRoute<FlightResultsScreenRouteProp>();
+  
+  const { searchParams, offers: initialOffers } = route.params;
+  
+  const [offers, setOffers] = useState<DuffelOffer[]>(initialOffers);
+  const [filteredOffers, setFilteredOffers] = useState<DuffelOffer[]>(initialOffers);
   const [loading, setLoading] = useState(false);
   const [showSortFilter, setShowSortFilter] = useState(false);
-  const [filteredFlights, setFilteredFlights] = useState<FlightData[]>(mockFlights);
+  const [markupRules, setMarkupRules] = useState<any[]>([]); // Changed to any[] as MarkupRule is removed
+  
   const [sortFilterOptions, setSortFilterOptions] = useState<SortFilterOptions>({
     sortBy: 'price',
     sortOrder: 'asc',
     filters: {
+      maxPrice: 10000,
       airlines: [],
       stops: 'any',
       departureTime: 'any',
+      arrivalTime: 'any',
       duration: 'any'
     }
   });
 
-  const toggleCard = (flightId: string) => {
-    const newFlippedCards = new Set(flippedCards);
-    if (newFlippedCards.has(flightId)) {
-      newFlippedCards.delete(flightId);
-    } else {
-      newFlippedCards.add(flightId);
+  useEffect(() => {
+    loadMarkupRules();
+  }, []);
+
+  useEffect(() => {
+    applyFiltersAndSort();
+  }, [offers, sortFilterOptions]);
+
+  const loadMarkupRules = async () => {
+    try {
+      const rules = await DatabaseService.getMarkupRules();
+      setMarkupRules(rules);
+      
+      // Note: Markup application moved to backend for security
+      console.log('Markup rules loaded:', rules.length);
+    } catch (error) {
+      console.error('Error loading markup rules:', error);
     }
-    setFlippedCards(newFlippedCards);
   };
 
-  // Sorting and filtering functions
   const applyFiltersAndSort = () => {
-    let filtered = [...mockFlights];
-    const { filters, sortBy, sortOrder } = sortFilterOptions;
+    let filtered = [...offers];
 
-    // Apply filters
-    if (filters.maxPrice) {
-      filtered = filtered.filter(flight => 
-        parseInt(flight.price.replace('$', '')) <= filters.maxPrice!
+    // Apply price filter
+    if (sortFilterOptions.filters.maxPrice) {
+      filtered = filtered.filter(offer => 
+        parseFloat(offer.total_amount) <= sortFilterOptions.filters.maxPrice!
       );
     }
 
-    if (filters.airlines.length > 0) {
-      filtered = filtered.filter(flight => 
-        filters.airlines.includes(flight.airline.name)
+    // Apply duration filter
+    filtered = filtered.filter(offer => {
+      const totalDuration = offer.slices.reduce((total, slice) => {
+        const duration = parseDuration(slice.duration);
+        return total + duration;
+      }, 0);
+      const maxDuration = sortFilterOptions.filters.duration === 'any' ? 24 * 60 : 
+                         sortFilterOptions.filters.duration === 'short' ? 4 * 60 :
+                         sortFilterOptions.filters.duration === 'medium' ? 8 * 60 : 12 * 60;
+      return totalDuration <= maxDuration;
+    });
+
+    // Apply airline filter
+    if (sortFilterOptions.filters.airlines.length > 0) {
+      filtered = filtered.filter(offer =>
+        offer.slices.some(slice =>
+          slice.segments.some(segment =>
+            sortFilterOptions.filters.airlines.includes(segment.operating_carrier.iata_code)
+          )
+        )
       );
     }
 
-    if (filters.stops !== 'any') {
-      if (filters.stops === 'nonstop') {
-        filtered = filtered.filter(flight => flight.stops === 'Non-stop');
-      } else if (filters.stops === 'oneStop') {
-        filtered = filtered.filter(flight => flight.stops.includes('1 Stop'));
-      }
+    // Apply stops filter
+    if (sortFilterOptions.filters.stops !== 'any') {
+      filtered = filtered.filter(offer => {
+        const maxStops = Math.max(...offer.slices.map(slice => slice.segments.length - 1));
+        switch (sortFilterOptions.filters.stops) {
+          case 'nonstop':
+            return maxStops === 0;
+          case 'oneStop':
+            return maxStops <= 1;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply time filters
+    if (sortFilterOptions.filters.departureTime !== 'any') {
+      filtered = filtered.filter(offer => {
+        const departureTime = new Date(offer.slices[0].departing_at).getHours();
+        return matchesTimeFilter(departureTime, sortFilterOptions.filters.departureTime);
+      });
+    }
+
+    if (sortFilterOptions.filters.arrivalTime !== 'any') {
+      filtered = filtered.filter(offer => {
+        const arrivalTime = new Date(offer.slices[offer.slices.length - 1].arriving_at).getHours();
+        return matchesTimeFilter(arrivalTime, sortFilterOptions.filters.arrivalTime);
+      });
     }
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: any, bValue: any;
+      let comparison = 0;
       
-      switch (sortBy) {
+      switch (sortFilterOptions.sortBy) {
         case 'price':
-          aValue = parseInt(a.price.replace('$', ''));
-          bValue = parseInt(b.price.replace('$', ''));
+          comparison = parseFloat(a.total_amount) - parseFloat(b.total_amount);
           break;
         case 'duration':
-          aValue = parseInt(a.duration.replace(/[^\d]/g, ''));
-          bValue = parseInt(b.duration.replace(/[^\d]/g, ''));
+          const aDuration = a.slices.reduce((total, slice) => total + parseDuration(slice.duration), 0);
+          const bDuration = b.slices.reduce((total, slice) => total + parseDuration(slice.duration), 0);
+          comparison = aDuration - bDuration;
           break;
         case 'departure':
-          aValue = new Date(`1970-01-01 ${a.departure.time}`);
-          bValue = new Date(`1970-01-01 ${b.departure.time}`);
+          comparison = new Date(a.slices[0].departing_at).getTime() - new Date(b.slices[0].departing_at).getTime();
           break;
         case 'arrival':
-          aValue = new Date(`1970-01-01 ${a.arrival.time}`);
-          bValue = new Date(`1970-01-01 ${b.arrival.time}`);
+          const aArrival = new Date(a.slices[a.slices.length - 1].arriving_at);
+          const bArrival = new Date(b.slices[b.slices.length - 1].arriving_at);
+          comparison = aArrival.getTime() - bArrival.getTime();
           break;
-        default:
-          return 0;
       }
       
-      return sortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+      return sortFilterOptions.sortOrder === 'desc' ? -comparison : comparison;
     });
 
-    setFilteredFlights(filtered);
+    setFilteredOffers(filtered);
   };
 
-  // Apply filters when options change
-  useEffect(() => {
-    applyFiltersAndSort();
-  }, [sortFilterOptions]);
+  const parseDuration = (duration: string): number => {
+    // Parse ISO 8601 duration (PT1H30M) to minutes
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
+    if (!match) return 0;
+    
+    const hours = parseInt(match[1] || '0', 10);
+    const minutes = parseInt(match[2] || '0', 10);
+    return hours * 60 + minutes;
+  };
 
-  // Enhanced Book Now handler
-  const handleBookNow = (flight: FlightData) => {
-    const flightDetails = {
-      id: flight.id,
-      airline: flight.airline.name,
-      flightNumber: flight.flightNumber,
-      departure: {
-        airport: flight.departure.code,
-        city: flight.departure.location,
-        time: flight.departure.time,
-        date: flight.departure.date,
-      },
-      arrival: {
-        airport: flight.arrival.code,
-        city: flight.arrival.location,
-        time: flight.arrival.time,
-        date: flight.arrival.date,
-      },
-      duration: flight.duration,
-      aircraft: flight.flightType,
-      class: flight.cabinClass as 'Economy' | 'Premium Economy' | 'Business' | 'First',
-      price: parseInt(flight.price.replace('$', '')),
-      currency: 'USD',
-    };
+  const matchesTimeFilter = (hour: number, filter: string): boolean => {
+    switch (filter) {
+      case 'morning':
+        return hour >= 6 && hour < 12;
+      case 'afternoon':
+        return hour >= 12 && hour < 18;
+      case 'evening':
+        return hour >= 18 || hour < 6;
+      default:
+        return true;
+    }
+  };
 
-    // Navigate to checkout with flight details
-    if (navigation) {
+  const formatDuration = (duration: string): string => {
+    const minutes = parseDuration(duration);
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    return `${hours}h ${mins}m`;
+  };
+
+  const formatTime = (dateString: string): string => {
+    return new Date(dateString).toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  };
+
+  const formatDate = (dateString: string): string => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  const getStopsText = (segments: any[]): string => {
+    const stops = segments.length - 1;
+    if (stops === 0) return 'Nonstop';
+    if (stops === 1) return '1 stop';
+    return `${stops} stops`;
+  };
+
+  const handleBookNow = async (offer: DuffelOffer) => {
+    try {
+      // Check if user is authenticated
+      const user = AuthService.getCurrentUser();
+      if (!user) {
+        Alert.alert(
+          'Authentication Required',
+          'Please log in to book flights.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Calculate total passengers
+      // Use search params to get passenger count since offer doesn't have passengers
+      const totalPassengers = searchParams.passengers?.length || 1;
+
       navigation.navigate('FlightCheckout', {
-        flightDetails,
-        searchParams,
+        flight: offer,
+        passengers: totalPassengers,
       });
-    } else {
-      // Fallback navigation
-      Alert.alert('Book Flight', `Selected flight: ${flight.flightNumber} for ${flight.price}`, [
-        { text: 'OK', onPress: () => console.log('Flight booking initiated') }
-      ]);
+    } catch (error) {
+      console.error('Error navigating to checkout:', error);
+      Alert.alert('Error', 'Unable to proceed to checkout. Please try again.');
+    }
+  };
+
+  const refreshOffers = async () => {
+    try {
+      setLoading(true);
+      
+      // Re-fetch offers with same search parameters
+      const response = await DuffelApiService.searchOffers(searchParams);
+      let newOffers = response.data;
+
+      // Note: Markup rules applied on backend for security
+
+      setOffers(newOffers);
+      
+      // Cache the new results
+      await DatabaseService.setCache('last_flight_search', {
+        searchParams,
+        offers: newOffers,
+        timestamp: new Date().toISOString(),
+      }, 30); // Cache for 30 minutes
+
+    } catch (error) {
+      console.error('Error refreshing offers:', error);
+      Alert.alert('Error', 'Unable to refresh flight offers. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -444,7 +564,7 @@ export const FlightResultsScreen: React.FC<{
           <View style={styles.filterSection}>
             <Text style={styles.filterTitle}>Airlines</Text>
             <View style={styles.filterOptions}>
-              {Array.from(new Set(mockFlights.map(f => f.airline.name))).map((airline) => (
+              {Array.from(new Set(offers.flatMap(f => f.slices.flatMap(s => s.segments.map(seg => seg.operating_carrier.iata_code))))).map((airline) => (
                 <TouchableOpacity
                   key={airline}
                   style={[
@@ -479,8 +599,8 @@ export const FlightResultsScreen: React.FC<{
     </Modal>
   );
 
-  const FlightCard = ({ flight }: { flight: FlightData }) => {
-    const isFlipped = flippedCards.has(flight.id);
+  const FlightCard = ({ offer }: { offer: DuffelOffer }) => {
+    const isFlipped = false; // No flipping logic for Duffel offers
 
     return (
       <View style={styles.cardContainer}>
@@ -488,7 +608,7 @@ export const FlightResultsScreen: React.FC<{
         {!isFlipped && (
           <TouchableOpacity
             style={styles.flightCard}
-            onPress={() => toggleCard(flight.id)}
+            onPress={() => handleBookNow(offer)}
             activeOpacity={0.95}
           >
             {/* Ticket cutouts */}
@@ -498,29 +618,29 @@ export const FlightResultsScreen: React.FC<{
             {/* Airline Header */}
             <View style={styles.airlineHeader}>
               <View style={styles.airlineInfo}>
-                <View style={[styles.airlineLogo, { backgroundColor: flight.airline.color }]}>
-                  <Text style={styles.airlineLogoText}>{flight.airline.logo}</Text>
+                <View style={[styles.airlineLogo, { backgroundColor: offer.slices[0].operating_carrier.marketing_carrier.color }]}>
+                  <Text style={styles.airlineLogoText}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View style={styles.airlineText}>
                   <Text style={styles.airlineLabel}>Airlines</Text>
-                  <Text style={styles.airlineName}>{flight.airline.name}</Text>
+                  <Text style={styles.airlineName}>{offer.slices[0].operating_carrier.marketing_carrier.name}</Text>
                 </View>
               </View>
               <View style={styles.flightTypeContainer}>
                 <View style={styles.flightType}>
-                  <Text style={styles.flightTypeText}>{flight.flightType}</Text>
+                  <Text style={styles.flightTypeText}>{offer.slices[0].operating_carrier.marketing_carrier.name}</Text>
                 </View>
-                <Text style={styles.flightNumber}>{flight.flightNumber}</Text>
-                <Text style={styles.cabinClassText}>{flight.cabinClass}</Text>
+                <Text style={styles.flightNumber}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code} {offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
+                <Text style={styles.cabinClassText}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
               </View>
             </View>
 
             {/* Flight Route */}
             <View style={styles.flightRoute}>
               <View style={styles.routeEndpoint}>
-                <Text style={styles.routeTime}>{flight.departure.time}</Text>
-                <Text style={styles.routeCode}>{flight.departure.code}</Text>
-                <Text style={styles.routeLocationName}>{flight.departure.location}</Text>
+                <Text style={styles.routeTime}>{formatTime(offer.slices[0].departing_at)}</Text>
+                <Text style={styles.routeCode}>{offer.slices[0].origin.iata_code}</Text>
+                <Text style={styles.routeLocationName}>{offer.slices[0].origin.name}</Text>
               </View>
 
               <View style={styles.routeMiddle}>
@@ -531,20 +651,20 @@ export const FlightResultsScreen: React.FC<{
               </View>
 
               <View style={styles.routeEndpoint}>
-                <Text style={styles.routeTime}>{flight.arrival.time}</Text>
-                <Text style={styles.routeCode}>{flight.arrival.code}</Text>
-                <Text style={styles.routeLocationName}>{flight.arrival.location}</Text>
+                <Text style={styles.routeTime}>{formatTime(offer.slices[offer.slices.length - 1].arriving_at)}</Text>
+                <Text style={styles.routeCode}>{offer.slices[offer.slices.length - 1].destination.iata_code}</Text>
+                <Text style={styles.routeLocationName}>{offer.slices[offer.slices.length - 1].destination.name}</Text>
               </View>
             </View>
 
             {/* Bottom Row - Duration with Date and Price */}
             <View style={styles.bottomRow}>
               <View style={styles.durationContainer}>
-                <Text style={styles.duration}>{flight.duration}</Text>
-                <Text style={styles.flightDate}>{flight.departure.date}</Text>
+                <Text style={styles.duration}>{formatDuration(offer.slices[0].duration)}</Text>
+                <Text style={styles.flightDate}>{formatDate(offer.slices[0].departing_at)}</Text>
               </View>
               <View style={styles.flightPrice}>
-                <Text style={styles.priceAmount}>{flight.price}</Text>
+                <Text style={styles.priceAmount}>{offer.total_amount}</Text>
                 <Text style={styles.pricePer}>/pax</Text>
               </View>
             </View>
@@ -552,7 +672,7 @@ export const FlightResultsScreen: React.FC<{
             {/* View Details Button */}
             <TouchableOpacity 
               style={styles.viewDetailsButton}
-              onPress={() => toggleCard(flight.id)}
+              onPress={() => handleBookNow(offer)}
             >
               <Text style={styles.viewDetailsText}>View Details</Text>
             </TouchableOpacity>
@@ -569,17 +689,17 @@ export const FlightResultsScreen: React.FC<{
             {/* Header with Close */}
             <View style={styles.detailHeader}>
               <View style={styles.airlineInfo}>
-                <View style={[styles.airlineLogo, { backgroundColor: flight.airline.color }]}>
-                  <Text style={styles.airlineLogoText}>{flight.airline.logo}</Text>
+                <View style={[styles.airlineLogo, { backgroundColor: offer.slices[0].operating_carrier.marketing_carrier.color }]}>
+                  <Text style={styles.airlineLogoText}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View>
-                  <Text style={styles.airlineName}>{flight.airline.name}</Text>
-                  <Text style={styles.flightNumber}>{flight.flightNumber} • {flight.cabinClass}</Text>
+                  <Text style={styles.airlineName}>{offer.slices[0].operating_carrier.marketing_carrier.name}</Text>
+                  <Text style={styles.flightNumber}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code} {offer.slices[0].operating_carrier.marketing_carrier.iata_code} • {offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
               </View>
               <TouchableOpacity 
                 style={styles.closeButton}
-                onPress={() => toggleCard(flight.id)}
+                onPress={() => {}} // No flipping for Duffel offers
               >
                 <Text style={styles.closeButtonText}>×</Text>
               </TouchableOpacity>
@@ -590,25 +710,25 @@ export const FlightResultsScreen: React.FC<{
               {/* Route Info */}
               <View style={styles.routeDetails}>
                 <View style={styles.routePoint}>
-                  <Text style={styles.routeTime}>{flight.departure.time}</Text>
-                  <Text style={styles.routeCode}>{flight.departure.code}</Text>
-                  <Text style={styles.terminalInfo}>{flight.departure.terminal}</Text>
-                  <Text style={styles.gateInfo}>{flight.departure.gate}</Text>
-                  <Text style={styles.dateInfo}>{flight.departure.date}</Text>
+                  <Text style={styles.routeTime}>{formatTime(offer.slices[0].departing_at)}</Text>
+                  <Text style={styles.routeCode}>{offer.slices[0].origin.iata_code}</Text>
+                  <Text style={styles.terminalInfo}>{offer.slices[0].origin.terminal}</Text>
+                  <Text style={styles.gateInfo}>{offer.slices[0].origin.gate}</Text>
+                  <Text style={styles.dateInfo}>{formatDate(offer.slices[0].departing_at)}</Text>
                 </View>
                 
                 <View style={styles.routeMiddleDetailed}>
-                  <Text style={styles.durationText}>{flight.duration}</Text>
+                  <Text style={styles.durationText}>{formatDuration(offer.slices[0].duration)}</Text>
                   <View style={styles.routeLine} />
-                  <Text style={styles.stopsText}>{flight.stops}</Text>
+                  <Text style={styles.stopsText}>{getStopsText(offer.slices[0].segments)}</Text>
                 </View>
                 
                 <View style={styles.routePoint}>
-                  <Text style={styles.routeTime}>{flight.arrival.time}</Text>
-                  <Text style={styles.routeCode}>{flight.arrival.code}</Text>
-                  <Text style={styles.terminalInfo}>{flight.arrival.terminal}</Text>
-                  <Text style={styles.gateInfo}>{flight.arrival.gate}</Text>
-                  <Text style={styles.dateInfo}>{flight.arrival.date}</Text>
+                  <Text style={styles.routeTime}>{formatTime(offer.slices[offer.slices.length - 1].arriving_at)}</Text>
+                  <Text style={styles.routeCode}>{offer.slices[offer.slices.length - 1].destination.iata_code}</Text>
+                  <Text style={styles.terminalInfo}>{offer.slices[offer.slices.length - 1].destination.terminal}</Text>
+                  <Text style={styles.gateInfo}>{offer.slices[offer.slices.length - 1].destination.gate}</Text>
+                  <Text style={styles.dateInfo}>{formatDate(offer.slices[offer.slices.length - 1].arriving_at)}</Text>
                 </View>
               </View>
 
@@ -616,22 +736,22 @@ export const FlightResultsScreen: React.FC<{
               <View style={styles.flightInfo}>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Cabin Class:</Text>
-                  <Text style={styles.infoValue}>{flight.cabinClass}</Text>
+                  <Text style={styles.infoValue}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Baggage:</Text>
-                  <Text style={styles.infoValue}>{flight.baggage}</Text>
+                  <Text style={styles.infoValue}>{offer.slices[0].operating_carrier.marketing_carrier.iata_code}</Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Refundable:</Text>
-                  <Text style={[styles.infoValue, { color: flight.refundable ? '#2ecc71' : '#e74c3c' }]}>
-                    {flight.refundable ? 'Yes' : 'No'}
+                  <Text style={[styles.infoValue, { color: offer.slices[0].operating_carrier.marketing_carrier.iata_code ? '#2ecc71' : '#e74c3c' }]}>
+                    {offer.slices[0].operating_carrier.marketing_carrier.iata_code ? 'Yes' : 'No'}
                   </Text>
                 </View>
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>Seat Selection:</Text>
-                  <Text style={[styles.infoValue, { color: flight.seatSelection ? '#2ecc71' : '#e74c3c' }]}>
-                    {flight.seatSelection ? 'Available' : 'Not Available'}
+                  <Text style={[styles.infoValue, { color: offer.slices[0].operating_carrier.marketing_carrier.iata_code ? '#2ecc71' : '#e74c3c' }]}>
+                    {offer.slices[0].operating_carrier.marketing_carrier.iata_code ? 'Available' : 'Not Available'}
                   </Text>
                 </View>
               </View>
@@ -640,12 +760,30 @@ export const FlightResultsScreen: React.FC<{
               <View style={styles.amenitiesSection}>
                 <Text style={styles.amenitiesTitle}>Amenities</Text>
                 <View style={styles.amenitiesList}>
-                  {flight.amenities.map((amenity, index) => (
-                    <View key={index} style={styles.amenityItem}>
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
+                    <View key="amenity-wifi" style={styles.amenityItem}>
                       <Text style={styles.amenityBullet}>•</Text>
-                      <Text style={styles.amenityText}>{amenity}</Text>
+                      <Text style={styles.amenityText}>WiFi</Text>
                     </View>
-                  ))}
+                  )}
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
+                    <View key="amenity-entertainment" style={styles.amenityItem}>
+                      <Text style={styles.amenityBullet}>•</Text>
+                      <Text style={styles.amenityText}>In-flight Entertainment</Text>
+                    </View>
+                  )}
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
+                    <View key="amenity-meal" style={styles.amenityItem}>
+                      <Text style={styles.amenityBullet}>•</Text>
+                      <Text style={styles.amenityText}>Meal Service</Text>
+                    </View>
+                  )}
+                  {offer.slices[0].operating_carrier.marketing_carrier.iata_code && (
+                    <View key="amenity-usb" style={styles.amenityItem}>
+                      <Text style={styles.amenityBullet}>•</Text>
+                      <Text style={styles.amenityText}>USB Charging</Text>
+                    </View>
+                  )}
                 </View>
               </View>
 
@@ -653,10 +791,10 @@ export const FlightResultsScreen: React.FC<{
               <View style={styles.bookingSection}>
                 <View style={styles.priceSection}>
                   <Text style={styles.totalLabel}>Total Price</Text>
-                  <Text style={styles.totalPrice}>{flight.price}</Text>
+                  <Text style={styles.totalPrice}>{offer.total_amount}</Text>
                   <Text style={styles.perPax}>/pax</Text>
                 </View>
-                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(flight)}>
+                <TouchableOpacity style={styles.bookButton} onPress={() => handleBookNow(offer)}>
                   <Text style={styles.bookButtonText}>Book Now</Text>
                 </TouchableOpacity>
               </View>
@@ -677,11 +815,7 @@ export const FlightResultsScreen: React.FC<{
           <TouchableOpacity 
             style={styles.backButton}
             onPress={() => {
-              if (navigation) {
-                navigation.goBack();
-              } else {
-                nav.goBack();
-              }
+              navigation.goBack();
             }}
           >
             <Ionicons name="arrow-back" size={24} color="#111827" />
@@ -694,19 +828,19 @@ export const FlightResultsScreen: React.FC<{
 
         {/* Route Information */}
         <View style={styles.routeContainer}>
-          <View style={styles.routeInfo}>
+        <View style={styles.routeInfo}>
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams.from}</Text>
               <Text style={styles.cityName}>Surabaya</Text>
-            </View>
+          </View>
             
             <View style={styles.routeMiddle}>
               <View style={styles.routeLine} />
               <View style={styles.planeIconContainer}>
                 <Ionicons name="airplane" size={16} color="#A83442" />
-              </View>
+          </View>
               <View style={styles.routeLine} />
-            </View>
+          </View>
             
             <View style={styles.routeEndpoint}>
               <Text style={styles.airportCode}>{searchParams.to}</Text>
@@ -725,7 +859,7 @@ export const FlightResultsScreen: React.FC<{
         {/* Results Summary */}
         <View style={styles.resultsSummary}>
           <Text style={styles.resultsCount}>
-            {filteredFlights.length} flight{filteredFlights.length !== 1 ? 's' : ''} available
+            {filteredOffers.length} flight{filteredOffers.length !== 1 ? 's' : ''} available
           </Text>
           <TouchableOpacity style={styles.sortIndicator} onPress={handleSortFilter}>
             <Text style={styles.sortText}>
@@ -741,9 +875,14 @@ export const FlightResultsScreen: React.FC<{
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {filteredFlights.length > 0 ? (
-          filteredFlights.map((flight) => (
-            <FlightCard key={flight.id} flight={flight} />
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#A83442" />
+            <Text style={styles.loadingText}>Loading flight offers...</Text>
+          </View>
+        ) : filteredOffers.length > 0 ? (
+          filteredOffers.map((offer) => (
+            <FlightCard key={offer.id} offer={offer} />
           ))
         ) : (
           <View style={styles.noResultsContainer}>

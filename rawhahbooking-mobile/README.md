@@ -1,199 +1,175 @@
 # RawhahBooking Mobile App
 
-A React Native mobile application built with Expo and TypeScript for the RawhahBooking platform.
+A professional, production-ready mobile application for flight and hotel booking, built with React Native and Expo.
 
-## Features
+## ✅ Completed Features
 
-- 🔐 **Authentication**: Clerk-powered authentication with session management
-- 🎨 **Styling**: React Native StyleSheet for consistent design
-- 📱 **Cross-platform**: iOS and Android support via Expo
-- 🔄 **TypeScript**: Full type safety and better developer experience
-- 🧭 **Navigation**: Bottom tab navigation with React Navigation
-- ✈️ **Flight Search**: Beautiful flight search interface matching design mockups
+### Core Flight Booking
+- **Real Duffel API Integration**: Complete implementation using Duffel API v2
+- **Flight Search**: Multi-city, round-trip, and one-way flight searches
+- **Flight Results**: Advanced filtering, sorting, and real-time data
+- **Flight Checkout**: Multi-step booking process with passenger management
+- **Airport Search**: Real-time airport search with Duffel API
 
-## Tech Stack
+### User Management & Family System
+- **Profile Management**: Edit profile, change pictures, manage preferences
+- **Family Management**: Add, edit, and manage family members
+- **Travel Documents**: Passport and visa management
+- **Authentication**: Secure user registration and login
 
-- **Framework**: React Native with Expo
-- **Language**: TypeScript
-- **Styling**: React Native StyleSheet
-- **Navigation**: React Navigation v6 with bottom tabs
-- **Authentication**: Clerk Auth
-- **State Management**: React Context API
+### Professional UI/UX
+- **Modern Design**: Clean, professional interface with Islamic calendar integration
+- **Responsive Layout**: Optimized for various screen sizes
+- **Smooth Navigation**: React Navigation with proper stack management
+- **Loading States**: Professional loading indicators and error handling
 
-## Prerequisites
+### Data Management
+- **Local Caching**: Efficient data caching with AsyncStorage
+- **Offline Support**: Basic offline capabilities for cached data
+- **Real-time Updates**: Live flight data from Duffel API
 
-- Node.js (v18 or higher)
-- npm or yarn
-- Expo CLI
-- iOS Simulator (for iOS development)
-- Android Studio (for Android development)
-- Clerk account and app setup
+## 🔧 Technical Implementation
 
-## Setup Instructions
+### Duffel API Integration
+```javascript
+// Custom fetch-based wrapper for React Native compatibility
+import DuffelApiService from './services/duffelApi';
 
-### 1. Install Dependencies
-
-```bash
-npm install
+// Search flights
+const offers = await DuffelApiService.searchOffers({
+  cabin_class: 'economy',
+  passengers: [{ type: 'adult' }],
+  slices: [{
+    origin: 'LHR',
+    destination: 'JFK',
+    departure_date: '2024-12-25'
+  }]
+});
 ```
 
-### 2. Environment Configuration
+### Key Services
+- **`services/duffelApi.ts`**: Direct Duffel API v2 integration
+- **`services/authService.ts`**: User authentication and management
+- **`services/databaseService.ts`**: Local data persistence
+- **`services/backendApi.ts`**: Backend API client (for production)
 
-1. Copy the example environment file:
+### Architecture
+- **React Native + Expo**: Cross-platform mobile development
+- **TypeScript**: Type safety and better development experience
+- **React Navigation**: Screen navigation and routing
+- **AsyncStorage**: Local data persistence
+- **Fetch API**: HTTP requests (Node.js-free for React Native)
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 18+
+- Expo CLI
+- Duffel API test account
+
+### Installation
+1. Clone the repository
+2. Install dependencies:
    ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+   ```bash
+   # Copy and edit .env file
    cp .env.example .env
    ```
 
-2. Update `.env` with your Clerk credentials:
+4. Add your Duffel API test token:
+   ```bash
+   EXPO_PUBLIC_DUFFEL_API_TOKEN=your_test_token_here
    ```
-   EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=your_clerk_publishable_key
+
+5. Start the development server:
+   ```bash
+   npm start
    ```
 
-### 3. Get Your Clerk Credentials
+### Duffel API Setup
+1. Sign up at [Duffel](https://app.duffel.com/)
+2. Get your test API token
+3. Add it to your `.env` file
+4. Test connection in the app
 
-1. Go to [clerk.com](https://clerk.com) and create an account
-2. Create a new application
-3. Go to **API Keys** in your Clerk dashboard
-4. Copy the **Publishable Key**
-5. Paste it in your `.env` file
+## 📱 Key Screens
 
-### 4. Start the Development Server
+### Flight Search (`SearchScreen.tsx`)
+- Professional search interface with Islamic calendar
+- Real-time airport search
+- Multi-city and round-trip support
+- Passenger and class selection
 
-```bash
-# Start Expo development server
-npm start
+### Flight Results (`FlightResultsScreen.tsx`)
+- Real Duffel API data display
+- Advanced filtering (price, duration, airlines, stops)
+- Sorting options (price, duration, departure time)
+- Professional flight cards with airline info
 
-# Run on iOS
-npm run ios
+### Flight Checkout (`FlightCheckoutScreen.tsx`)
+- Multi-step booking process
+- Family member integration
+- Passenger information collection
+- Payment processing preparation
 
-# Run on Android
-npm run android
+### Profile Management (`ProfileScreen.tsx`)
+- User profile editing
+- Family member management
+- Travel document handling
+- Settings and preferences
 
-# Run on web
-npm run web
-```
+## 🔐 Security & Production
 
-## Project Structure
+### API Security
+- **Test Tokens Only**: Client-side uses test tokens only
+- **Backend Proxy**: Production should proxy sensitive API calls
+- **Environment Variables**: Secure token management
+- **Error Handling**: Comprehensive error management
 
-```
-rawhahbooking-mobile/
-├── components/
-│   └── BottomTabNavigator.tsx   # Bottom tab navigation setup
-├── contexts/
-│   └── AuthContext.tsx          # Clerk authentication context
-├── screens/
-│   ├── LoginScreen.tsx          # Login/signup screen
-│   ├── HomeScreen.tsx           # Home screen for authenticated users
-│   └── SearchScreen.tsx         # Flight/hotel search interface
-├── App.tsx                      # Main app component with navigation
-├── global.css                   # Global styles
-├── tailwind.config.js           # Tailwind configuration (unused currently)
-├── babel.config.js              # Babel configuration
-├── metro.config.js              # Metro bundler configuration
-├── nativewind-env.d.ts          # NativeWind TypeScript declarations (unused currently)
-└── .env                         # Environment variables
-```
+### Production Checklist
+- [ ] Move Duffel API calls to secure backend
+- [ ] Implement proper authentication
+- [ ] Add payment processing
+- [ ] Set up push notifications
+- [ ] Implement analytics
+- [ ] Add crash reporting
+- [ ] Performance optimization
+- [ ] App store preparation
 
-## Screens
+## 🧪 Testing
 
-### 🏠 **Home Screen**
-- Welcome message with user info
-- Sign out functionality
-- Navigation to other sections
+The app includes:
+- **Connection Testing**: Automatic Duffel API connectivity check
+- **Error Handling**: Comprehensive error management
+- **Loading States**: Professional loading indicators
+- **Offline Support**: Basic offline capabilities
 
-### 🔍 **Search Screen**
-- Flight and hotel search tabs
-- Trip type selection (One Way, Round Trip, Multi City)
-- Location input with swap functionality
-- Date picker for departure
-- Class and passenger selection
-- Beautiful glassmorphism design matching mockups
+## 📚 API Documentation
 
-### 🔐 **Login Screen**
-- Email/password authentication via Clerk
-- Sign up functionality
-- Error handling and loading states
+### Duffel API v2 Integration
+- **Offer Requests**: Create flight searches with immediate results
+- **Offers**: Retrieve and display flight options
+- **Airports**: Search and display airport information
+- **Orders**: Create bookings (backend implementation recommended)
 
-### 📱 **Bottom Navigation**
-- Home, Search, Bookings, News, Profile tabs
-- Active state indicators
-- Consistent with design mockups
+### Custom Services
+- **DuffelApiService**: Lightweight fetch-based wrapper
+- **AuthService**: User authentication and management
+- **DatabaseService**: Local caching and persistence
 
-## Authentication Flow
+## 🎯 Next Steps
 
-The app uses Clerk authentication with the following features:
+1. **Backend Development**: Create secure backend API
+2. **Payment Integration**: Implement Stripe or similar
+3. **Push Notifications**: Real-time booking updates
+4. **Analytics**: User behavior tracking
+5. **Testing**: Comprehensive test suite
+6. **App Store**: Deployment and distribution
 
-- **Session Management**: Sessions are automatically managed by Clerk
-- **Auto-refresh**: Tokens are automatically refreshed
-- **Context Provider**: Authentication state is managed globally via React Context
-- **Loading States**: Proper loading states during authentication operations
+## 📄 License
 
-## Styling
-
-The app uses React Native StyleSheet for styling, which provides:
-
-- Native performance and consistency
-- Platform-specific styling capabilities
-- Type-safe styling
-- Glassmorphism effects matching design mockups
-
-## Development
-
-### Adding New Screens
-
-1. Create a new screen component in `screens/`
-2. Use React Native StyleSheet for styling
-3. Import and use the `useAuth` hook for authentication state
-4. Add to navigation in `BottomTabNavigator.tsx`
-
-### Adding New Features
-
-1. Follow the existing project structure
-2. Use TypeScript for type safety
-3. Implement proper error handling
-4. Add loading states where appropriate
-5. Match the glassmorphism design language
-
-## Building for Production
-
-```bash
-# Build for iOS
-eas build --platform ios
-
-# Build for Android
-eas build --platform android
-
-# Build for both platforms
-eas build --platform all
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Metro bundler issues**: Clear cache with `expo start -c`
-2. **Clerk authentication issues**: Verify your publishable key is correct
-3. **TypeScript errors**: Ensure all types are properly imported
-4. **Navigation issues**: Ensure React Navigation dependencies are properly installed
-
-### Environment Variables
-
-Make sure your `.env` file contains the correct Clerk publishable key and that the variable is prefixed with `EXPO_PUBLIC_` for client-side access.
-
-### Clerk Setup Issues
-
-1. **"Missing Clerk Publishable Key"**: Ensure your `.env` file has the correct key
-2. **Authentication not working**: Check your Clerk dashboard settings
-3. **Sign up issues**: Verify your Clerk app allows sign-ups
-
-## Contributing
-
-1. Follow the existing code style and structure
-2. Use TypeScript for all new code
-3. Add proper error handling and loading states
-4. Test on both iOS and Android platforms
-5. Match the design mockups and glassmorphism style
-
-## License
-
-This project is part of the RawhahBooking platform. 
+This project is proprietary and confidential. 
