@@ -19,7 +19,7 @@ import {
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import DuffelApiService, { DuffelOffer, DuffelOfferRequest } from '../services/duffelApi';
+import DuffelApiService, { DuffelOffer, DuffelOfferRequest, AppSearchParams } from '../services/duffelApi';
 import AuthService from '../services/authService';
 import DatabaseService from '../services/databaseService';
 
@@ -205,8 +205,8 @@ type RootStackParamList = {
     passengers: number;
   };
   FlightResults: {
-    searchParams: DuffelOfferRequest;
-    offers: DuffelOffer[];
+    searchParams: AppSearchParams;
+    offers?: DuffelOffer[];
   };
 };
 
@@ -222,12 +222,13 @@ export const FlightResultsScreen: React.FC = () => {
   // Safety check for searchParams
   if (!searchParams) {
     console.error('FlightResultsScreen: Missing searchParams');
-    // Navigate back or show error
+    navigation.goBack();
+    return null;
   }
   
   const [offers, setOffers] = useState<DuffelOffer[]>(initialOffers || []);
   const [filteredOffers, setFilteredOffers] = useState<DuffelOffer[]>(initialOffers || []);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(initialOffers.length === 0); // Loading if no initial offers
   const [showSortFilter, setShowSortFilter] = useState(false);
   const [markupRules, setMarkupRules] = useState<any[]>([]); // Changed to any[] as MarkupRule is removed
   
@@ -246,6 +247,11 @@ export const FlightResultsScreen: React.FC = () => {
 
   useEffect(() => {
     loadMarkupRules();
+    
+    // If no initial offers provided, search for them
+    if (initialOffers.length === 0) {
+      searchOffers();
+    }
   }, []);
 
   useEffect(() => {
@@ -261,6 +267,32 @@ export const FlightResultsScreen: React.FC = () => {
       console.log('Markup rules loaded:', rules.length);
     } catch (error) {
       console.error('Error loading markup rules:', error);
+    }
+  };
+
+  const searchOffers = async () => {
+    try {
+      setLoading(true);
+      console.log('Searching for offers with params:', searchParams);
+      
+      const response = await DuffelApiService.searchOffers(searchParams);
+      const newOffers = response.data;
+
+      console.log(`Found ${newOffers.length} offers`);
+      setOffers(newOffers);
+      
+      // Cache the results
+      await DatabaseService.setCache('last_flight_search', {
+        searchParams,
+        offers: newOffers,
+        timestamp: new Date().toISOString(),
+      }, 30); // Cache for 30 minutes
+
+    } catch (error) {
+      console.error('Error searching for offers:', error);
+      // Error already handled by DuffelApiService
+    } finally {
+      setLoading(false);
     }
   };
 

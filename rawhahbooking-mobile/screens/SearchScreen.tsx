@@ -184,7 +184,7 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
   }, [isLoading, slideAnim]);
 
   // Enhanced search functionality
-  const handleSearch = () => {
+  const handleSearch = async () => {
     // Validation
     if (!fromAirport || !toAirport) {
       Alert.alert('Missing Information', 'Please select departure and destination airports');
@@ -214,19 +214,27 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       useNativeDriver: true,
     }).start();
 
-    // Prepare search parameters
-    const searchParams = {
-      from: fromAirport.iata,
-      to: toAirport.iata,
-      departureDate: selectedDepartureDate.toISOString().split('T')[0],
-      returnDate: selectedTripType === 'roundTrip' ? selectedReturnDate.toISOString().split('T')[0] : null,
-      passengers,
-      cabinClass: seatClass,
-      tripType: selectedTripType,
-    };
+    try {
+      // Prepare search parameters in app format
+      const searchParams = {
+        from: fromAirport.iata,
+        to: toAirport.iata,
+        departureDate: selectedDepartureDate.toISOString().split('T')[0],
+        returnDate: selectedTripType === 'roundTrip' ? selectedReturnDate.toISOString().split('T')[0] : undefined,
+        passengers,
+        cabinClass: seatClass,
+        tripType: selectedTripType,
+      };
 
-    // Simulate API call
-    setTimeout(() => {
+      console.log('Starting flight search with params:', searchParams);
+
+      // Import and call Duffel API
+      const DuffelApiService = (await import('../services/duffelApi')).default;
+      const response = await DuffelApiService.searchOffers(searchParams);
+
+      console.log(`Flight search completed: ${response.data.length} offers found`);
+
+      // Stop loading animation
       setIsLoading(false);
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -234,9 +242,26 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
         useNativeDriver: true,
       }).start();
 
-      // Navigate to results with search parameters
-      navigation?.navigate('FlightResults', { searchParams });
-    }, 2000);
+      // Navigate to results with search parameters and offers
+      navigation?.navigate('FlightResults', { 
+        searchParams, 
+        offers: response.data 
+      });
+
+    } catch (error) {
+      console.error('Flight search failed:', error);
+      
+      // Stop loading animation
+      setIsLoading(false);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      // Error already shown by DuffelApiService, just log here
+      // Don't navigate - let user try again
+    }
   };
 
   const handleHotelInquiry = () => {

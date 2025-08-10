@@ -238,6 +238,70 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
 }
 
 /**
+ * Search specific airports via Duffel API (for when cache not available)
+ */
+async function searchDuffelAirportsDirect(query: string): Promise<AirportOption[]> {
+  if (!DUFFEL_API_TOKEN) {
+    console.warn('Duffel API token not configured');
+    return [];
+  }
+
+  try {
+    // Try searching by IATA code first
+    let url = `${DUFFEL_API_BASE}/air/airports?filter[iata_code]=${query.toUpperCase()}&limit=10`;
+    
+    let response = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Duffel-Version': 'v2'
+      }
+    });
+
+    let data = await response.json();
+    
+    // If no results by IATA code, try by city name
+    if (!data.data || data.data.length === 0) {
+      url = `${DUFFEL_API_BASE}/air/airports?filter[city_name]=${encodeURIComponent(query)}&limit=10`;
+      
+      response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Duffel-Version': 'v2'
+        }
+      });
+
+      data = await response.json();
+    }
+
+    if (!response.ok) {
+      throw new Error(`Duffel API error: ${response.status}`);
+    }
+
+    const airports = data.data.map((airport: any): AirportOption => ({
+      iata: airport.iata_code,
+      name: airport.name,
+      city: airport.city_name || airport.name,
+      country: airport.iata_country_code || 'Unknown',
+      lat: airport.latitude,
+      lon: airport.longitude,
+      source: 'api' as const,
+      type: 'airport'
+    }));
+
+    console.log(`🔍 Direct search found ${airports.length} airports for "${query}"`);
+    return airports;
+
+  } catch (error) {
+    console.error('Direct Duffel search error:', error);
+    return [];
+  }
+}
+
+/**
  * Main search function that combines local and API results
  */
 export async function searchAirports(query: string): Promise<AirportOption[]> {
@@ -253,6 +317,20 @@ export async function searchAirports(query: string): Promise<AirportOption[]> {
 
   // Get local results immediately
   const localResults = searchLocalAirports(query);
+  
+  // For short queries (likely IATA codes), try direct API search first
+  if (query.length === 3 && /^[A-Za-z]{3}$/.test(query)) {
+    try {
+      const directResults = await searchDuffelAirportsDirect(query);
+      if (directResults.length > 0) {
+        const mergedResults = mergeResults(localResults, directResults);
+        sessionCache.set(cacheKey, mergedResults);
+        return mergedResults;
+      }
+    } catch (error) {
+      console.warn('Direct search failed, falling back to cached search');
+    }
+  }
   
   // If we have good local results, return them while API loads
   if (localResults.length >= 5) {
@@ -281,9 +359,17 @@ export async function searchAirports(query: string): Promise<AirportOption[]> {
     
     return mergedResults;
   } catch (error) {
-    // API failed, return local results
-    sessionCache.set(cacheKey, localResults);
-    return localResults;
+    // API failed, try direct search as last resort
+    try {
+      const directResults = await searchDuffelAirportsDirect(query);
+      const mergedResults = mergeResults(localResults, directResults);
+      sessionCache.set(cacheKey, mergedResults);
+      return mergedResults;
+    } catch (directError) {
+      // All API methods failed, return local results
+      sessionCache.set(cacheKey, localResults);
+      return localResults;
+    }
   }
 }
 
