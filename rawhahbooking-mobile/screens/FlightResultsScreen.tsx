@@ -244,11 +244,68 @@ export const FlightResultsScreen: React.FC = () => {
 
   useEffect(() => {
     loadMarkupRules();
+    
+    // If no offers were provided, perform search automatically
+    if (searchParams && (!offers || offers.length === 0)) {
+      console.log('🔍 No offers provided, performing automatic search...');
+      performInitialSearch();
+    }
   }, []);
 
   useEffect(() => {
     applyFiltersAndSort();
   }, [offers, sortFilterOptions]);
+
+  const performInitialSearch = async () => {
+    try {
+      setLoading(true);
+      console.log('📡 Performing initial flight search with params:', searchParams);
+      
+      // Create Duffel API request format
+      const duffelRequest = {
+        slices: [
+          {
+            origin: searchParams.from,
+            destination: searchParams.to,
+            departure_date: searchParams.departureDate,
+          }
+        ],
+        passengers: [
+          // Add adults
+          ...Array(searchParams.passengers?.adults || 1).fill({ type: 'adult' }),
+          // Add children  
+          ...Array(searchParams.passengers?.children || 0).fill({ type: 'child' }),
+          // Add infants
+          ...Array(searchParams.passengers?.infants || 0).fill({ type: 'infant_without_seat' }),
+        ],
+        cabin_class: (searchParams.cabinClass || 'Economy').toLowerCase().replace(' ', '_'),
+      };
+      
+      // Add return slice for round trip
+      if (searchParams.tripType === 'roundTrip' && searchParams.returnDate) {
+        duffelRequest.slices.push({
+          origin: searchParams.to,
+          destination: searchParams.from,
+          departure_date: searchParams.returnDate,
+        });
+      }
+      
+      console.log('🚀 Duffel API Request:', JSON.stringify(duffelRequest, null, 2));
+      
+      // Search for offers
+      const response = await DuffelApiService.searchOffers(duffelRequest);
+      
+      console.log('✅ Flight search successful:', response.data?.length || 0, 'offers found');
+      
+      setOffers(response.data || []);
+      
+    } catch (error) {
+      console.error('❌ Initial flight search failed:', error);
+      Alert.alert('Search Error', 'Unable to load flight offers. Please try refreshing.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const loadMarkupRules = async () => {
     try {
@@ -445,7 +502,8 @@ export const FlightResultsScreen: React.FC = () => {
 
       // Calculate total passengers
       // Use search params to get passenger count since offer doesn't have passengers
-      const totalPassengers = searchParams.passengers?.length || 1;
+      const totalPassengers = searchParams?.passengers ? 
+        (searchParams.passengers.adults + searchParams.passengers.children + searchParams.passengers.infants) : 1;
 
       navigation.navigate('FlightCheckout', {
         flight: offer,

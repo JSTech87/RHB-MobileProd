@@ -187,46 +187,86 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
   const handleSearch = () => {
     // Validation
     if (!fromAirport || !toAirport) {
-      Alert.alert('Missing Information', 'Please select departure and destination airports');
+      Alert.alert('Missing Information', 'Please select departure and destination airports.');
       return;
     }
 
-    if (fromAirport.iata === toAirport.iata) {
-      Alert.alert('Invalid Route', 'Departure and destination cannot be the same');
+    if (!selectedDepartureDate) {
+      Alert.alert('Missing Information', 'Please select a departure date.');
       return;
     }
 
-    if (selectedDepartureDate < new Date()) {
-      Alert.alert('Invalid Date', 'Departure date cannot be in the past');
+    if (selectedTripType === 'roundTrip' && !selectedReturnDate) {
+      Alert.alert('Missing Information', 'Please select a return date for round trip.');
       return;
     }
 
-    if (selectedTripType === 'roundTrip' && selectedReturnDate <= selectedDepartureDate) {
-      Alert.alert('Invalid Dates', 'Return date must be after departure date');
-      return;
-    }
-
-    // Set loading state with animation
     setIsLoading(true);
-    Animated.timing(fadeAnim, {
-      toValue: 0.7,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-
-    // Prepare search parameters
+    
+    // Create search parameters for Duffel API
     const searchParams = {
       from: fromAirport.iata,
       to: toAirport.iata,
       departureDate: selectedDepartureDate.toISOString().split('T')[0],
-      returnDate: selectedTripType === 'roundTrip' ? selectedReturnDate.toISOString().split('T')[0] : null,
-      passengers,
+      returnDate: selectedTripType === 'roundTrip' ? selectedReturnDate?.toISOString().split('T')[0] : undefined,
+      passengers: {
+        adults: passengers.adults,
+        children: passengers.children,
+        infants: passengers.infantsInSeat + passengers.infantsOnLap,
+      },
       cabinClass: seatClass,
       tripType: selectedTripType,
     };
 
-    // Simulate API call
-    setTimeout(() => {
+    console.log('🔍 Searching flights with params:', searchParams);
+    
+    // Perform actual flight search
+    performFlightSearch(searchParams);
+  };
+
+  const performFlightSearch = async (searchParams: any) => {
+    try {
+      // Import DuffelApiService dynamically to avoid circular dependencies
+      const { default: DuffelApiService } = await import('../services/duffelApi');
+      
+      console.log('📡 Calling Duffel API...');
+      
+      // Create Duffel API request format
+      const duffelRequest = {
+        slices: [
+          {
+            origin: searchParams.from,
+            destination: searchParams.to,
+            departure_date: searchParams.departureDate,
+          }
+        ],
+        passengers: [
+          // Add adults
+          ...Array(searchParams.passengers.adults).fill({ type: 'adult' }),
+          // Add children
+          ...Array(searchParams.passengers.children).fill({ type: 'child' }),
+          // Add infants
+          ...Array(searchParams.passengers.infants).fill({ type: 'infant_without_seat' }),
+        ],
+        cabin_class: searchParams.cabinClass.toLowerCase().replace(' ', '_'),
+      };
+      
+      // Add return slice for round trip
+      if (searchParams.tripType === 'roundTrip' && searchParams.returnDate) {
+        duffelRequest.slices.push({
+          origin: searchParams.to,
+          destination: searchParams.from,
+          departure_date: searchParams.returnDate,
+        });
+      }
+      
+      console.log('🚀 Duffel API Request:', JSON.stringify(duffelRequest, null, 2));
+      
+      // Search for offers
+      const response = await DuffelApiService.searchOffers(duffelRequest);
+      
+      console.log('✅ Flight search successful:', response.data?.length || 0, 'offers found');
+      
       setIsLoading(false);
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -235,8 +275,36 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       }).start();
 
       // Navigate to results with search parameters
-      navigation?.navigate('FlightResults', { searchParams });
-    }, 2000);
+      navigation?.navigate('FlightResults', { 
+        searchParams, 
+        offers: response.data || [] 
+      });
+      
+    } catch (error) {
+      console.error('❌ Flight search failed:', error);
+      setIsLoading(false);
+      
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      
+      Alert.alert(
+        'Search Error', 
+        'Unable to search for flights. Please try again or check your internet connection.',
+        [
+          {
+            text: 'Retry',
+            onPress: () => handleSearch(),
+          },
+          {
+            text: 'Cancel',
+            style: 'cancel',
+          },
+        ]
+      );
+    }
   };
 
   const handleHotelInquiry = () => {
