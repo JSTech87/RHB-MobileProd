@@ -249,10 +249,40 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
       
       console.log('🚀 Supabase Edge Function Request:', JSON.stringify(flightSearchRequest, null, 2));
       
-      // Search for offers via Supabase Edge Functions
-      const response = await BackendApiService.searchFlights(flightSearchRequest as any);
+      // Search for offers via Supabase Edge Functions (log only)
+      try {
+        await BackendApiService.searchFlights(flightSearchRequest as any);
+      } catch (e) {
+        console.warn('Supabase logging failed (continuing with direct Duffel search):', (e as any)?.message || e);
+      }
       
-      console.log('✅ Flight search successful:', response.offers?.length || 0, 'offers found');
+      // Fallback: Fetch offers directly from Duffel API to ensure we have results
+      const { default: DuffelApiService } = await import('../services/duffelApi');
+      const duffelOfferRequest = {
+        cabin_class: flightSearchRequest.cabin_class,
+        passengers: [
+          ...Array(searchParams.passengers.adults).fill({ type: 'adult' }),
+          ...Array(searchParams.passengers.children).fill({ type: 'child' }),
+          ...Array(searchParams.passengers.infants).fill({ type: 'infant_without_seat' }),
+        ],
+        slices: [
+          {
+            origin: searchParams.from,
+            destination: searchParams.to,
+            departure_date: searchParams.departureDate,
+          },
+          ...(searchParams.tripType === 'roundTrip' && searchParams.returnDate ? [{
+            origin: searchParams.to,
+            destination: searchParams.from,
+            departure_date: searchParams.returnDate,
+          }] : [])
+        ],
+        return_offers: true,
+      } as any;
+      
+      const duffelResponse = await DuffelApiService.searchOffers(duffelOfferRequest);
+      
+      console.log('✅ Direct Duffel search offers:', duffelResponse.data?.length || 0);
       
       setIsLoading(false);
       Animated.timing(fadeAnim, {
@@ -260,11 +290,10 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
         duration: 300,
         useNativeDriver: true,
       }).start();
-
-      // Navigate to results with search parameters
-      navigation?.navigate('FlightResults', { 
-        searchParams, 
-        offers: response.offers || [] 
+      
+      navigation?.navigate('FlightResults', {
+        searchParams,
+        offers: duffelResponse.data || [],
       });
       
     } catch (error) {
