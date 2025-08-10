@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import topAirports from '../assets/data/top_airports.json';
 
+// Session cache for performance (cleared on app restart)
+const sessionCache = new Map<string, AirportOption[]>();
+
 export type AirportOption = {
   iata: string;
   name: string;
@@ -13,28 +16,20 @@ export type AirportOption = {
   type: 'airport' | 'city';
 };
 
-// Cache for all airports to avoid repeated API calls
-let allAirportsCache: AirportOption[] | null = null;
-let cacheTimestamp: number | null = null;
+// Cache management
+let allAirportsCache: AirportOption[] = [];
+let cacheTimestamp: number = 0;
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
-// Cache for API results during session
-const sessionCache = new Map<string, AirportOption[]>();
-let abortController: AbortController | null = null;
-
-// Storage keys
+// Keys for AsyncStorage
 const RECENT_SEARCHES_KEY = 'recent_airport_searches';
 const CACHED_AIRPORTS_KEY = 'cached_all_airports';
 
-// Duffel API configuration
-const DUFFEL_API_BASE = 'https://api.duffel.com';
-const DUFFEL_API_TOKEN = process.env.EXPO_PUBLIC_DUFFEL_API_TOKEN;
-
 /**
- * Calculate distance between two points using Haversine formula
+ * Calculate distance between two coordinates (Haversine formula)
  */
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371; // Earth's radius in kilometers
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = 
@@ -46,20 +41,21 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 /**
- * Normalize text for searching (remove diacritics, lowercase)
+ * Normalize text for consistent searching
  */
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, ''); // Remove diacritics
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**
- * Search local airports by query
+ * Search local airport data (fast, fallback)
  */
 function searchLocalAirports(query: string): AirportOption[] {
-  if (!query || query.length < 2) return [];
+  if (query.length < 2) return [];
   
   const normalizedQuery = normalizeText(query);
   
@@ -68,125 +64,45 @@ function searchLocalAirports(query: string): AirportOption[] {
       airport.city,
       airport.name,
       airport.iata,
-      airport.region,
-      airport.country
-    ].join(' ').toLowerCase();
+      airport.country,
+      airport.region
+    ].filter(Boolean).join(' ');
     
-    const normalizedSearchable = normalizeText(searchableText);
-    return normalizedSearchable.includes(normalizedQuery);
+    return normalizeText(searchableText).includes(normalizedQuery);
   }).slice(0, 10);
 }
 
 /**
- * Fetch ALL airports from Duffel API with proper pagination
- * Gets all 9,027 airports available in Duffel's database
+ * Fetch all airports from Duffel (heavy operation, cached)
  */
 async function fetchAllDuffelAirports(): Promise<AirportOption[]> {
-  // Check memory cache first
-  if (allAirportsCache && cacheTimestamp && (Date.now() - cacheTimestamp < CACHE_DURATION)) {
-    console.log('✅ Using cached airports from memory');
+  // Check if we have fresh cache
+  if (allAirportsCache.length > 0 && (Date.now() - cacheTimestamp) < CACHE_DURATION) {
+    console.log(`✅ Using cached airports (${allAirportsCache.length} airports)`);
     return allAirportsCache;
   }
 
-  // Check AsyncStorage cache
+  // Try to load from AsyncStorage
   try {
-    const cachedData = await AsyncStorage.getItem(CACHED_AIRPORTS_KEY);
-    if (cachedData) {
-      const parsed = JSON.parse(cachedData);
-      if (parsed.timestamp && (Date.now() - parsed.timestamp < CACHE_DURATION)) {
-        console.log('✅ Using cached airports from storage');
-        allAirportsCache = parsed.airports;
-        cacheTimestamp = parsed.timestamp;
-        return allAirportsCache!;
+    const cached = await AsyncStorage.getItem(CACHED_AIRPORTS_KEY);
+    if (cached) {
+      const data = JSON.parse(cached);
+      if (data.airports && (Date.now() - data.timestamp) < CACHE_DURATION) {
+        allAirportsCache = data.airports;
+        cacheTimestamp = data.timestamp;
+        console.log(`✅ Loaded cached airports from storage (${allAirportsCache.length} airports)`);
+        return allAirportsCache;
       }
     }
   } catch (error) {
-    console.warn('Failed to load cached airports:', error);
+    console.warn('Failed to load cached airports from storage:', error);
   }
 
-  console.log('🌍 Fetching ALL airports from Duffel API...');
+  console.log('🌍 Backend proxy handles airport data - using local airports as fallback');
   
-  if (!DUFFEL_API_TOKEN) {
-    console.warn('Duffel API token not configured');
-    return [];
-  }
-
-  const allAirports: AirportOption[] = [];
-  let after: string | null = null;
-  let pageCount = 0;
-
-  try {
-    do {
-      pageCount++;
-      console.log(`📄 Fetching page ${pageCount}...`);
-      
-      const params = new URLSearchParams({ limit: '200' }); // Duffel's max per request
-      if (after) {
-        params.set('after', after);
-      }
-      
-      const url = `${DUFFEL_API_BASE}/air/airports?${params}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Duffel-Version': 'v2'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Duffel API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      const pageAirports = data.data.map((airport: any): AirportOption => ({
-        iata: airport.iata_code,
-        name: airport.name,
-        city: airport.city_name || airport.name,
-        region: undefined, // Duffel API doesn't provide region field
-        country: airport.iata_country_code || 'Unknown',
-        lat: airport.latitude,
-        lon: airport.longitude,
-        source: 'api' as const,
-        type: 'airport'
-      }));
-
-      allAirports.push(...pageAirports);
-      after = data.meta?.after;
-      
-      // Show progress every 10 pages
-      if (pageCount % 10 === 0) {
-        console.log(`  📊 Progress: ${allAirports.length} airports fetched`);
-      }
-      
-    } while (after);
-    
-    console.log(`✅ Fetched ALL ${allAirports.length} airports from Duffel API`);
-    
-    // Cache results in memory and storage
-    allAirportsCache = allAirports;
-    cacheTimestamp = Date.now();
-    
-    // Save to AsyncStorage for persistence
-    try {
-      await AsyncStorage.setItem(CACHED_AIRPORTS_KEY, JSON.stringify({
-        airports: allAirports,
-        timestamp: cacheTimestamp
-      }));
-      console.log('💾 Cached airports to storage');
-    } catch (error) {
-      console.warn('Failed to cache airports to storage:', error);
-    }
-    
-    return allAirports;
-
-  } catch (error) {
-    console.error('Failed to fetch all airports:', error);
-    return [];
-  }
+  // Since we now use backend proxy, we return local airports as fallback
+  // The backend should handle caching and fetching from Duffel
+  return topAirports as AirportOption[];
 }
 
 /**
@@ -238,65 +154,35 @@ async function searchDuffelAirports(query: string): Promise<AirportOption[]> {
 }
 
 /**
- * Search specific airports via Duffel API (for when cache not available)
+ * Search airports via backend API instead of Duffel directly
  */
 async function searchDuffelAirportsDirect(query: string): Promise<AirportOption[]> {
-  if (!DUFFEL_API_TOKEN) {
-    console.warn('Duffel API token not configured');
-    return [];
-  }
-
   try {
-    // Try searching by IATA code first
-    let url = `${DUFFEL_API_BASE}/air/airports?filter[iata_code]=${query.toUpperCase()}&limit=10`;
+    console.log(`🔍 Searching airports via backend: "${query}"`);
     
-    let response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Duffel-Version': 'v2'
-      }
-    });
-
-    let data = await response.json();
+    // Use the backend-proxied DuffelApiService instead of direct API calls
+    const DuffelApiService = (await import('./duffelApi')).default;
+    const response = await DuffelApiService.searchAirports(query);
     
-    // If no results by IATA code, try by city name
-    if (!data.data || data.data.length === 0) {
-      url = `${DUFFEL_API_BASE}/air/airports?filter[city_name]=${encodeURIComponent(query)}&limit=10`;
-      
-      response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${DUFFEL_API_TOKEN}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Duffel-Version': 'v2'
-        }
-      });
-
-      data = await response.json();
+    if (!response?.data || !Array.isArray(response.data)) {
+      console.warn('Invalid airport search response from backend');
+      return [];
     }
 
-    if (!response.ok) {
-      throw new Error(`Duffel API error: ${response.status}`);
-    }
-
-    const airports = data.data.map((airport: any): AirportOption => ({
-      iata: airport.iata_code,
-      name: airport.name,
-      city: airport.city_name || airport.name,
-      country: airport.iata_country_code || 'Unknown',
-      lat: airport.latitude,
-      lon: airport.longitude,
+    // Transform backend response to our format
+    const airports: AirportOption[] = response.data.map((airport: any) => ({
+      iata: airport.iata_code || '',
+      name: airport.name || '',
+      city: airport.city_name || airport.city || '',
+      country: airport.iata_country_code || airport.country || '',
       source: 'api' as const,
-      type: 'airport'
-    }));
+      type: 'airport' as const,
+    })).filter(airport => airport.iata && airport.name);
 
-    console.log(`🔍 Direct search found ${airports.length} airports for "${query}"`);
+    console.log(`✅ Backend airport search found ${airports.length} results for "${query}"`);
     return airports;
-
   } catch (error) {
-    console.error('Direct Duffel search error:', error);
+    console.error('Backend airport search failed:', error);
     return [];
   }
 }

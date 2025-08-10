@@ -1,19 +1,12 @@
-// Lightweight Duffel API wrapper for React Native (fetch-based)
+// Backend-proxied Duffel API wrapper for React Native
 import { Alert } from 'react-native';
+import { supabase } from '../lib/supabase';
 
-// Duffel API Configuration (mobile should ONLY use test tokens; for prod use a backend proxy)
-const DUFFEL_API_BASE = 'https://api.duffel.com';
-const DUFFEL_API_TOKEN = process.env.EXPO_PUBLIC_DUFFEL_API_TOKEN || '';
+// Backend API Configuration 
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.rawhahbooking.com';
+const API_VERSION = 'v1';
 
-// API Headers (v2 per migration guide)
-const getHeaders = () => ({
-  Accept: 'application/json',
-  'Content-Type': 'application/json',
-  Authorization: `Bearer ${DUFFEL_API_TOKEN}`,
-  'Duffel-Version': 'v2',
-});
-
-// Types (subset)
+// Types (matching Duffel API)
 export interface DuffelAirport {
   iata_code: string;
   name: string;
@@ -176,22 +169,50 @@ function transformAppParamsToDuffel(appParams: AppSearchParams): DuffelOfferRequ
     passengers: transformPassengers(appParams.passengers),
     slices,
     return_offers: true,
-    max_connections: 2, // Allow up to 2 connections
-    supplier_timeout: 20000, // 20 second timeout
+    max_connections: 2,
+    supplier_timeout: 20000,
   };
 }
 
-// API Request wrapper
-async function apiRequest<T>(
+// Get authentication headers
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
+    return headers;
+  } catch (error) {
+    console.warn('Could not get auth session, proceeding without auth:', error);
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+  }
+}
+
+// Backend API Request wrapper
+async function backendApiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   try {
-    const url = `${DUFFEL_API_BASE}${endpoint}`;
+    const headers = await getAuthHeaders();
+    const url = `${API_BASE_URL}/api/${API_VERSION}${endpoint}`;
+    
+    console.log(`🌐 Backend API Request: ${options.method || 'GET'} ${url}`);
+
     const response = await fetch(url, {
       ...options,
       headers: {
-        ...getHeaders(),
+        ...headers,
         ...(options.headers || {}),
       },
     });
@@ -199,15 +220,16 @@ async function apiRequest<T>(
     const isJson = response.headers.get('content-type')?.includes('application/json');
     const data = (isJson ? await response.json() : await response.text()) as any;
 
-    if (!response.ok || (data && data.errors)) {
-      const errorMessage = data?.errors?.[0]?.message || 'API request failed';
-      const errorCode = data?.errors?.[0]?.code;
+    if (!response.ok || (data && data.error)) {
+      const errorMessage = data?.error?.message || data?.message || 'Backend API request failed';
+      const errorCode = data?.error?.code || data?.code;
       
-      console.error('Duffel API Error:', {
+      console.error('Backend API Error:', {
         status: response.status,
         message: errorMessage,
         code: errorCode,
-        errors: data?.errors
+        url: url,
+        response: data
       });
       
       const err = new DuffelApiError(
@@ -218,51 +240,51 @@ async function apiRequest<T>(
       throw err;
     }
 
+    console.log(`✅ Backend API Success: ${endpoint}`);
     return data as T;
   } catch (error) {
     if (error instanceof DuffelApiError) throw error;
     console.error('Network/Parse Error:', error);
-    throw new DuffelApiError('Network error occurred');
+    throw new DuffelApiError('Network error occurred. Please check your connection.');
   }
 }
 
-// Duffel API Service
+// Backend-Proxied Duffel API Service
 const DuffelApiService = {
-  // Offer requests (creates and returns offers immediately when return_offers=true)
+  // Flight search via backend
   async searchOffers(request: AppSearchParams | DuffelOfferRequest): Promise<{ data: DuffelOffer[] }> {
     try {
-      // Check if token is configured
-      if (!DUFFEL_API_TOKEN) {
-        throw new DuffelApiError('Duffel API token not configured', 401, 'missing_token');
-      }
-      
       // Transform app params to Duffel format if needed
-      let duffelRequest: DuffelOfferRequest;
+      let searchRequest: any;
       if ('from' in request) {
         // App format - transform it
-        duffelRequest = transformAppParamsToDuffel(request as AppSearchParams);
-        console.log('Transformed search params:', JSON.stringify(duffelRequest, null, 2));
+        searchRequest = transformAppParamsToDuffel(request as AppSearchParams);
+        console.log('Transformed search params:', JSON.stringify(searchRequest, null, 2));
       } else {
         // Already Duffel format
-        duffelRequest = request as DuffelOfferRequest;
+        searchRequest = request as DuffelOfferRequest;
       }
       
-      const res = await apiRequest<{ data: DuffelOffer[] }>(`/air/offer_requests`, {
+      const response = await backendApiRequest<{ data: DuffelOffer[] }>('/flights/search', {
         method: 'POST',
-        body: JSON.stringify({ data: duffelRequest }),
+        body: JSON.stringify(searchRequest),
       });
       
-      console.log(`Search successful: Found ${res.data?.length || 0} offers`);
-      return res;
+      console.log(`✈️ Flight search successful: Found ${response.data?.length || 0} offers`);
+      return response;
     } catch (error) {
-      console.error('Error searching offers:', error);
+      console.error('Error searching flights via backend:', error);
       
       if (error instanceof DuffelApiError) {
         // Show specific error messages to user
         if (error.code === 'invalid_date') {
           Alert.alert('Invalid Date', error.message);
-        } else if (error.code === 'missing_token') {
-          Alert.alert('Configuration Error', 'Flight search is not properly configured. Please contact support.');
+        } else if (error.status === 401) {
+          Alert.alert('Authentication Error', 'Please log in to search flights.');
+        } else if (error.status === 403) {
+          Alert.alert('Access Denied', 'You do not have permission to search flights.');
+        } else if (error.status && error.status >= 500) {
+          Alert.alert('Service Error', 'Our flight search service is temporarily unavailable. Please try again later.');
         } else {
           Alert.alert('Search Error', error.message);
         }
@@ -274,31 +296,34 @@ const DuffelApiService = {
     }
   },
 
+  // Get specific offer via backend
   async getOffer(offerId: string): Promise<{ data: DuffelOffer }> {
-    return apiRequest<{ data: DuffelOffer }>(`/air/offers/${offerId}`);
+    return backendApiRequest<{ data: DuffelOffer }>(`/flights/offers/${offerId}`);
   },
 
+  // Create booking via backend
   async createOrder(payload: any): Promise<{ data: DuffelOrder }> {
-    // Note (v2): passengers.type is removed for Create Order (IDs from offers are used)
-    return apiRequest<{ data: DuffelOrder }>(`/air/orders`, {
+    return backendApiRequest<{ data: DuffelOrder }>('/flights/book', {
       method: 'POST',
-      body: JSON.stringify({ data: payload }),
+      body: JSON.stringify(payload),
     });
   },
 
+  // Get booking details via backend
   async getOrder(orderId: string): Promise<{ data: DuffelOrder }> {
-    return apiRequest<{ data: DuffelOrder }>(`/air/orders/${orderId}`);
+    return backendApiRequest<{ data: DuffelOrder }>(`/flights/bookings/${orderId}`);
   },
 
+  // Search airports via backend
   async searchAirports(query: string): Promise<{ data: DuffelAirport[] }> {
-    const params = new URLSearchParams({ 'filter[name]': query, limit: '10' });
-    return apiRequest<{ data: DuffelAirport[] }>(`/air/airports?${params}`);
+    const params = new URLSearchParams({ q: query, limit: '10' });
+    return backendApiRequest<{ data: DuffelAirport[] }>(`/utils/airports?${params}`);
   },
 
-  // Simple connectivity test
+  // Health check for backend connectivity
   async ping(): Promise<boolean> {
     try {
-      await apiRequest(`/air/airports?limit=1`);
+      await backendApiRequest('/utils/airports?limit=1');
       return true;
     } catch (_) {
       return false;
@@ -312,7 +337,7 @@ const DuffelApiService = {
     
     const testParams: AppSearchParams = {
       from: 'JFK',
-      to: 'LAX',
+      to: 'LAX', 
       departureDate: tomorrow.toISOString().split('T')[0],
       passengers: {
         adults: 1,
