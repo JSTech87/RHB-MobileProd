@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialIcons, Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useNavigation } from '@react-navigation/native';
 
 // Interfaces
 interface FlightDetails {
@@ -109,7 +110,7 @@ interface PaymentInfo {
 }
 
 export const FlightCheckoutScreen: React.FC<{ 
-  onBack?: () => void;
+  onBack?: () => void; // Make this optional again
   flightDetails?: FlightDetails;
   familyMembers?: FamilyMember[];
   userProfile?: {
@@ -133,6 +134,16 @@ export const FlightCheckoutScreen: React.FC<{
   userProfile,
   preSelectedFamilyMembers = []
 }) => {
+  
+  // Navigation hook for React Navigation
+  const navigation = useNavigation();
+  
+  // Debug props
+  console.log('FlightCheckoutScreen initialized:', { 
+    familyMembersCount: familyMembers?.length || 0,
+    userProfileExists: !!userProfile,
+    preSelectedCount: preSelectedFamilyMembers.length
+  });
   
   // Mock family members if none provided (for testing)
   const mockFamilyMembers: FamilyMember[] = familyMembers.length > 0 ? familyMembers : [
@@ -1542,11 +1553,15 @@ export const FlightCheckoutScreen: React.FC<{
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => {
-          console.log('Back button pressed, onBack function:', onBack);
+          console.log('Back button pressed - onBack available:', !!onBack);
           if (onBack) {
+            // Called from ProfileScreen - use the provided onBack function
+            console.log('Using provided onBack function');
             onBack();
           } else {
-            Alert.alert('Navigation', 'Back function not available');
+            // Called from React Navigation - use navigation.goBack()
+            console.log('Using navigation.goBack()');
+            navigation.goBack();
           }
         }}>
           <Ionicons name="arrow-back" size={24} color="#111827" />
