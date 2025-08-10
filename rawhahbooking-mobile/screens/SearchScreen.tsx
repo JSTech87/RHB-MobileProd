@@ -58,6 +58,14 @@ interface PopularDestination {
   image: string;
 }
 
+interface IslamicDate {
+  name: string;
+  hijriDate: string;
+  gregorianDate: Date;
+  description?: string;
+  isPast: boolean;
+}
+
 export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
   const [selectedService, setSelectedService] = useState<'hotel' | 'flight'>('flight');
   const [selectedTripType, setSelectedTripType] = useState<'oneWay' | 'roundTrip' | 'multiCity'>('roundTrip');
@@ -102,6 +110,66 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
     { id: '3', city: 'Tokyo', country: 'Japan', code: 'NRT', price: 'from $1,199', image: '🗾' },
     { id: '4', city: 'Paris', country: 'France', code: 'CDG', price: 'from $1,099', image: '🗼' },
   ]);
+
+  // Islamic Calendar Dates for 2026
+  const islamicDates2026: IslamicDate[] = [
+    {
+      name: 'Islamic New Year',
+      hijriDate: '1 Muharram 1448',
+      gregorianDate: new Date(2026, 5, 25), // June 25, 2026
+      description: 'Start of the Islamic year',
+      isPast: false,
+    },
+    {
+      name: 'Ashura',
+      hijriDate: '10 Muharram 1448',
+      gregorianDate: new Date(2026, 6, 4), // July 4, 2026
+      description: 'Day of remembrance',
+      isPast: false,
+    },
+    {
+      name: 'Ramadan Begins',
+      hijriDate: '1 Ramadan 1448',
+      gregorianDate: new Date(2026, 1, 18), // February 18, 2026
+      description: 'Holy month of fasting',
+      isPast: new Date() > new Date(2026, 1, 18),
+    },
+    {
+      name: 'Laylat al-Qadr',
+      hijriDate: '27 Ramadan 1448',
+      gregorianDate: new Date(2026, 2, 16), // March 16, 2026
+      description: 'Night of Power',
+      isPast: new Date() > new Date(2026, 2, 16),
+    },
+    {
+      name: 'Eid al-Fitr',
+      hijriDate: '1 Shawwal 1448',
+      gregorianDate: new Date(2026, 2, 20), // March 20, 2026
+      description: 'Festival of Breaking the Fast',
+      isPast: new Date() > new Date(2026, 2, 20),
+    },
+    {
+      name: 'Hajj Season',
+      hijriDate: '8-13 Dhu al-Hijjah 1448',
+      gregorianDate: new Date(2026, 8, 14), // September 14, 2026
+      description: 'Pilgrimage to Mecca',
+      isPast: false,
+    },
+    {
+      name: 'Day of Arafah',
+      hijriDate: '9 Dhu al-Hijjah 1448',
+      gregorianDate: new Date(2026, 8, 15), // September 15, 2026
+      description: 'Most important day of Hajj',
+      isPast: false,
+    },
+    {
+      name: 'Eid al-Adha',
+      hijriDate: '10 Dhu al-Hijjah 1448',
+      gregorianDate: new Date(2026, 8, 16), // September 16, 2026
+      description: 'Festival of Sacrifice',
+      isPast: false,
+    },
+  ];
 
   // Animation values
   const [fadeAnim] = useState(new Animated.Value(1));
@@ -732,6 +800,75 @@ export const SearchScreen: React.FC<{ navigation?: any }> = ({ navigation }) => 
             </>
           ) : (
             renderHotelForm()
+          )}
+
+          {/* Islamic Calendar Section - Only show for flights */}
+          {selectedService === 'flight' && (
+            <View style={styles.islamicCalendarSection}>
+              <View style={styles.calendarHeader}>
+                <Ionicons name="calendar" size={20} color="#A83442" />
+                <Text style={styles.calendarTitle}>Notable Islamic Dates 2026</Text>
+              </View>
+              
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.calendarScrollContent}
+              >
+                {islamicDates2026.map((date, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[
+                      styles.calendarCard,
+                      date.isPast && styles.calendarCardPast
+                    ]}
+                    onPress={() => {
+                      if (!date.isPast) {
+                        // Set the date for quick booking
+                        setSelectedDepartureDate(date.gregorianDate);
+                        Alert.alert('Date Selected', `Departure date set to ${date.gregorianDate.toLocaleDateString()}`);
+                      }
+                    }}
+                  >
+                    <View style={styles.calendarCardHeader}>
+                      <Text style={[
+                        styles.calendarEventName,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.name}
+                      </Text>
+                      {date.isPast && (
+                        <Ionicons name="checkmark-circle" size={16} color="#9CA3AF" />
+                      )}
+                    </View>
+                    <Text style={[
+                      styles.calendarHijriDate,
+                      date.isPast && styles.calendarTextPast
+                    ]}>
+                      {date.hijriDate}
+                    </Text>
+                    <Text style={[
+                      styles.calendarGregorianDate,
+                      date.isPast && styles.calendarTextPast
+                    ]}>
+                      {date.gregorianDate.toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric'
+                      })}
+                    </Text>
+                    {date.description && (
+                      <Text style={[
+                        styles.calendarDescription,
+                        date.isPast && styles.calendarTextPast
+                      ]}>
+                        {date.description}
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           )}
         </ScrollView>
       </Animated.View>
@@ -2111,5 +2248,77 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  islamicCalendarSection: {
+    marginTop: 20,
+    marginHorizontal: 20,
+    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#A83442',
+  },
+  calendarScrollContent: {
+    paddingHorizontal: 8,
+    gap: 12,
+  },
+  calendarCard: {
+    width: 180,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  calendarCardPast: {
+    opacity: 0.5,
+  },
+  calendarCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  calendarEventName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  calendarTextPast: {
+    color: '#9CA3AF',
+  },
+  calendarHijriDate: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  calendarGregorianDate: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  calendarDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
   },
 }); 

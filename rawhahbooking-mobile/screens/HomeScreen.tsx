@@ -149,31 +149,39 @@ export const HomeScreen: React.FC<{ navigation?: any }> = ({ navigation }) => {
       >
         {/* Header Pill Container */}
         <View style={styles.headerPill}>
+          {/* Logo Section */}
           <View style={styles.logoSection}>
             <Image
               source={require('../assets/Transparent Logo.png')}
               style={styles.logo}
               resizeMode="contain"
             />
-            <View style={styles.userSection}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {user?.name || user?.id || 'Traveler'}
-                </Text>
-              </View>
-            </View>
           </View>
-          <TouchableOpacity style={styles.notificationButton}>
-            <Ionicons name="notifications-outline" size={20} color="#64748B" />
-            <View style={styles.notificationBadge}>
-              <Text style={styles.notificationBadgeText}>3</Text>
-            </View>
-          </TouchableOpacity>
+          
+          {/* User Section */}
+          <View style={styles.userSection}>
+            <TouchableOpacity style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user?.name?.charAt(0).toUpperCase() || user?.id?.charAt(0).toUpperCase() || 'U'}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={20} color="#64748B" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>3</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Personalized Greeting Card */}
+        <View style={styles.greetingCard}>
+          <Text style={styles.greetingText}>
+            Hello, {user?.name || user?.id || 'Traveler'}
+          </Text>
+          <Text style={styles.greetingSubtext}>
+            Welcome to RawhahBooking
+          </Text>
         </View>
 
         {/* Date Information Card */}
@@ -331,16 +339,15 @@ const styles = StyleSheet.create({
   logoSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 15,
   },
   logo: {
-    width: 36,
-    height: 36,
-    marginRight: 12,
+    width: 48,
+    height: 48,
   },
   userSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   avatar: {
     width: 42,
@@ -404,6 +411,28 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: '600',
+  },
+  greetingCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  greetingText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  greetingSubtext: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
   },
   dateCard: {
     backgroundColor: '#FFFFFF',
