@@ -1,11 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-}
+import { corsHeaders } from "../_shared/cors.ts"
+import { DuffelClient, DuffelApiError, getAuthenticatedUser } from "../_shared/duffel-client.ts"
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -14,31 +9,45 @@ serve(async (req) => {
   }
 
   try {
+    // Initialize Duffel client
+    const duffelClient = new DuffelClient()
+
     // Handle GET requests (health checks)
     if (req.method === "GET") {
       return new Response(
         JSON.stringify({ 
           success: true, 
           message: "Flight search service is running",
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          version: "v1.0.0"
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       )
     }
 
-    // Handle POST requests (log search request)
+    // Handle POST requests (flight search)
     if (req.method === "POST") {
       const body = await req.json()
       
-      // Validate required fields
-      const requiredFields = ["origin", "destination", "departure_date", "user_id"]
+      // Get authenticated user (optional for search - not required)
+      const authUserId = await getAuthenticatedUser(req)
+      
+      // Validate required fields for basic search
+      const requiredFields = ["slices", "passengers"]
       const missingFields = requiredFields.filter(field => !body[field])
       
       if (missingFields.length > 0) {
         return new Response(
           JSON.stringify({
             success: false,
-            error: `Missing required fields: ${missingFields.join(", ")}`
+            error: `Missing required fields: ${missingFields.join(", ")}`,
+            required_format: {
+              slices: [{ origin: "JFK", destination: "LAX", departure_date: "2024-12-25" }],
+              passengers: [{ type: "adult" }],
+              cabin_class: "economy", // optional
+              max_connections: 1, // optional
+              return_offers: true // optional
+            }
           }),
           { 
             status: 400,
@@ -47,43 +56,124 @@ serve(async (req) => {
         )
       }
 
-      // Log the search request
-      console.log("Flight search request received:", {
-        origin: body.origin,
-        destination: body.destination,
-        departure_date: body.departure_date,
-        return_date: body.return_date,
+      // Validate slices format
+      if (!Array.isArray(body.slices) || body.slices.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "slices must be a non-empty array"
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        )
+      }
+
+      // Validate each slice
+      for (const slice of body.slices) {
+        if (!slice.origin || !slice.destination || !slice.departure_date) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: "Each slice must have origin, destination, and departure_date"
+            }),
+            { 
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            }
+          )
+        }
+      }
+
+      // Validate passengers format
+      if (!Array.isArray(body.passengers) || body.passengers.length === 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "passengers must be a non-empty array"
+          }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
+          }
+        )
+      }
+
+      console.log("Processing flight search request:", {
+        slices: body.slices,
         passengers: body.passengers,
         cabin_class: body.cabin_class,
-        trip_type: body.trip_type,
-        user_id: body.user_id,
+        user_id: authUserId || 'anonymous',
         timestamp: new Date().toISOString()
       })
 
-      // Generate a search ID
-      const searchId = crypto.randomUUID()
-      
-      // Return success response
-      // Note: In production, this would trigger an async job to fetch from Duffel
-      return new Response(
-        JSON.stringify({
-          success: true,
-          data: {
-            search_id: searchId,
-            status: "logged",
-            message: "Search request logged successfully",
-            expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString()
+      try {
+        // Search flights using Duffel API (works without authentication)
+        const searchResult = await duffelClient.searchFlights({
+          slices: body.slices,
+          passengers: body.passengers,
+          cabin_class: body.cabin_class || 'economy',
+          max_connections: body.max_connections || 1,
+          supplier_timeout: body.supplier_timeout || 20000,
+          return_offers: body.return_offers ?? true
+        }, authUserId || undefined)
+
+        console.log(`Flight search completed: ${searchResult.offers?.length || 0} offers found`)
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            data: searchResult,
+            metadata: {
+              search_timestamp: new Date().toISOString(),
+              offers_count: searchResult.offers?.length || 0,
+              search_duration_ms: searchResult.metadata?.search_duration_ms,
+              authenticated: !!authUserId
+            }
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        )
+
+      } catch (searchError) {
+        console.error("Flight search failed:", searchError)
+
+        if (searchError instanceof DuffelApiError) {
+          return new Response(
+            JSON.stringify({
+              success: false,
+              error: searchError.message,
+              code: searchError.code,
+              status: searchError.status,
+              details: searchError.errors
+            }),
+            { 
+              status: searchError.status || 500,
+              headers: { ...corsHeaders, "Content-Type": "application/json" }
+            }
+          )
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: "Flight search service temporarily unavailable",
+            message: "Please try again later"
+          }),
+          { 
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" }
           }
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      )
+        )
+      }
     }
 
     // Method not allowed
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Method not allowed"
+        error: "Method not allowed",
+        allowed_methods: ["GET", "POST", "OPTIONS"]
       }),
       { 
         status: 405,
@@ -97,7 +187,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: "Internal server error"
+        error: "Internal server error",
+        message: "An unexpected error occurred"
       }),
       { 
         status: 500,

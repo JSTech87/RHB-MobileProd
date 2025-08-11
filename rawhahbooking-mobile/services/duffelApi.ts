@@ -1,12 +1,11 @@
-// Backend-proxied Duffel API wrapper for React Native
+// Production-ready Duffel API service using Supabase Edge Functions
 import { Alert } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 // Backend API Configuration 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL || 'https://api.rawhahbooking.com';
-const API_VERSION = 'v1';
+const FUNCTIONS_URL = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1`;
 
-// Types (matching Duffel API)
+// Types (matching Duffel API and our backend)
 export interface DuffelAirport {
   iata_code: string;
   name: string;
@@ -23,6 +22,12 @@ export interface DuffelSliceRequest {
 export interface DuffelPassengerRequest {
   type: 'adult' | 'child' | 'infant_without_seat';
   age?: number;
+  given_name?: string;
+  family_name?: string;
+  loyalty_programme_accounts?: Array<{
+    airline_iata_code: string;
+    account_number: string;
+  }>;
 }
 
 export interface DuffelOffer {
@@ -74,11 +79,24 @@ export interface AppSearchParams {
   tripType: 'oneWay' | 'roundTrip' | 'multiCity';
 }
 
+export interface CustomerUser {
+  id: string;
+  duffel_id: string;
+  email: string;
+  given_name: string;
+  family_name: string;
+  phone_number?: string;
+  auth_user_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
 class DuffelApiError extends Error {
   constructor(
     message: string,
     public status?: number,
-    public code?: string
+    public code?: string,
+    public details?: any
   ) {
     super(message);
     this.name = 'DuffelApiError';
@@ -169,12 +187,12 @@ function transformAppParamsToDuffel(appParams: AppSearchParams): DuffelOfferRequ
     passengers: transformPassengers(appParams.passengers),
     slices,
     return_offers: true,
-    max_connections: 2,
-    supplier_timeout: 20000,
+    max_connections: 1, // Use Duffel best practice
+    supplier_timeout: 20000, // 20 second timeout
   };
 }
 
-// Get authentication headers
+// Get authentication headers for Supabase
 async function getAuthHeaders(): Promise<Record<string, string>> {
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -182,32 +200,40 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '', // Always include anon key
     };
 
     if (session?.access_token) {
       headers['Authorization'] = `Bearer ${session.access_token}`;
+      console.log('🔐 Using authenticated session for API calls');
+    } else {
+      // Use anon key when not authenticated
+      headers['Authorization'] = `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`;
+      console.log('📱 Making unauthenticated API call with anon key');
     }
 
     return headers;
   } catch (error) {
-    console.warn('Could not get auth session, proceeding without auth:', error);
+    console.warn('Could not get auth session:', error);
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '',
+      'Authorization': `Bearer ${process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY}`,
     };
   }
 }
 
-// Backend API Request wrapper
-async function backendApiRequest<T>(
-  endpoint: string,
+// Supabase Edge Function request wrapper
+async function callEdgeFunction<T>(
+  functionName: string,
   options: RequestInit = {}
 ): Promise<T> {
   try {
     const headers = await getAuthHeaders();
-    const url = `${API_BASE_URL}/api/${API_VERSION}${endpoint}`;
+    const url = `${FUNCTIONS_URL}/${functionName}`;
     
-    console.log(`🌐 Backend API Request: ${options.method || 'GET'} ${url}`);
+    console.log(`🌐 Calling Edge Function: ${functionName}`);
 
     const response = await fetch(url, {
       ...options,
@@ -220,28 +246,29 @@ async function backendApiRequest<T>(
     const isJson = response.headers.get('content-type')?.includes('application/json');
     const data = (isJson ? await response.json() : await response.text()) as any;
 
-    if (!response.ok || (data && data.error)) {
-      const errorMessage = data?.error?.message || data?.message || 'Backend API request failed';
-      const errorCode = data?.error?.code || data?.code;
+    if (!response.ok || !data.success) {
+      const errorMessage = data?.error || 'Backend request failed';
+      const errorCode = data?.code;
+      const details = data?.details;
       
-      console.error('Backend API Error:', {
+      console.error('Edge Function Error:', {
+        function: functionName,
         status: response.status,
         message: errorMessage,
         code: errorCode,
-        url: url,
-        response: data
+        details
       });
       
-      const err = new DuffelApiError(
+      throw new DuffelApiError(
         errorMessage,
         response.status,
-        errorCode
+        errorCode,
+        details
       );
-      throw err;
     }
 
-    console.log(`✅ Backend API Success: ${endpoint}`);
-    return data as T;
+    console.log(`✅ Edge Function Success: ${functionName}`);
+    return data.data as T;
   } catch (error) {
     if (error instanceof DuffelApiError) throw error;
     console.error('Network/Parse Error:', error);
@@ -249,29 +276,29 @@ async function backendApiRequest<T>(
   }
 }
 
-// Backend-Proxied Duffel API Service
+// Production-Ready Duffel API Service
 const DuffelApiService = {
-  // Flight search via backend
+  // Flight search via Edge Function
   async searchOffers(request: AppSearchParams | DuffelOfferRequest): Promise<{ data: DuffelOffer[] }> {
     try {
       // Transform app params to Duffel format if needed
-      let searchRequest: any;
+      let searchRequest: DuffelOfferRequest;
       if ('from' in request) {
         // App format - transform it
         searchRequest = transformAppParamsToDuffel(request as AppSearchParams);
-        console.log('Transformed search params:', JSON.stringify(searchRequest, null, 2));
+        console.log('Transformed search params for backend:', JSON.stringify(searchRequest, null, 2));
       } else {
         // Already Duffel format
         searchRequest = request as DuffelOfferRequest;
       }
       
-      const response = await backendApiRequest<{ data: DuffelOffer[] }>('/flights/search', {
+      const response = await callEdgeFunction<any>('flight-search', {
         method: 'POST',
         body: JSON.stringify(searchRequest),
       });
       
-      console.log(`✈️ Flight search successful: Found ${response.data?.length || 0} offers`);
-      return response;
+      console.log(`✈️ Flight search successful: Found ${response.offers?.length || 0} offers`);
+      return { data: response.offers || [] };
     } catch (error) {
       console.error('Error searching flights via backend:', error);
       
@@ -280,9 +307,10 @@ const DuffelApiService = {
         if (error.code === 'invalid_date') {
           Alert.alert('Invalid Date', error.message);
         } else if (error.status === 401) {
-          Alert.alert('Authentication Error', 'Please log in to search flights.');
+          // Skip authentication errors - guest users are allowed
+          console.log('Guest user proceeding without authentication');
         } else if (error.status === 403) {
-          Alert.alert('Access Denied', 'You do not have permission to search flights.');
+          Alert.alert('Access Denied', 'Unable to access this service. Please try again later.');
         } else if (error.status && error.status >= 500) {
           Alert.alert('Service Error', 'Our flight search service is temporarily unavailable. Please try again later.');
         } else {
@@ -296,48 +324,109 @@ const DuffelApiService = {
     }
   },
 
-  // Get specific offer via backend
+  // Get specific offer via Edge Function
   async getOffer(offerId: string): Promise<{ data: DuffelOffer }> {
-    return backendApiRequest<{ data: DuffelOffer }>(`/flights/offers/${offerId}`);
+    try {
+      const response = await callEdgeFunction<DuffelOffer>(`flight-search/${offerId}`, {
+        method: 'GET'
+      });
+      return { data: response };
+    } catch (error) {
+      console.error('Error getting offer:', error);
+      throw error;
+    }
   },
 
-  // Create booking via backend
+  // Create booking via Edge Function (will be implemented in Phase 3)
   async createOrder(payload: any): Promise<{ data: DuffelOrder }> {
-    return backendApiRequest<{ data: DuffelOrder }>('/flights/book', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    try {
+      const response = await callEdgeFunction<DuffelOrder>('order-management', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      return { data: response };
+    } catch (error) {
+      console.error('Error creating order:', error);
+      throw error;
+    }
   },
 
-  // Get booking details via backend
+  // Get booking details via Edge Function
   async getOrder(orderId: string): Promise<{ data: DuffelOrder }> {
-    return backendApiRequest<{ data: DuffelOrder }>(`/flights/bookings/${orderId}`);
+    try {
+      const response = await callEdgeFunction<DuffelOrder>(`order-management/${orderId}`, {
+        method: 'GET'
+      });
+      return { data: response };
+    } catch (error) {
+      console.error('Error getting order:', error);
+      throw error;
+    }
   },
 
-  // Search airports via backend
+  // Search airports via Edge Function
   async searchAirports(query: string): Promise<{ data: DuffelAirport[] }> {
-    const params = new URLSearchParams({ q: query, limit: '10' });
-    return backendApiRequest<{ data: DuffelAirport[] }>(`/utils/airports?${params}`);
+    try {
+      const params = new URLSearchParams({ q: query, limit: '10' });
+      const response = await callEdgeFunction<DuffelAirport[]>(`airports?${params}`, {
+        method: 'GET'
+      });
+      return { data: response };
+    } catch (error) {
+      console.error('Error searching airports:', error);
+      throw error;
+    }
+  },
+
+  // Customer management
+  async createCustomerUser(userData: {
+    email: string;
+    given_name: string;
+    family_name: string;
+    phone_number?: string;
+  }): Promise<CustomerUser> {
+    try {
+      const response = await callEdgeFunction<CustomerUser>('customer-management', {
+        method: 'POST',
+        body: JSON.stringify(userData),
+      });
+      return response;
+    } catch (error) {
+      console.error('Error creating customer user:', error);
+      throw error;
+    }
+  },
+
+  async getCustomerUser(): Promise<CustomerUser | null> {
+    try {
+      const response = await callEdgeFunction<CustomerUser | null>('customer-management', {
+        method: 'GET'
+      });
+      return response;
+    } catch (error) {
+      console.error('Error getting customer user:', error);
+      return null;
+    }
   },
 
   // Health check for backend connectivity
   async ping(): Promise<boolean> {
     try {
-      await backendApiRequest('/utils/airports?limit=1');
+      await callEdgeFunction('flight-search', { method: 'GET' });
       return true;
     } catch (_) {
       return false;
     }
   },
   
-  // Test flight search with better date
+  // Test flight search with valid future date
   async testSearch(): Promise<{ data: DuffelOffer[] }> {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 7); // 7 days from now
     
     const testParams: AppSearchParams = {
       from: 'JFK',
-      to: 'LAX', 
+      to: 'LAX',
       departureDate: tomorrow.toISOString().split('T')[0],
       passengers: {
         adults: 1,
